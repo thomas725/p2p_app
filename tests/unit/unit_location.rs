@@ -141,9 +141,147 @@ fn expiry_policy_matches_mode() {
 }
 
 #[test]
+fn session_active_helper_uses_the_same_limited_duration_validation() {
+    assert!(location_session_active(100.0, "limited", None, 110.0).is_err());
+    assert!(location_session_active(100.0, "limited", Some(30), 110.0).is_err());
+    assert!(location_session_active(100.0, "limited", Some(900), 110.0).expect("still active"));
+    assert!(
+        !location_session_active(100.0, "limited", Some(900), 1_000.0).expect("expired session")
+    );
+    assert!(location_session_active(100.0, "sometimes", None, 110.0).is_err());
+}
+
+#[test]
 fn cadence_helpers_are_due_only_at_or_after_the_interval() {
     assert!(location_send_due(None, 0.0, 60));
     assert!(!location_send_due(Some(100.0), 159.9, 60));
     assert!(location_send_due(Some(100.0), 160.0, 60));
     assert!(location_query_due(Some(100.0), 110.0, 10));
+}
+
+#[test]
+fn canonical_body_parses_back_with_sequence_and_final_marker() {
+    let mut share = input(52.52, 13.405, "unlimited", None);
+    share.accuracy = 12.0;
+    share.sequence = 7;
+    share.is_final = true;
+    let body = build_location_message(share).expect("body");
+    let point = parse_location_message(&body).expect("canonical point");
+    assert!((point.latitude - 52.52).abs() < 0.000_001);
+    assert!((point.longitude - 13.405).abs() < 0.000_001);
+    // The body rounds accuracy to whole metres; the parser must read the
+    // `(±12 m)` span as one token rather than splitting on its space.
+    assert!((point.accuracy - 12.0).abs() < f64::EPSILON);
+    assert!(point.timestamp_secs > 0.0);
+    assert_eq!(point.sequence, 7);
+    assert!(point.is_final);
+    assert_eq!(
+        location_message_url(&body).as_deref(),
+        Some(
+            "https://www.openstreetmap.org/?mlat=52.520000&mlon=13.405000#map=17/52.520000/13.405000"
+        )
+    );
+    assert!(parse_location_message("just a chat message").is_none());
+    assert!(parse_location_message("[Location] nonsense").is_none());
+    assert!(
+        parse_location_message("[Location] 52.520000,13.405000 (±12 m) @1700000000").is_none(),
+        "a hand-written prefix without the canonical map URL is not a track point"
+    );
+    assert_eq!(location_message_url("see https://example.test"), None);
+    assert_eq!(
+        location_message_url(
+            "[Location] 52.520000,13.405000 (±12 m) @1700000000 https://example.test"
+        ),
+        None,
+        "a hand-written URL must not become an actionable map link"
+    );
+}
+
+#[test]
+fn time_filter_accepts_relative_absolute_and_epoch_forms() {
+    let now = 1_700_000_000.0;
+    assert_eq!(parse_location_time_filter("now", now).expect("now"), now);
+    assert_eq!(
+        parse_location_time_filter("24 hours ago", now).expect("relative"),
+        now - 86_400.0
+    );
+    assert_eq!(
+        parse_location_time_filter("2 weeks ago", now).expect("weeks"),
+        now - 1_209_600.0
+    );
+    assert_eq!(
+        parse_location_time_filter("2023-11-14T22:13:20Z", now).expect("rfc3339"),
+        1_700_000_000.0
+    );
+    assert_eq!(
+        parse_location_time_filter("1700000000", now).expect("epoch"),
+        now
+    );
+    assert!(parse_location_time_filter("tomorrow", now).is_err());
+    assert!(parse_location_time_filter("5 fortnights ago", now).is_err());
+}
+
+#[test]
+fn gpx_escapes_label_and_emits_rfc3339_times() {
+    let points = vec![
+        LocationTrackPoint {
+            latitude: 52.52,
+            longitude: 13.405,
+            accuracy: 12.5,
+            timestamp_secs: 1_700_000_000.0,
+            sequence: 1,
+            is_final: false,
+        },
+        LocationTrackPoint {
+            latitude: -1.0,
+            longitude: 2.0,
+            accuracy: 3.0,
+            timestamp_secs: 1_700_000_060.0,
+            sequence: 2,
+            is_final: true,
+        },
+    ];
+    let gpx = location_gpx(&points, "Laptop & <phone>");
+    assert!(
+        gpx.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"),
+        "{gpx}"
+    );
+    assert!(
+        gpx.contains("<name>Laptop &amp; &lt;phone&gt;</name>"),
+        "{gpx}"
+    );
+    assert!(gpx.contains("<time>2023-11-14T22:13:20Z</time>"), "{gpx}");
+    assert!(gpx.contains("<accuracy>12.5</accuracy>"), "{gpx}");
+    assert_eq!(gpx.matches("<trkpt").count(), 2);
+    assert!(gpx.trim_end().ends_with("</gpx>"));
+}
+
+#[test]
+fn track_url_caps_waypoints_and_single_point_uses_marker() {
+    assert_eq!(location_track_url(&[]), None);
+    let one = vec![LocationTrackPoint {
+        latitude: 1.0,
+        longitude: 2.0,
+        accuracy: 5.0,
+        timestamp_secs: 1.0,
+        sequence: 1,
+        is_final: false,
+    }];
+    assert_eq!(location_track_url(&one), Some(location_map_url(1.0, 2.0)));
+    let points: Vec<LocationTrackPoint> = (0..60)
+        .map(|index| LocationTrackPoint {
+            latitude: f64::from(index),
+            longitude: 0.0,
+            accuracy: 5.0,
+            timestamp_secs: f64::from(index),
+            sequence: index + 1,
+            is_final: false,
+        })
+        .collect();
+    let url = location_track_url(&points).expect("route URL");
+    assert!(url.contains("engine=fossgis_osrm_foot"), "{url}");
+    let route = url.split_once("route=").map_or("", |(_, route)| route);
+    assert_eq!(route.split(';').count(), MAX_TRACK_URL_POINTS);
+    assert!(route.starts_with("10.000000,0.000000"), "{route}");
+    assert!(route.ends_with("59.000000,0.000000"), "{route}");
 }

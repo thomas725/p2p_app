@@ -23,6 +23,17 @@ class MainActivity : FlutterActivity() {
             MessageNotifications.handle(call, this, result)
         }
 
+        // Device-location adapter: Rust owns validation and sharing policy; this
+        // channel only returns one raw fix, one raw accelerometer motion state
+        // and the Android runtime permission answer.
+        LocationSensor.attach(this)
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            LocationSensor.CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            LocationSensor.handle(call, this, result)
+        }
+
         // Call-media device adapter (US-044): Rust owns framing/jitter/mute,
         // these channels only move PCM to and from AudioRecord/AudioTrack.
         val audioEvents = MethodChannel(
@@ -75,6 +86,7 @@ class MainActivity : FlutterActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         CallAudio.onRequestPermissionsResult(requestCode, grantResults)
+        LocationSensor.onRequestPermissionsResult(requestCode, grantResults)
     }
 
     private fun startP2pService(dbPath: String) {

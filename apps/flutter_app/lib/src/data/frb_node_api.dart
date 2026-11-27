@@ -12,6 +12,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/api.dart' as bridge;
 import 'package:p2p_app_flutter/src/rust/location.dart' as location;
+import 'package:p2p_app_flutter/src/rust/location.dart'
+    show LocationRecipient, LocationTrackPoint;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart' as mobile;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart' as node;
@@ -22,6 +24,7 @@ import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/theme.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
+import 'package:p2p_app_flutter/src/rust/settings.dart' show LocationDefaults;
 import 'package:p2p_app_flutter/src/rust/shares.dart' as shares;
 
 /// In-process [NodeApi]: delegates to the generated flutter_rust_bridge
@@ -371,6 +374,72 @@ class FrbNodeApi implements NodeApi {
     lastSentAt: lastSentAt,
     now: now,
     intervalSecs: intervalSecs,
+  );
+
+  @override
+  Future<String?> locationMessageUrl({required String content}) =>
+      bridge.locationMessageUrl(content: content);
+
+  @override
+  Future<bool> locationQueryDue({
+    double? lastQueryAt,
+    required double now,
+    required int intervalSecs,
+  }) => bridge.locationQueryDue(
+    lastQueryAt: lastQueryAt,
+    now: now,
+    intervalSecs: intervalSecs,
+  );
+
+  @override
+  Future<LocationDefaults> getLocationDefaults() =>
+      bridge.getLocationDefaults();
+
+  @override
+  Future<void> setLocationDefaults({required LocationDefaults input}) =>
+      bridge.setLocationDefaults(input: input);
+
+  @override
+  Future<double> parseLocationTimeFilter({
+    required String text,
+    required double now,
+  }) => bridge.parseLocationTimeFilter(text: text, now: now);
+
+  @override
+  Future<List<LocationTrackPoint>> loadLocationTrack({
+    required String peerId,
+    String? fromText,
+    String? toText,
+  }) => bridge.loadLocationTrack(
+    peerId: peerId,
+    fromText: fromText,
+    toText: toText,
+  );
+
+  @override
+  Future<String> locationGpx({
+    required List<LocationTrackPoint> points,
+    required String deviceLabel,
+  }) => bridge.locationGpx(points: points, deviceLabel: deviceLabel);
+
+  @override
+  Future<String?> locationTrackUrl({
+    required List<LocationTrackPoint> points,
+  }) => bridge.locationTrackUrl(points: points);
+
+  @override
+  Future<List<LocationRecipient>> listLocationRecipients() =>
+      bridge.listLocationRecipients();
+
+  @override
+  Future<List<String>> sendLocationToDevices({
+    required List<String> selectedPeerIds,
+    required bool allDevices,
+    required String body,
+  }) => bridge.sendLocationToDevices(
+    selectedPeerIds: selectedPeerIds,
+    allDevices: allDevices,
+    body: body,
   );
 
   // ── Identity / device binding ─────────────────────────────────────────────

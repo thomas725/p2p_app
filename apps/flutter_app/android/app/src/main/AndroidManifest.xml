@@ -21,6 +21,14 @@
     <!-- Call media (US-044): microphone capture during an active call. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Location sharing: a raw GPS/network fix is attached only to messages the
+         user sends while a sharing session is active. No background tracking:
+         the location channel asks for runtime permission before sampling, and
+         coarse location is accepted as a lower-accuracy fallback. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+
     <application
         android:label="p2p_app_flutter"
         android:name="${applicationName}"

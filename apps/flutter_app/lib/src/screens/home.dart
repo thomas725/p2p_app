@@ -1326,6 +1326,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onPickFile: _pickAndSendBroadcast,
         onOpenAttachment: _openBroadcastAttachment,
         onReact: _onReact,
+        onLocationLinkError: _showError,
       ),
       ContactList(
         rows: _contacts,

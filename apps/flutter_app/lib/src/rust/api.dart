@@ -13,6 +13,7 @@ import 'notifications.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'reactions.dart';
 import 'reply.dart';
+import 'settings.dart';
 import 'shares.dart';
 import 'theme.dart';
 
@@ -470,6 +471,13 @@ Future<String> buildLocationMessage({required LocationShareInput input}) =>
 Future<bool> isLocationMessage({required String content}) =>
     RustLib.instance.api.crateApiIsLocationMessage(content: content);
 
+/// Extract the canonical map URL from a location message body.
+///
+/// `None` for ordinary messages, so a frontend can offer an "open map" action
+/// without parsing coordinates or rebuilding the Rust-owned URL itself.
+Future<String?> locationMessageUrl({required String content}) =>
+    RustLib.instance.api.crateApiLocationMessageUrl(content: content);
+
 /// Whether a sharing session is still active at `now` (epoch seconds).
 ///
 /// Lets a frontend timer ask Rust for expiry instead of duplicating mode rules.
@@ -497,6 +505,103 @@ Future<bool> locationSendDue({
   lastSentAt: lastSentAt,
   now: now,
   intervalSecs: intervalSecs,
+);
+
+/// Whether the sensor should be queried again at `now` (epoch seconds).
+Future<bool> locationQueryDue({
+  double? lastQueryAt,
+  required double now,
+  required int intervalSecs,
+}) => RustLib.instance.api.crateApiLocationQueryDue(
+  lastQueryAt: lastQueryAt,
+  now: now,
+  intervalSecs: intervalSecs,
+);
+
+/// Defaults shown by the Flutter location-sharing dialog.
+///
+/// Stored and validated in Rust so both frontends start from the same policy.
+Future<LocationDefaults> getLocationDefaults() =>
+    RustLib.instance.api.crateApiGetLocationDefaults();
+
+/// Persist validated location-sharing defaults.
+///
+/// # Errors
+/// Returns a human-readable validation or database error.
+Future<void> setLocationDefaults({required LocationDefaults input}) =>
+    RustLib.instance.api.crateApiSetLocationDefaults(input: input);
+
+/// Resolve a user-facing filter (`"24 hours ago"`, `"now"`, ISO date/time) into
+/// Unix seconds using Rust's canonical grammar.
+///
+/// # Errors
+/// Returns an error for an unrecognised filter.
+Future<double> parseLocationTimeFilter({
+  required String text,
+  required double now,
+}) =>
+    RustLib.instance.api.crateApiParseLocationTimeFilter(text: text, now: now);
+
+/// Load one sending device's received location track.
+///
+/// `from_text`/`to_text` are Rust-parsed filters; empty/`None` means unbounded.
+/// Device-centric by construction: the query keys on the sender device's peer
+/// id, never a user or contact id.
+///
+/// # Errors
+/// Returns a filter validation error or a human-readable database error.
+Future<List<LocationTrackPoint>> loadLocationTrack({
+  required String peerId,
+  String? fromText,
+  String? toText,
+}) => RustLib.instance.api.crateApiLoadLocationTrack(
+  peerId: peerId,
+  fromText: fromText,
+  toText: toText,
+);
+
+/// Render one device's points as a GPX 1.1 document.
+Future<String> locationGpx({
+  required List<LocationTrackPoint> points,
+  required String deviceLabel,
+}) => RustLib.instance.api.crateApiLocationGpx(
+  points: points,
+  deviceLabel: deviceLabel,
+);
+
+/// Build the capped OSM directions URL for the newest points of a track.
+///
+/// A single point becomes the ordinary marker URL; longer tracks keep only the
+/// newest [`crate::location::MAX_TRACK_URL_POINTS`] waypoints.
+Future<String?> locationTrackUrl({required List<LocationTrackPoint> points}) =>
+    RustLib.instance.api.crateApiLocationTrackUrl(points: points);
+
+/// List other devices bound into this install's user as location targets.
+///
+/// # Errors
+/// Returns a human-readable error if the identity tables cannot be read.
+Future<List<LocationRecipient>> listLocationRecipients() =>
+    RustLib.instance.api.crateApiListLocationRecipients();
+
+/// Share one canonical location body with selected or all same-user devices.
+///
+/// The body must come from [`build_location_message`]: a plain DM that merely
+/// starts with `[Location]` is not enough, because the receiver's track parser
+/// needs the complete canonical form. Recipients are resolved in Rust from the
+/// local user's device bindings; nothing in Dart decides eligibility.
+///
+/// Returns the peer ids the message was queued for.
+///
+/// # Errors
+/// Returns an error for a malformed body, invalid recipients, or persistence.
+Future<List<String>> sendLocationToDevices({
+  required List<String> selectedPeerIds,
+  required bool allDevices,
+  required String body,
+}) => RustLib.instance.api.crateApiSendLocationToDevices(
+  selectedPeerIds: selectedPeerIds,
+  allDevices: allDevices,
+  body: body,
 );
 
 /// Resolve this install's user ID from its stored identity and binding.

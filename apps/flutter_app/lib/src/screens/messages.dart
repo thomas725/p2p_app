@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -6,6 +8,8 @@ import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
+import 'package:p2p_app_flutter/src/util/attachments.dart'
+    show openRemoteUrlOverride;
 import 'package:p2p_app_flutter/src/util/reply.dart';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -397,6 +401,7 @@ class MessageChatBody extends StatelessWidget {
     this.onOpenPeerInfo,
     this.onOpenAttachment,
     this.onReact,
+    this.onLocationLinkError,
   });
 
   final List<ChatMessage> messages;
@@ -427,6 +432,9 @@ class MessageChatBody extends StatelessWidget {
   /// Called with `(message index, emoji)` when a reaction chip is tapped. The
   /// owning screen applies the change through Rust and replaces just that row.
   final void Function(int, String)? onReact;
+
+  /// Optional destination for a map-link launch failure (browser refused).
+  final void Function(String)? onLocationLinkError;
 
   @override
   Widget build(BuildContext context) {
@@ -482,6 +490,7 @@ class MessageChatBody extends StatelessWidget {
                         onReact: onReact == null
                             ? null
                             : (emoji) => onReact!(i, emoji),
+                        onLocationLinkError: onLocationLinkError,
                       ),
                   ],
                 ),
@@ -743,6 +752,7 @@ class BroadcastChat extends StatefulWidget {
     this.onPickFile,
     this.onOpenAttachment,
     this.onReact,
+    this.onLocationLinkError,
   });
 
   final List<ChatMessage> messages;
@@ -766,6 +776,7 @@ class BroadcastChat extends StatefulWidget {
   final VoidCallback? onPickFile;
   final void Function(ChatMessage)? onOpenAttachment;
   final void Function(int, String)? onReact;
+  final void Function(String)? onLocationLinkError;
 
   @override
   State<BroadcastChat> createState() => _BroadcastChatState();
@@ -836,6 +847,7 @@ class _BroadcastChatState extends State<BroadcastChat> {
           onOpenPeerInfo: widget.onOpenPeerInfo,
           onOpenAttachment: widget.onOpenAttachment,
           onReact: widget.onReact,
+          onLocationLinkError: widget.onLocationLinkError,
         ),
         MessageInputBar(
           controller: _controller,
@@ -866,6 +878,7 @@ class MessageBubble extends StatelessWidget {
     this.onOpenPeerInfo,
     this.onOpenAttachment,
     this.onReact,
+    this.onLocationLinkError,
   });
   final ChatMessage message;
   final bool isOwn;
@@ -876,6 +889,7 @@ class MessageBubble extends StatelessWidget {
   final void Function(String)? onOpenPeerInfo;
   final VoidCallback? onOpenAttachment;
   final void Function(String)? onReact;
+  final void Function(String)? onLocationLinkError;
 
   /// Menu value for the "Custom…" entry. The NUL prefix means no valid reaction
   /// token (which Rust validates as trimmed, non-empty text) can collide with it.
@@ -1040,6 +1054,13 @@ class MessageBubble extends StatelessWidget {
                       ? null
                       : onOpenAttachment,
                 ),
+              if (message.content.isNotEmpty)
+                _LocationLink(
+                  content: message.content,
+                  color: fg,
+                  enabled: !selectionMode,
+                  onError: onLocationLinkError,
+                ),
               if ((message.reactions.isNotEmpty || onReact != null) &&
                   !selectionMode &&
                   message.msgId != null)
@@ -1145,6 +1166,87 @@ class MessageBubble extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Optional map link for a canonical location DM. Detection goes through Rust
+/// so Dart never parses the body (and a fake without the override simply shows
+/// no chip). The chip is inert while the bubble is in selection mode.
+class _LocationLink extends StatefulWidget {
+  const _LocationLink({
+    required this.content,
+    required this.color,
+    required this.enabled,
+    this.onError,
+  });
+
+  final String content;
+  final Color color;
+  final bool enabled;
+  final void Function(String)? onError;
+
+  @override
+  State<_LocationLink> createState() => _LocationLinkState();
+}
+
+class _LocationLinkState extends State<_LocationLink> {
+  String? _url;
+
+  @override
+  void initState() {
+    super.initState();
+    _detect();
+  }
+
+  @override
+  void didUpdateWidget(covariant _LocationLink oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.content != widget.content) {
+      _url = null;
+      _detect();
+    }
+  }
+
+  Future<void> _detect() async {
+    try {
+      final url = await nodeApi.locationMessageUrl(content: widget.content);
+      if (!mounted) return;
+      if (url != null) setState(() => _url = url);
+    } catch (_) {
+      // Ordinary chat text (and test doubles with no override) has no map link.
+    }
+  }
+
+  Future<void> _open() async {
+    final url = _url;
+    if (url == null || !widget.enabled) return;
+    final error = await openRemoteUrlOverride(url);
+    if (error != null) widget.onError?.call(error);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final url = _url;
+    if (url == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: InkWell(
+        key: const Key('location-map-link'),
+        onTap: widget.enabled ? () => unawaited(_open()) : null,
+        borderRadius: BorderRadius.circular(6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.map_outlined, size: 14, color: widget.color),
+            const SizedBox(width: 6),
+            Text(
+              'Open map',
+              style: TextStyle(fontSize: 12, color: widget.color),
+            ),
+          ],
         ),
       ),
     );

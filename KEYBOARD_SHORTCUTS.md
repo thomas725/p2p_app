@@ -283,6 +283,13 @@ of the history.
 | `Ctrl+C` | Copy the selected DM's rendered line (newest if none selected) |
 | `Delete` | Hide your selected sent DM (newest sent if none selected), local only |
 | `Ctrl+E` | Edit your selected sent DM (newest sent if none selected), local only |
+| `Ctrl+L` | Export this exact device's location track to GPX after a Rust-parsed `from;to` filter |
+
+`Ctrl+L` captures the DM partner's peer id when the prompt opens, so switching
+tabs cannot mix two devices of the same account. Empty input or `all` exports
+the full stored history; `24 hours ago;now` uses the same Rust time grammar as
+Flutter. The GPX and a plain-text map URL are shown in a notice — terminal
+hyperlinks are deliberately not used. `Esc` closes the prompt without writing.
 
 `Ctrl+I` collapses to the same byte as `Tab` on terminals without the kitty
 keyboard protocol (Konsole), so bare `Tab` would stop cycling tabs. `Ctrl+P`

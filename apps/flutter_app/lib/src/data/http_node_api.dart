@@ -9,12 +9,14 @@ import 'dart:typed_data';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
     show PlatformInt64, PlatformInt64Util;
 
+import 'package:p2p_app_flutter/src/data/location_json.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/data/node_transport.dart';
 import 'package:p2p_app_flutter/src/data/shares_json.dart';
 import 'package:p2p_app_flutter/src/rust/api.dart'
     show BindShareParams, CreateShareParams, MobileShare, MobileShareGrant;
-import 'package:p2p_app_flutter/src/rust/location.dart' show LocationShareInput;
+import 'package:p2p_app_flutter/src/rust/location.dart'
+    show LocationRecipient, LocationShareInput, LocationTrackPoint;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
@@ -23,6 +25,7 @@ import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/theme.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
+import 'package:p2p_app_flutter/src/rust/settings.dart' show LocationDefaults;
 import 'package:p2p_app_flutter/src/rust/shares.dart'
     show ShareManifest, ShareOffer;
 
@@ -931,6 +934,101 @@ class HttpNodeApi implements NodeApi {
             'intervalSecs': intervalSecs,
           })
           as bool;
+
+  @override
+  Future<String?> locationMessageUrl({required String content}) async =>
+      await _call('locationMessageUrl', {'content': content}) as String?;
+
+  @override
+  Future<bool> locationQueryDue({
+    double? lastQueryAt,
+    required double now,
+    required int intervalSecs,
+  }) async =>
+      await _call('locationQueryDue', {
+            'lastQueryAt': lastQueryAt,
+            'now': now,
+            'intervalSecs': intervalSecs,
+          })
+          as bool;
+
+  @override
+  Future<LocationDefaults> getLocationDefaults() async =>
+      locationDefaultsFromJson(
+        await _call('getLocationDefaults') as Map<String, dynamic>,
+      );
+
+  @override
+  Future<void> setLocationDefaults({required LocationDefaults input}) async {
+    await _call('setLocationDefaults', locationDefaultsToJson(input));
+  }
+
+  @override
+  Future<double> parseLocationTimeFilter({
+    required String text,
+    required double now,
+  }) async =>
+      (await _call('parseLocationTimeFilter', {'text': text, 'now': now})
+              as num)
+          .toDouble();
+
+  @override
+  Future<List<LocationTrackPoint>> loadLocationTrack({
+    required String peerId,
+    String? fromText,
+    String? toText,
+  }) async => _list(
+    await _call('loadLocationTrack', {
+      'peerId': peerId,
+      'fromText': ?fromText,
+      'toText': ?toText,
+    }),
+    (raw) => locationTrackPointFromJson(raw as Map<String, dynamic>),
+  );
+
+  @override
+  Future<String> locationGpx({
+    required List<LocationTrackPoint> points,
+    required String deviceLabel,
+  }) async =>
+      await _call('locationGpx', {
+            'points': [
+              for (final point in points) locationTrackPointToJson(point),
+            ],
+            'deviceLabel': deviceLabel,
+          })
+          as String;
+
+  @override
+  Future<String?> locationTrackUrl({
+    required List<LocationTrackPoint> points,
+  }) async =>
+      await _call('locationTrackUrl', {
+            'points': [
+              for (final point in points) locationTrackPointToJson(point),
+            ],
+          })
+          as String?;
+
+  @override
+  Future<List<LocationRecipient>> listLocationRecipients() async => _list(
+    await _call('listLocationRecipients'),
+    (raw) => locationRecipientFromJson(raw as Map<String, dynamic>),
+  );
+
+  @override
+  Future<List<String>> sendLocationToDevices({
+    required List<String> selectedPeerIds,
+    required bool allDevices,
+    required String body,
+  }) async =>
+      (await _call('sendLocationToDevices', {
+                'selectedPeerIds': selectedPeerIds,
+                'allDevices': allDevices,
+                'body': body,
+              })
+              as List<dynamic>)
+          .cast<String>();
 
   // ── Identity / device binding ─────────────────────────────────────────────
 

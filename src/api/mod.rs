@@ -577,6 +577,15 @@ pub fn is_location_message(content: &str) -> bool {
     crate::location::is_location_message(content)
 }
 
+/// Extract the canonical map URL from a location message body.
+///
+/// `None` for ordinary messages, so a frontend can offer an "open map" action
+/// without parsing coordinates or rebuilding the Rust-owned URL itself.
+#[must_use]
+pub fn location_message_url(content: &str) -> Option<String> {
+    crate::location::location_message_url(content)
+}
+
 /// Whether a sharing session is still active at `now` (epoch seconds).
 ///
 /// Lets a frontend timer ask Rust for expiry instead of duplicating mode rules.
@@ -596,6 +605,105 @@ pub fn location_session_active(
 #[must_use]
 pub fn location_send_due(last_sent_at: Option<f64>, now: f64, interval_secs: u32) -> bool {
     crate::location::location_send_due(last_sent_at, now, interval_secs)
+}
+
+/// Whether the sensor should be queried again at `now` (epoch seconds).
+#[must_use]
+pub fn location_query_due(last_query_at: Option<f64>, now: f64, interval_secs: u32) -> bool {
+    crate::location::location_query_due(last_query_at, now, interval_secs)
+}
+
+/// Defaults shown by the Flutter location-sharing dialog.
+///
+/// Stored and validated in Rust so both frontends start from the same policy.
+#[must_use]
+pub fn get_location_defaults() -> crate::settings::LocationDefaults {
+    crate::settings::location_defaults()
+}
+
+/// Persist validated location-sharing defaults.
+///
+/// # Errors
+/// Returns a human-readable validation or database error.
+pub fn set_location_defaults(input: crate::settings::LocationDefaults) -> Result<(), String> {
+    crate::settings::set_location_defaults(input)
+}
+
+/// Resolve a user-facing filter (`"24 hours ago"`, `"now"`, ISO date/time) into
+/// Unix seconds using Rust's canonical grammar.
+///
+/// # Errors
+/// Returns an error for an unrecognised filter.
+pub fn parse_location_time_filter(text: &str, now: f64) -> Result<f64, String> {
+    crate::location::parse_location_time_filter(text, now)
+}
+
+/// Load one sending device's received location track.
+///
+/// `from_text`/`to_text` are Rust-parsed filters; empty/`None` means unbounded.
+/// Device-centric by construction: the query keys on the sender device's peer
+/// id, never a user or contact id.
+///
+/// # Errors
+/// Returns a filter validation error or a human-readable database error.
+pub fn load_location_track(
+    peer_id: String,
+    from_text: Option<String>,
+    to_text: Option<String>,
+) -> Result<Vec<crate::location::LocationTrackPoint>, String> {
+    crate::messages::load_location_track(peer_id, from_text, to_text)
+}
+
+/// Render one device's points as a GPX 1.1 document.
+#[must_use]
+pub fn location_gpx(
+    points: Vec<crate::location::LocationTrackPoint>,
+    device_label: String,
+) -> String {
+    crate::location::location_gpx(points, device_label)
+}
+
+/// Build the capped OSM directions URL for the newest points of a track.
+///
+/// A single point becomes the ordinary marker URL; longer tracks keep only the
+/// newest [`crate::location::MAX_TRACK_URL_POINTS`] waypoints.
+#[must_use]
+pub fn location_track_url(points: Vec<crate::location::LocationTrackPoint>) -> Option<String> {
+    crate::location::location_track_url(points)
+}
+
+/// List other devices bound into this install's user as location targets.
+///
+/// # Errors
+/// Returns a human-readable error if the identity tables cannot be read.
+pub fn list_location_recipients() -> Result<Vec<crate::location::LocationRecipient>, String> {
+    crate::location::list_location_recipients()
+}
+
+/// Share one canonical location body with selected or all same-user devices.
+///
+/// The body must come from [`build_location_message`]: a plain DM that merely
+/// starts with `[Location]` is not enough, because the receiver's track parser
+/// needs the complete canonical form. Recipients are resolved in Rust from the
+/// local user's device bindings; nothing in Dart decides eligibility.
+///
+/// Returns the peer ids the message was queued for.
+///
+/// # Errors
+/// Returns an error for a malformed body, invalid recipients, or persistence.
+pub fn send_location_to_devices(
+    selected_peer_ids: Vec<String>,
+    all_devices: bool,
+    body: &str,
+) -> Result<Vec<String>, String> {
+    if crate::location::parse_location_message(body).is_none() {
+        return Err("location body must come from buildLocationMessage".to_string());
+    }
+    let recipients = crate::location::location_recipient_peer_ids(selected_peer_ids, all_devices)?;
+    for peer_id in &recipients {
+        save_outgoing_dm(peer_id.clone(), body.to_string(), None, None)?;
+    }
+    Ok(recipients)
 }
 
 // --- Identity lane ---

@@ -768,6 +768,9 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
         p2plog_debug("Cancelled reaction".to_string());
     } else if s.cancel_share_grant() {
         p2plog_debug("Cancelled share grant edit".to_string());
+    } else if s.is_exporting_location_track() {
+        s.cancel_export_location_track();
+        p2plog_debug("Cancelled location track export".to_string());
     } else if s.is_searching_contacts() {
         s.end_contact_search(false);
         p2plog_debug("Cleared Contacts search".to_string());
@@ -1967,6 +1970,12 @@ fn handle_chat_action_shortcut(
         // tappable attachment chip. Bare `o` is a Settings toggle, so the
         // modifier keeps the chat composer untouched.
         crossterm::event::KeyCode::Char('o') if is_ctrl => open_target_attachment(s, tab),
+        // `Ctrl+L` arms a one-device `from;to` export on a Direct tab. The
+        // peer id is captured in the prompt, so switching tabs cannot mix
+        // tracks from two devices of the same account.
+        crossterm::event::KeyCode::Char('l') if is_ctrl => {
+            super::location_export::arm_export_prompt(s, tab);
+        }
         // `Ctrl+C` is owned by `handle_clipboard_shortcut`, which runs first so
         // it can also serve the Log tab without this function's chat-only guard.
         _ => return false,
@@ -1992,6 +2001,9 @@ async fn handle_enter_dispatch(
         confirm_reaction(s, swarm_cmd_tx).await;
     } else if s.is_editing_share_grant() {
         confirm_share_grant(s);
+    } else if s.is_exporting_location_track() {
+        let root = super::location_export::default_export_root();
+        super::location_export::submit_location_export(s, &root);
     } else if s.is_creating_group() {
         let name = s.chat_input.lines().join("\n");
         create_or_join_group(s, swarm_cmd_tx, &name).await;

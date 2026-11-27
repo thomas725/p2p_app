@@ -71,6 +71,7 @@ mod tui {
     pub mod event_source;
     pub mod input_processor;
     pub mod key_probe;
+    pub mod location_export;
     pub mod main_loop;
     pub mod message_handlers;
     pub mod render_loop;

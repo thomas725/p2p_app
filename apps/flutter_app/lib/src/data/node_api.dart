@@ -24,7 +24,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
 import 'package:p2p_app_flutter/src/data/frb_node_api.dart';
 import 'package:p2p_app_flutter/src/rust/api.dart'
     show BindShareParams, CreateShareParams, MobileShare, MobileShareGrant;
-import 'package:p2p_app_flutter/src/rust/location.dart' show LocationShareInput;
+import 'package:p2p_app_flutter/src/rust/location.dart'
+    show LocationRecipient, LocationShareInput, LocationTrackPoint;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
@@ -34,6 +35,7 @@ import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
 import 'package:p2p_app_flutter/src/rust/shares.dart'
     show ShareManifest, ShareOffer;
+import 'package:p2p_app_flutter/src/rust/settings.dart' show LocationDefaults;
 import 'package:p2p_app_flutter/src/rust/theme.dart';
 
 /// The active transport. Defaults to the in-process FFI bridge; `main()`
@@ -298,6 +300,57 @@ abstract class NodeApi {
     double? lastSentAt,
     required double now,
     required int intervalSecs,
+  });
+
+  /// Extract the canonical map URL from a location message body, or `null` for
+  /// ordinary chat text.
+  Future<String?> locationMessageUrl({required String content});
+
+  /// Whether the sensor should be queried again at `now` (epoch seconds).
+  Future<bool> locationQueryDue({
+    double? lastQueryAt,
+    required double now,
+    required int intervalSecs,
+  });
+
+  /// Defaults for the location-sharing dialog, validated and stored in Rust.
+  Future<LocationDefaults> getLocationDefaults();
+
+  /// Persist validated location-sharing defaults.
+  Future<void> setLocationDefaults({required LocationDefaults input});
+
+  /// Resolve a user-facing time filter into Unix seconds in Rust.
+  Future<double> parseLocationTimeFilter({
+    required String text,
+    required double now,
+  });
+
+  /// Load one sending device's received location track, optionally filtered by
+  /// Rust-parsed `fromText`/`toText`.
+  Future<List<LocationTrackPoint>> loadLocationTrack({
+    required String peerId,
+    String? fromText,
+    String? toText,
+  });
+
+  /// Render one device's points as a GPX 1.1 document.
+  Future<String> locationGpx({
+    required List<LocationTrackPoint> points,
+    required String deviceLabel,
+  });
+
+  /// Build the capped directions URL for the newest points of a track.
+  Future<String?> locationTrackUrl({required List<LocationTrackPoint> points});
+
+  /// Other devices bound into this install's user, as share destinations.
+  Future<List<LocationRecipient>> listLocationRecipients();
+
+  /// Send one canonical location body to selected or all same-user devices;
+  /// returns the peer ids the message was queued for.
+  Future<List<String>> sendLocationToDevices({
+    required List<String> selectedPeerIds,
+    required bool allDevices,
+    required String body,
   });
 
   // --- Identity / device binding ---

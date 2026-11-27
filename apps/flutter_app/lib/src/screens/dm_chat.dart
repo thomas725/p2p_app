@@ -8,9 +8,16 @@ import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
+import 'package:p2p_app_flutter/src/screens/location_share.dart';
+import 'package:p2p_app_flutter/src/screens/location_track.dart';
 import 'package:p2p_app_flutter/src/screens/peer_info.dart';
 import 'package:p2p_app_flutter/src/util/blocklist.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
+import 'package:p2p_app_flutter/src/util/location.dart' show LocationAdapter;
+import 'package:p2p_app_flutter/src/util/location_device.dart'
+    show createLocationAdapter;
+import 'package:p2p_app_flutter/src/util/location_session.dart'
+    show LocationSessionController, LocationShareConfig;
 import 'package:p2p_app_flutter/src/util/notifications.dart'
     show pushFocusedConversation, setFocusedConversation;
 import 'package:p2p_app_flutter/src/util/attachments.dart';
@@ -32,6 +39,7 @@ class DmChatScreen extends StatefulWidget {
     this.onNavigate,
     this.currentTab = 1,
     this.onOpenPeerInfo,
+    this.locationAdapterFactory,
   });
   final MobilePeerRecord peer;
   final bool serviceRunning;
@@ -43,6 +51,10 @@ class DmChatScreen extends StatefulWidget {
   /// rule. Optional so widget tests can pump without FFI; when absent the DM
   /// screen pushes its own Peer Info page for the conversation partner.
   final void Function(String)? onOpenPeerInfo;
+
+  /// Injectable device adapter seam. Production uses the platform adapter;
+  /// widget tests supply a fake so no plugin channel is touched.
+  final LocationAdapter Function()? locationAdapterFactory;
 
   @override
   State<DmChatScreen> createState() => _DmChatScreenState();
@@ -79,6 +91,13 @@ class _DmChatScreenState extends State<DmChatScreen>
   /// Frozen quote for the next DM we send; independent of selection mode.
   ReplyRef? _replyTo;
 
+  /// One live location session at a time. The dialog only returns a config;
+  /// this screen owns the controller so leaving the DM ends the session.
+  LocationSessionController? _locationSession;
+  LocationAdapter? _sessionAdapter;
+  int _locationSequence = 0;
+  String? _locationError;
+
   void _onReply(int index) async {
     if (index < 0 || index >= _messages.length) return;
     final draft = await replyDraftFor(_messages[index]);
@@ -108,6 +127,7 @@ class _DmChatScreenState extends State<DmChatScreen>
   @override
   void dispose() {
     setFocusedConversation(_previousFocus);
+    _locationSession?.dispose();
     _typingTimer?.cancel();
     if (_lastTypingStart != null) {
       unawaited(_emitTyping(false));
@@ -430,6 +450,107 @@ class _DmChatScreenState extends State<DmChatScreen>
       );
   }
 
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+      );
+  }
+
+  void _onLocationLinkError(String message) => _showSnack(message);
+
+  void _reportLocationError(String message) {
+    if (mounted) setState(() => _locationError = message);
+    _showSnack(message);
+  }
+
+  /// Open the share dialog. Rust supplies defaults and recipients; the dialog
+  /// returns only the user's choices, and the controller created here owns the
+  /// live session for as long as this DM screen is open.
+  Future<void> _openLocationShare() async {
+    final adapter = (widget.locationAdapterFactory ?? createLocationAdapter)();
+    final active = _locationSession;
+    await showDialog<LocationShareConfig>(
+      context: context,
+      builder: (_) => LocationShareDialog(
+        adapter: adapter,
+        loadDefaults: nodeApi.getLocationDefaults,
+        saveDefaults: (input) => nodeApi.setLocationDefaults(input: input),
+        loadRecipients: nodeApi.listLocationRecipients,
+        onOnce: (config) => _startLocation(config, adapter, once: true),
+        onStart: (config) => _startLocation(config, adapter, once: false),
+        onStop: _stopLocation,
+        active: active?.active ?? false,
+        activeLabel: active == null
+            ? null
+            : 'Sharing location · sample ${active.sequence}',
+      ),
+    );
+    // A dialog cancelled without adopting the adapter must release it.
+    if (!identical(_sessionAdapter, adapter)) unawaited(adapter.close());
+  }
+
+  Future<void> _startLocation(
+    LocationShareConfig config,
+    LocationAdapter adapter, {
+    required bool once,
+  }) async {
+    late final LocationSessionController session;
+    session = LocationSessionController(
+      api: nodeApi,
+      adapter: adapter,
+      config: config,
+      onError: _reportLocationError,
+      onSent: (_) {
+        if (!identical(_locationSession, session) || !mounted) return;
+        setState(() => _locationSequence = session.sequence);
+      },
+      onFinished: () {
+        if (!identical(_locationSession, session) || !mounted) return;
+        setState(() {
+          _locationSession = null;
+          _sessionAdapter = null;
+        });
+      },
+    );
+    setState(() {
+      _locationSession?.dispose();
+      _locationSession = session;
+      _sessionAdapter = adapter;
+      _locationSequence = 0;
+      _locationError = null;
+    });
+    if (once) {
+      await session.startOnce();
+    } else {
+      await session.startContinued();
+    }
+    if (mounted) setState(() => _locationSequence = session.sequence);
+  }
+
+  Future<void> _stopLocation() async {
+    final session = _locationSession;
+    if (session == null) return;
+    await session.stop();
+    if (mounted) setState(() {});
+  }
+
+  /// Open this sender's device-scoped track. The DM partner is never resolved
+  /// through a user/contact: [widget.peer.peerId] is the only key Rust needs.
+  void _openLocationTrack() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => LocationTrackScreen(
+          peerId: _peerId,
+          deviceLabel: widget.peer.displayName,
+        ),
+      ),
+    );
+  }
+
   /// Open the tapped message sender's Peer Info. The host (HomeScreen) usually
   /// supplies [DmChatScreen.onOpenPeerInfo] so the info page gets the full
   /// roster/contact context; standalone use (widget tests) falls back to a
@@ -509,9 +630,34 @@ class _DmChatScreenState extends State<DmChatScreen>
                 key: Key('peer-typing'),
                 style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic),
               ),
+            if (_locationSession?.active ?? false)
+              Text(
+                'Sharing location · sample $_locationSequence',
+                key: const Key('location-sharing-status'),
+                style: const TextStyle(fontSize: 11),
+              ),
           ],
         ),
         actions: [
+          IconButton(
+            key: const Key('dm-location'),
+            icon: const Icon(Icons.location_on_outlined),
+            tooltip: 'Share location',
+            onPressed: () => unawaited(_openLocationShare()),
+          ),
+          IconButton(
+            key: const Key('dm-location-track'),
+            icon: const Icon(Icons.route_outlined),
+            tooltip: 'Location track',
+            onPressed: _openLocationTrack,
+          ),
+          if (_locationSession?.active ?? false)
+            IconButton(
+              key: const Key('location-session-stop'),
+              icon: const Icon(Icons.stop_circle_outlined),
+              tooltip: 'Stop sharing location',
+              onPressed: () => unawaited(_stopLocation()),
+            ),
           IconButton(
             icon: const Icon(Icons.info_outline),
             tooltip: 'Peer info',
@@ -538,6 +684,32 @@ class _DmChatScreenState extends State<DmChatScreen>
       ),
       body: Column(
         children: [
+          if (_locationError != null)
+            Container(
+              width: double.infinity,
+              color: Theme.of(context).colorScheme.errorContainer,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _locationError!,
+                      key: const Key('location-session-error'),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => setState(() => _locationError = null),
+                    icon: const Icon(Icons.close, size: 16),
+                    tooltip: 'Dismiss',
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+            ),
           if (_broadcasts.isNotEmpty)
             Expanded(flex: 1, child: _buildBroadcastPane()),
           MessageChatBody(
@@ -563,6 +735,7 @@ class _DmChatScreenState extends State<DmChatScreen>
             onOpenPeerInfo: _openPeerInfo,
             onOpenAttachment: _openAttachment,
             onReact: _onReact,
+            onLocationLinkError: _onLocationLinkError,
           ),
           MessageInputBar(
             controller: _controller,

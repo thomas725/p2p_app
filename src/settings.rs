@@ -11,8 +11,10 @@
 
 use crate::generated::models_insertable::NewAppSetting;
 use crate::generated::schema::app_settings;
+use crate::location::{self, LocationMode};
 use crate::theme::Accent;
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _};
+use serde::{Deserialize, Serialize};
 
 /// `app_settings.key` for LAN-only mode (US-051).
 const KEY_LAN_ONLY: &str = "lan_only";
@@ -26,6 +28,8 @@ const KEY_NOTIFICATION_SOUND: &str = "notification_sound";
 const KEY_NOTIFICATION_DESKTOP: &str = "notification_desktop";
 /// `app_settings.key` for the broadcast viewed watermark (highest row id read).
 const KEY_BROADCAST_LAST_VIEWED_ID: &str = "broadcast_last_viewed_id";
+/// `app_settings.key` for the location-sharing dialog defaults (JSON).
+const KEY_LOCATION_DEFAULTS: &str = "location_defaults";
 
 /// Read a raw setting value. Returns `None` when the key is absent or the DB
 /// cannot be read (a broken settings table must not break the caller).
@@ -141,6 +145,85 @@ pub fn notification_desktop() -> bool {
 /// Returns a human-readable error if the database write fails.
 pub fn set_notification_desktop(enabled: bool) -> Result<(), String> {
     set(KEY_NOTIFICATION_DESKTOP, if enabled { "1" } else { "0" })
+}
+
+/// Flat, primitive-only defaults for the location-sharing dialog.
+///
+/// Both frontends use the canonical lowercase mode name, so the FRB/web
+/// boundary stays free of Rust enums; [`set_location_defaults`] validates the
+/// values with the same policy a live share uses.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocationDefaults {
+    /// Canonical mode name: `once`, `limited` or `unlimited`.
+    pub mode: String,
+    /// Window length for `limited` sharing; ignored for other modes.
+    pub duration_secs: Option<u32>,
+    /// How often the device queries its sensor, in seconds.
+    pub sensor_interval_secs: u32,
+    /// How often a sample is sent over the network, in seconds.
+    pub send_interval_secs: u32,
+    /// Whether the low-power motion gate is on (enabled by default).
+    pub motion_gate: bool,
+}
+
+impl Default for LocationDefaults {
+    fn default() -> Self {
+        Self {
+            mode: LocationMode::Once.as_str().to_string(),
+            duration_secs: None,
+            sensor_interval_secs: location::DEFAULT_SENSOR_INTERVAL_SECS,
+            send_interval_secs: location::DEFAULT_SEND_INTERVAL_SECS,
+            motion_gate: true,
+        }
+    }
+}
+
+impl LocationDefaults {
+    /// Validate with the canonical session policy and return the normalised
+    /// value (e.g. no duration for a one-shot share).
+    ///
+    /// # Errors
+    /// Returns a human-readable validation error from [`location::validate_location_settings`].
+    pub fn validated(self) -> Result<Self, String> {
+        let mode = LocationMode::parse(&self.mode)?;
+        let normalised =
+            location::validate_location_settings(&location::LocationSessionSettings {
+                mode,
+                duration_secs: self.duration_secs,
+                sensor_interval_secs: self.sensor_interval_secs,
+                send_interval_secs: self.send_interval_secs,
+                motion_gate: self.motion_gate,
+            })?;
+        Ok(Self {
+            mode: normalised.mode.as_str().to_string(),
+            duration_secs: normalised.duration_secs,
+            sensor_interval_secs: normalised.sensor_interval_secs,
+            send_interval_secs: normalised.send_interval_secs,
+            motion_gate: normalised.motion_gate,
+        })
+    }
+}
+
+/// Persisted location-sharing defaults. A missing, corrupt or invalid row falls
+/// back to [`LocationDefaults::default`] so a broken settings table never stops
+/// the sharing dialog from opening.
+#[must_use]
+pub fn location_defaults() -> LocationDefaults {
+    get(KEY_LOCATION_DEFAULTS)
+        .and_then(|raw| serde_json::from_str::<LocationDefaults>(&raw).ok())
+        .and_then(|defaults| defaults.validated().ok())
+        .unwrap_or_default()
+}
+
+/// Persist validated location-sharing defaults.
+///
+/// # Errors
+/// Returns a validation error for bad input, or a human-readable DB error.
+pub fn set_location_defaults(input: LocationDefaults) -> Result<(), String> {
+    let validated = input.validated()?;
+    let raw = serde_json::to_string(&validated).map_err(|e| e.to_string())?;
+    set(KEY_LOCATION_DEFAULTS, &raw)
 }
 
 /// Highest broadcast row id the user has viewed, or `None` on a fresh install.

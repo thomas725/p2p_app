@@ -102,3 +102,72 @@ fn accent_cycles_wraps_around() {
         assert_eq!(accent.as_str(), expected);
     }
 }
+
+#[test]
+#[serial]
+fn location_defaults_are_motion_gated_and_roundtrip() {
+    with_test_db(|| {
+        let defaults = location_defaults();
+        assert_eq!(defaults.mode, "once");
+        assert_eq!(defaults.duration_secs, None);
+        assert_eq!(
+            defaults.sensor_interval_secs,
+            location::DEFAULT_SENSOR_INTERVAL_SECS
+        );
+        assert_eq!(
+            defaults.send_interval_secs,
+            location::DEFAULT_SEND_INTERVAL_SECS
+        );
+        assert!(defaults.motion_gate, "the low-power gate starts enabled");
+
+        let changed = LocationDefaults {
+            mode: "limited".to_string(),
+            duration_secs: Some(900),
+            sensor_interval_secs: 15,
+            send_interval_secs: 120,
+            motion_gate: false,
+        };
+        set_location_defaults(changed.clone()).expect("save defaults");
+        assert_eq!(location_defaults(), changed);
+    });
+}
+
+#[test]
+#[serial]
+fn invalid_location_defaults_are_rejected_and_never_written() {
+    with_test_db(|| {
+        let invalid = [
+            LocationDefaults {
+                mode: "sometimes".to_string(),
+                ..LocationDefaults::default()
+            },
+            LocationDefaults {
+                sensor_interval_secs: 0,
+                ..LocationDefaults::default()
+            },
+            LocationDefaults {
+                mode: "limited".to_string(),
+                duration_secs: Some(10),
+                ..LocationDefaults::default()
+            },
+        ];
+        for bad in invalid {
+            assert!(set_location_defaults(bad).is_err());
+        }
+
+        let raw = get(KEY_LOCATION_DEFAULTS);
+        assert!(
+            raw.is_none(),
+            "validation must happen before the settings write"
+        );
+    });
+}
+
+#[test]
+#[serial]
+fn corrupt_location_defaults_fall_back_to_the_policy_defaults() {
+    with_test_db(|| {
+        set(KEY_LOCATION_DEFAULTS, "not-json").expect("seed corrupt row");
+        assert_eq!(location_defaults(), LocationDefaults::default());
+    });
+}

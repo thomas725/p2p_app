@@ -158,6 +158,8 @@ pub fn render_input_section(
             "Add {} multiaddr",
             state.network_peer_kind.as_deref().unwrap_or("network peer")
         )
+    } else if state.input_mode == crate::InputMode::ExportingLocationTrack {
+        "Export location track (from;to)".to_string()
     } else if state.is_creating_group() {
         "Create or Join Group".to_string()
     } else if state.is_searching_contacts() {
@@ -193,8 +195,8 @@ pub fn render_input_section(
 /// message cursor on the three chat tabs (verbs then act on the selected row,
 /// newest if none selected), Ctrl+P on every tab with a peer target (Contacts,
 /// Direct, Chat, Group, Settings), Ctrl+I (kitty) on a Direct/DM tab, `i` on
-/// Contacts, `n` (local nickname) on a Peer Info tab, `Del` on the three chat
-/// tabs.
+/// Contacts, `n` (local nickname) on a Peer Info tab, `Ctrl+L` (GPX export) on
+/// a Direct tab, `Del` on the three chat tabs.
 #[must_use]
 pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
     match tab_content {
@@ -211,9 +213,12 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | n: nickname | Ctrl+P: peer info | d: dial | b/r: add bootstrap/relay | x: remove | l: LAN | t: theme | c: accent | s: sound | o: desktop alert | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) if kitty => {
-            "Tab: next | Ctrl+Up/Down: select | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+Up/Down: select | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | Ctrl+L: export GPX | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
-        TabContent::Direct(_) | TabContent::Chat | TabContent::GroupChat(_) => {
+        TabContent::Direct(_) => {
+            "Tab: next | Ctrl+Up/Down: select | Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | Ctrl+L: export GPX | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
+        }
+        TabContent::Chat | TabContent::GroupChat(_) => {
             "Tab: next | Ctrl+Up/Down: select | Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Log => {
@@ -247,6 +252,7 @@ Reaction prompt: 1-6 quick emoji | Enter custom token | Esc cancel
 Chat / DM / Group: Ctrl+O -> open attachment | Del -> delete sent (local) | Ctrl+E -> edit sent (local)
 Chat / DM / Group: /file <path> -> attach and send a local file
 DM: Ctrl+I (kitty) / Ctrl+P -> partner's Peer Info
+DM: Ctrl+L -> export this device's location track to GPX
 Chat / Group: Ctrl+P -> newest/sender target (unchanged by selection) | Contacts: Ctrl+P -> selected peer
 Settings: Ctrl+P -> connected peer / bound device | click a peer row for its Peer Info
 

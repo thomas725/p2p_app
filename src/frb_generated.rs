@@ -43,7 +43,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1018974374;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 912487572;
 
 // Section: executor
 
@@ -888,6 +888,38 @@ fn wire__crate__api__get_lan_only_impl(
         },
     )
 }
+fn wire__crate__api__get_location_defaults_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_location_defaults",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Ok::<_, ()>(crate::api::get_location_defaults())?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__get_logs_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1508,6 +1540,38 @@ fn wire__crate__api__list_groups_impl(
         },
     )
 }
+fn wire__crate__api__list_location_recipients_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "list_location_recipients",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::list_location_recipients()?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__list_network_peers_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1706,6 +1770,42 @@ fn wire__crate__api__load_group_messages_impl(
         },
     )
 }
+fn wire__crate__api__load_location_track_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "load_location_track",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_peer_id = <String>::sse_decode(&mut deserializer);
+            let api_from_text = <Option<String>>::sse_decode(&mut deserializer);
+            let api_to_text = <Option<String>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok =
+                        crate::api::load_location_track(api_peer_id, api_from_text, api_to_text)?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__load_share_manifest_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1733,6 +1833,42 @@ fn wire__crate__api__load_share_manifest_impl(
             move |context| {
                 transform_result_sse::<_, String>((move || {
                     let output_ok = crate::api::load_share_manifest(&api_share_id)?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__location_gpx_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "location_gpx",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_points =
+                <Vec<crate::location::LocationTrackPoint>>::sse_decode(&mut deserializer);
+            let api_device_label = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Ok::<_, ()>(crate::api::location_gpx(api_points, api_device_label))?;
                     std::result::Result::Ok(output_ok)
                 })())
             }
@@ -1768,6 +1904,78 @@ fn wire__crate__api__location_map_url_impl(
                 transform_result_sse::<_, ()>((move || {
                     let output_ok =
                         Ok::<_, ()>(crate::api::location_map_url(api_latitude, api_longitude))?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__location_message_url_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "location_message_url",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_content = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Ok::<_, ()>(crate::api::location_message_url(&api_content))?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__location_query_due_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "location_query_due",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_last_query_at = <Option<f64>>::sse_decode(&mut deserializer);
+            let api_now = <f64>::sse_decode(&mut deserializer);
+            let api_interval_secs = <u32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Ok::<_, ()>(crate::api::location_query_due(
+                        api_last_query_at,
+                        api_now,
+                        api_interval_secs,
+                    ))?;
                     std::result::Result::Ok(output_ok)
                 })())
             }
@@ -1848,6 +2056,40 @@ fn wire__crate__api__location_session_active_impl(
                         api_duration_secs,
                         api_now,
                     )?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__location_track_url_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "location_track_url",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_points =
+                <Vec<crate::location::LocationTrackPoint>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Ok::<_, ()>(crate::api::location_track_url(api_points))?;
                     std::result::Result::Ok(output_ok)
                 })())
             }
@@ -1946,6 +2188,40 @@ fn wire__crate__mobile_api__parse_last_seen_ms_impl(
                 let output_ok = Ok::<_, ()>(crate::mobile_api::parse_last_seen_ms(&api_last_seen))?;
                 std::result::Result::Ok(output_ok)
             })())
+        },
+    )
+}
+fn wire__crate__api__parse_location_time_filter_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "parse_location_time_filter",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_text = <String>::sse_decode(&mut deserializer);
+            let api_now = <f64>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::parse_location_time_filter(&api_text, api_now)?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
         },
     )
 }
@@ -2621,6 +2897,45 @@ fn wire__crate__api__send_device_binding_intro_impl(
         },
     )
 }
+fn wire__crate__api__send_location_to_devices_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "send_location_to_devices",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_selected_peer_ids = <Vec<String>>::sse_decode(&mut deserializer);
+            let api_all_devices = <bool>::sse_decode(&mut deserializer);
+            let api_body = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::send_location_to_devices(
+                        api_selected_peer_ids,
+                        api_all_devices,
+                        &api_body,
+                    )?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__send_typing_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -2715,6 +3030,39 @@ fn wire__crate__api__set_lan_only_impl(
             move |context| {
                 transform_result_sse::<_, String>((move || {
                     let output_ok = crate::api::set_lan_only(api_enabled)?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__set_location_defaults_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "set_location_defaults",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_input = <crate::settings::LocationDefaults>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::set_location_defaults(api_input)?;
                     std::result::Result::Ok(output_ok)
                 })())
             }
@@ -3634,6 +3982,34 @@ impl SseDecode for Vec<crate::mobile_api::ContactSortInput> {
     }
 }
 
+impl SseDecode for Vec<crate::location::LocationRecipient> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::location::LocationRecipient>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::location::LocationTrackPoint> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::location::LocationTrackPoint>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::mobile_api::MobileContactDevice> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -3856,6 +4232,36 @@ impl SseDecode for Vec<crate::shares::ShareEntry> {
     }
 }
 
+impl SseDecode for crate::settings::LocationDefaults {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_mode = <String>::sse_decode(deserializer);
+        let mut var_durationSecs = <Option<u32>>::sse_decode(deserializer);
+        let mut var_sensorIntervalSecs = <u32>::sse_decode(deserializer);
+        let mut var_sendIntervalSecs = <u32>::sse_decode(deserializer);
+        let mut var_motionGate = <bool>::sse_decode(deserializer);
+        return crate::settings::LocationDefaults {
+            mode: var_mode,
+            duration_secs: var_durationSecs,
+            sensor_interval_secs: var_sensorIntervalSecs,
+            send_interval_secs: var_sendIntervalSecs,
+            motion_gate: var_motionGate,
+        };
+    }
+}
+
+impl SseDecode for crate::location::LocationRecipient {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_peerId = <String>::sse_decode(deserializer);
+        let mut var_displayName = <String>::sse_decode(deserializer);
+        return crate::location::LocationRecipient {
+            peer_id: var_peerId,
+            display_name: var_displayName,
+        };
+    }
+}
+
 impl SseDecode for crate::location::LocationShareInput {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -3880,6 +4286,26 @@ impl SseDecode for crate::location::LocationShareInput {
             send_interval_secs: var_sendIntervalSecs,
             motion_gate: var_motionGate,
             session_id: var_sessionId,
+            sequence: var_sequence,
+            is_final: var_isFinal,
+        };
+    }
+}
+
+impl SseDecode for crate::location::LocationTrackPoint {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_latitude = <f64>::sse_decode(deserializer);
+        let mut var_longitude = <f64>::sse_decode(deserializer);
+        let mut var_accuracy = <f64>::sse_decode(deserializer);
+        let mut var_timestampSecs = <f64>::sse_decode(deserializer);
+        let mut var_sequence = <u32>::sse_decode(deserializer);
+        let mut var_isFinal = <bool>::sse_decode(deserializer);
+        return crate::location::LocationTrackPoint {
+            latitude: var_latitude,
+            longitude: var_longitude,
+            accuracy: var_accuracy,
+            timestamp_secs: var_timestampSecs,
             sequence: var_sequence,
             is_final: var_isFinal,
         };
@@ -4647,75 +5073,87 @@ fn pde_ffi_dispatcher_primary_impl(
         23 => wire__crate__api__get_contacts_with_stats_impl(port, ptr, rust_vec_len, data_len),
         24 => wire__crate__api__get_known_peers_impl(port, ptr, rust_vec_len, data_len),
         25 => wire__crate__api__get_lan_only_impl(port, ptr, rust_vec_len, data_len),
-        26 => wire__crate__api__get_logs_impl(port, ptr, rust_vec_len, data_len),
-        27 => wire__crate__api__get_mobile_peer_status_impl(port, ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__get_my_user_id_impl(port, ptr, rust_vec_len, data_len),
-        29 => wire__crate__api__get_network_details_impl(port, ptr, rust_vec_len, data_len),
-        30 => wire__crate__mobile_node__get_node_peer_id_impl(port, ptr, rust_vec_len, data_len),
-        31 => wire__crate__api__get_notification_settings_impl(port, ptr, rust_vec_len, data_len),
-        32 => wire__crate__api__get_peer_quality_impl(port, ptr, rust_vec_len, data_len),
-        33 => wire__crate__mobile_api__get_peers_with_stats_impl(port, ptr, rust_vec_len, data_len),
-        34 => wire__crate__api__get_reactions_impl(port, ptr, rust_vec_len, data_len),
-        35 => wire__crate__mobile_node__get_reactions_impl(port, ptr, rust_vec_len, data_len),
-        36 => wire__crate__api__get_share_impl(port, ptr, rust_vec_len, data_len),
-        37 => wire__crate__api__get_theme_impl(port, ptr, rust_vec_len, data_len),
-        38 => wire__crate__api__get_user_devices_impl(port, ptr, rust_vec_len, data_len),
-        39 => wire__crate__api__init_mobile_database_impl(port, ptr, rust_vec_len, data_len),
-        41 => wire__crate__api__is_location_message_impl(port, ptr, rust_vec_len, data_len),
-        42 => wire__crate__api__is_peer_blocked_impl(port, ptr, rust_vec_len, data_len),
-        43 => wire__crate__api__list_blocked_peers_impl(port, ptr, rust_vec_len, data_len),
-        44 => wire__crate__api__list_groups_impl(port, ptr, rust_vec_len, data_len),
-        45 => wire__crate__api__list_network_peers_impl(port, ptr, rust_vec_len, data_len),
-        46 => wire__crate__api__list_share_grants_impl(port, ptr, rust_vec_len, data_len),
-        47 => wire__crate__api__list_shares_impl(port, ptr, rust_vec_len, data_len),
-        48 => wire__crate__api__load_broadcast_messages_impl(port, ptr, rust_vec_len, data_len),
-        49 => wire__crate__api__load_dm_messages_impl(port, ptr, rust_vec_len, data_len),
-        50 => wire__crate__api__load_group_messages_impl(port, ptr, rust_vec_len, data_len),
-        51 => wire__crate__api__load_share_manifest_impl(port, ptr, rust_vec_len, data_len),
-        52 => wire__crate__api__location_map_url_impl(port, ptr, rust_vec_len, data_len),
-        53 => wire__crate__api__location_send_due_impl(port, ptr, rust_vec_len, data_len),
-        54 => wire__crate__api__location_session_active_impl(port, ptr, rust_vec_len, data_len),
-        55 => wire__crate__api__mark_broadcast_viewed_impl(port, ptr, rust_vec_len, data_len),
-        56 => wire__crate__api__network_size_label_impl(port, ptr, rust_vec_len, data_len),
-        58 => wire__crate__api__poll_event_impl(port, ptr, rust_vec_len, data_len),
-        59 => wire__crate__api__provision_my_user_impl(port, ptr, rust_vec_len, data_len),
-        60 => wire__crate__api__publish_share_snapshot_impl(port, ptr, rust_vec_len, data_len),
-        61 => wire__crate__api__quick_reactions_impl(port, ptr, rust_vec_len, data_len),
-        62 => wire__crate__api__readvertise_share_impl(port, ptr, rust_vec_len, data_len),
-        63 => wire__crate__api__remove_contact_impl(port, ptr, rust_vec_len, data_len),
-        64 => wire__crate__api__remove_network_peer_impl(port, ptr, rust_vec_len, data_len),
-        65 => wire__crate__api__remove_share_grant_impl(port, ptr, rust_vec_len, data_len),
-        67 => wire__crate__api__request_peer_shares_impl(port, ptr, rust_vec_len, data_len),
-        68 => wire__crate__api__request_share_manifest_impl(port, ptr, rust_vec_len, data_len),
-        69 => wire__crate__api__save_incoming_message_impl(port, ptr, rust_vec_len, data_len),
-        70 => wire__crate__api__save_outgoing_broadcast_impl(port, ptr, rust_vec_len, data_len),
-        71 => wire__crate__api__save_outgoing_dm_impl(port, ptr, rust_vec_len, data_len),
-        72 => wire__crate__api__save_outgoing_group_impl(port, ptr, rust_vec_len, data_len),
-        73 => wire__crate__api__save_share_manifest_impl(port, ptr, rust_vec_len, data_len),
-        74 => wire__crate__api__send_call_media_impl(port, ptr, rust_vec_len, data_len),
-        75 => wire__crate__api__send_call_signal_impl(port, ptr, rust_vec_len, data_len),
-        76 => wire__crate__api__send_device_binding_intro_impl(port, ptr, rust_vec_len, data_len),
-        77 => wire__crate__api__send_typing_impl(port, ptr, rust_vec_len, data_len),
-        78 => wire__crate__api__set_call_media_mute_impl(port, ptr, rust_vec_len, data_len),
-        79 => wire__crate__api__set_lan_only_impl(port, ptr, rust_vec_len, data_len),
-        80 => wire__crate__api__set_notification_settings_impl(port, ptr, rust_vec_len, data_len),
-        81 => wire__crate__api__set_peer_local_nickname_impl(port, ptr, rust_vec_len, data_len),
-        82 => wire__crate__api__set_self_nickname_impl(port, ptr, rust_vec_len, data_len),
-        83 => wire__crate__api__set_share_grant_impl(port, ptr, rust_vec_len, data_len),
-        84 => wire__crate__api__set_share_visibility_impl(port, ptr, rust_vec_len, data_len),
-        85 => wire__crate__api__set_theme_impl(port, ptr, rust_vec_len, data_len),
-        86 => wire__crate__api__snapshot_share_impl(port, ptr, rust_vec_len, data_len),
-        89 => wire__crate__api__start_call_impl(port, ptr, rust_vec_len, data_len),
-        90 => wire__crate__api__start_call_media_impl(port, ptr, rust_vec_len, data_len),
-        91 => wire__crate__api__start_node_impl(port, ptr, rust_vec_len, data_len),
-        92 => wire__crate__api__start_node_auto_impl(port, ptr, rust_vec_len, data_len),
-        93 => wire__crate__api__stop_call_media_impl(port, ptr, rust_vec_len, data_len),
-        94 => wire__crate__api__stop_node_impl(port, ptr, rust_vec_len, data_len),
-        95 => wire__crate__api__toggle_reaction_impl(port, ptr, rust_vec_len, data_len),
-        96 => wire__crate__api__unblock_peer_impl(port, ptr, rust_vec_len, data_len),
-        97 => wire__crate__api__validate_emoji_impl(port, ptr, rust_vec_len, data_len),
-        98 => wire__crate__api__validate_nickname_impl(port, ptr, rust_vec_len, data_len),
-        99 => wire__crate__api__verify_device_binding_claim_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__get_location_defaults_impl(port, ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__get_logs_impl(port, ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__get_mobile_peer_status_impl(port, ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__get_my_user_id_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__get_network_details_impl(port, ptr, rust_vec_len, data_len),
+        31 => wire__crate__mobile_node__get_node_peer_id_impl(port, ptr, rust_vec_len, data_len),
+        32 => wire__crate__api__get_notification_settings_impl(port, ptr, rust_vec_len, data_len),
+        33 => wire__crate__api__get_peer_quality_impl(port, ptr, rust_vec_len, data_len),
+        34 => wire__crate__mobile_api__get_peers_with_stats_impl(port, ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__get_reactions_impl(port, ptr, rust_vec_len, data_len),
+        36 => wire__crate__mobile_node__get_reactions_impl(port, ptr, rust_vec_len, data_len),
+        37 => wire__crate__api__get_share_impl(port, ptr, rust_vec_len, data_len),
+        38 => wire__crate__api__get_theme_impl(port, ptr, rust_vec_len, data_len),
+        39 => wire__crate__api__get_user_devices_impl(port, ptr, rust_vec_len, data_len),
+        40 => wire__crate__api__init_mobile_database_impl(port, ptr, rust_vec_len, data_len),
+        42 => wire__crate__api__is_location_message_impl(port, ptr, rust_vec_len, data_len),
+        43 => wire__crate__api__is_peer_blocked_impl(port, ptr, rust_vec_len, data_len),
+        44 => wire__crate__api__list_blocked_peers_impl(port, ptr, rust_vec_len, data_len),
+        45 => wire__crate__api__list_groups_impl(port, ptr, rust_vec_len, data_len),
+        46 => wire__crate__api__list_location_recipients_impl(port, ptr, rust_vec_len, data_len),
+        47 => wire__crate__api__list_network_peers_impl(port, ptr, rust_vec_len, data_len),
+        48 => wire__crate__api__list_share_grants_impl(port, ptr, rust_vec_len, data_len),
+        49 => wire__crate__api__list_shares_impl(port, ptr, rust_vec_len, data_len),
+        50 => wire__crate__api__load_broadcast_messages_impl(port, ptr, rust_vec_len, data_len),
+        51 => wire__crate__api__load_dm_messages_impl(port, ptr, rust_vec_len, data_len),
+        52 => wire__crate__api__load_group_messages_impl(port, ptr, rust_vec_len, data_len),
+        53 => wire__crate__api__load_location_track_impl(port, ptr, rust_vec_len, data_len),
+        54 => wire__crate__api__load_share_manifest_impl(port, ptr, rust_vec_len, data_len),
+        55 => wire__crate__api__location_gpx_impl(port, ptr, rust_vec_len, data_len),
+        56 => wire__crate__api__location_map_url_impl(port, ptr, rust_vec_len, data_len),
+        57 => wire__crate__api__location_message_url_impl(port, ptr, rust_vec_len, data_len),
+        58 => wire__crate__api__location_query_due_impl(port, ptr, rust_vec_len, data_len),
+        59 => wire__crate__api__location_send_due_impl(port, ptr, rust_vec_len, data_len),
+        60 => wire__crate__api__location_session_active_impl(port, ptr, rust_vec_len, data_len),
+        61 => wire__crate__api__location_track_url_impl(port, ptr, rust_vec_len, data_len),
+        62 => wire__crate__api__mark_broadcast_viewed_impl(port, ptr, rust_vec_len, data_len),
+        63 => wire__crate__api__network_size_label_impl(port, ptr, rust_vec_len, data_len),
+        65 => wire__crate__api__parse_location_time_filter_impl(port, ptr, rust_vec_len, data_len),
+        66 => wire__crate__api__poll_event_impl(port, ptr, rust_vec_len, data_len),
+        67 => wire__crate__api__provision_my_user_impl(port, ptr, rust_vec_len, data_len),
+        68 => wire__crate__api__publish_share_snapshot_impl(port, ptr, rust_vec_len, data_len),
+        69 => wire__crate__api__quick_reactions_impl(port, ptr, rust_vec_len, data_len),
+        70 => wire__crate__api__readvertise_share_impl(port, ptr, rust_vec_len, data_len),
+        71 => wire__crate__api__remove_contact_impl(port, ptr, rust_vec_len, data_len),
+        72 => wire__crate__api__remove_network_peer_impl(port, ptr, rust_vec_len, data_len),
+        73 => wire__crate__api__remove_share_grant_impl(port, ptr, rust_vec_len, data_len),
+        75 => wire__crate__api__request_peer_shares_impl(port, ptr, rust_vec_len, data_len),
+        76 => wire__crate__api__request_share_manifest_impl(port, ptr, rust_vec_len, data_len),
+        77 => wire__crate__api__save_incoming_message_impl(port, ptr, rust_vec_len, data_len),
+        78 => wire__crate__api__save_outgoing_broadcast_impl(port, ptr, rust_vec_len, data_len),
+        79 => wire__crate__api__save_outgoing_dm_impl(port, ptr, rust_vec_len, data_len),
+        80 => wire__crate__api__save_outgoing_group_impl(port, ptr, rust_vec_len, data_len),
+        81 => wire__crate__api__save_share_manifest_impl(port, ptr, rust_vec_len, data_len),
+        82 => wire__crate__api__send_call_media_impl(port, ptr, rust_vec_len, data_len),
+        83 => wire__crate__api__send_call_signal_impl(port, ptr, rust_vec_len, data_len),
+        84 => wire__crate__api__send_device_binding_intro_impl(port, ptr, rust_vec_len, data_len),
+        85 => wire__crate__api__send_location_to_devices_impl(port, ptr, rust_vec_len, data_len),
+        86 => wire__crate__api__send_typing_impl(port, ptr, rust_vec_len, data_len),
+        87 => wire__crate__api__set_call_media_mute_impl(port, ptr, rust_vec_len, data_len),
+        88 => wire__crate__api__set_lan_only_impl(port, ptr, rust_vec_len, data_len),
+        89 => wire__crate__api__set_location_defaults_impl(port, ptr, rust_vec_len, data_len),
+        90 => wire__crate__api__set_notification_settings_impl(port, ptr, rust_vec_len, data_len),
+        91 => wire__crate__api__set_peer_local_nickname_impl(port, ptr, rust_vec_len, data_len),
+        92 => wire__crate__api__set_self_nickname_impl(port, ptr, rust_vec_len, data_len),
+        93 => wire__crate__api__set_share_grant_impl(port, ptr, rust_vec_len, data_len),
+        94 => wire__crate__api__set_share_visibility_impl(port, ptr, rust_vec_len, data_len),
+        95 => wire__crate__api__set_theme_impl(port, ptr, rust_vec_len, data_len),
+        96 => wire__crate__api__snapshot_share_impl(port, ptr, rust_vec_len, data_len),
+        99 => wire__crate__api__start_call_impl(port, ptr, rust_vec_len, data_len),
+        100 => wire__crate__api__start_call_media_impl(port, ptr, rust_vec_len, data_len),
+        101 => wire__crate__api__start_node_impl(port, ptr, rust_vec_len, data_len),
+        102 => wire__crate__api__start_node_auto_impl(port, ptr, rust_vec_len, data_len),
+        103 => wire__crate__api__stop_call_media_impl(port, ptr, rust_vec_len, data_len),
+        104 => wire__crate__api__stop_node_impl(port, ptr, rust_vec_len, data_len),
+        105 => wire__crate__api__toggle_reaction_impl(port, ptr, rust_vec_len, data_len),
+        106 => wire__crate__api__unblock_peer_impl(port, ptr, rust_vec_len, data_len),
+        107 => wire__crate__api__validate_emoji_impl(port, ptr, rust_vec_len, data_len),
+        108 => wire__crate__api__validate_nickname_impl(port, ptr, rust_vec_len, data_len),
+        109 => {
+            wire__crate__api__verify_device_binding_claim_impl(port, ptr, rust_vec_len, data_len)
+        }
         _ => unreachable!(),
     }
 }
@@ -4729,11 +5167,11 @@ fn pde_ffi_dispatcher_sync_impl(
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
         20 => wire__crate__mobile_api__format_time_hhmm_impl(ptr, rust_vec_len, data_len),
-        40 => wire__crate__mobile_api__is_at_bottom_impl(ptr, rust_vec_len, data_len),
-        57 => wire__crate__mobile_api__parse_last_seen_ms_impl(ptr, rust_vec_len, data_len),
-        66 => wire__crate__mobile_api__reply_draft_impl(ptr, rust_vec_len, data_len),
-        87 => wire__crate__mobile_api__sort_contacts_impl(ptr, rust_vec_len, data_len),
-        88 => wire__crate__mobile_api__sort_peers_impl(ptr, rust_vec_len, data_len),
+        41 => wire__crate__mobile_api__is_at_bottom_impl(ptr, rust_vec_len, data_len),
+        64 => wire__crate__mobile_api__parse_last_seen_ms_impl(ptr, rust_vec_len, data_len),
+        74 => wire__crate__mobile_api__reply_draft_impl(ptr, rust_vec_len, data_len),
+        97 => wire__crate__mobile_api__sort_contacts_impl(ptr, rust_vec_len, data_len),
+        98 => wire__crate__mobile_api__sort_peers_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -4894,6 +5332,51 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::CreateShareParams>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::settings::LocationDefaults {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.mode.into_into_dart().into_dart(),
+            self.duration_secs.into_into_dart().into_dart(),
+            self.sensor_interval_secs.into_into_dart().into_dart(),
+            self.send_interval_secs.into_into_dart().into_dart(),
+            self.motion_gate.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::settings::LocationDefaults
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::settings::LocationDefaults>
+    for crate::settings::LocationDefaults
+{
+    fn into_into_dart(self) -> crate::settings::LocationDefaults {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::location::LocationRecipient {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.peer_id.into_into_dart().into_dart(),
+            self.display_name.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::location::LocationRecipient
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::location::LocationRecipient>
+    for crate::location::LocationRecipient
+{
+    fn into_into_dart(self) -> crate::location::LocationRecipient {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::location::LocationShareInput {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -4920,6 +5403,31 @@ impl flutter_rust_bridge::IntoIntoDart<crate::location::LocationShareInput>
     for crate::location::LocationShareInput
 {
     fn into_into_dart(self) -> crate::location::LocationShareInput {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::location::LocationTrackPoint {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.latitude.into_into_dart().into_dart(),
+            self.longitude.into_into_dart().into_dart(),
+            self.accuracy.into_into_dart().into_dart(),
+            self.timestamp_secs.into_into_dart().into_dart(),
+            self.sequence.into_into_dart().into_dart(),
+            self.is_final.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::location::LocationTrackPoint
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::location::LocationTrackPoint>
+    for crate::location::LocationTrackPoint
+{
+    fn into_into_dart(self) -> crate::location::LocationTrackPoint {
         self
     }
 }
@@ -5751,6 +6259,26 @@ impl SseEncode for Vec<crate::mobile_api::ContactSortInput> {
     }
 }
 
+impl SseEncode for Vec<crate::location::LocationRecipient> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::location::LocationRecipient>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::location::LocationTrackPoint> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::location::LocationTrackPoint>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::mobile_api::MobileContactDevice> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -5921,6 +6449,25 @@ impl SseEncode for Vec<crate::shares::ShareEntry> {
     }
 }
 
+impl SseEncode for crate::settings::LocationDefaults {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.mode, serializer);
+        <Option<u32>>::sse_encode(self.duration_secs, serializer);
+        <u32>::sse_encode(self.sensor_interval_secs, serializer);
+        <u32>::sse_encode(self.send_interval_secs, serializer);
+        <bool>::sse_encode(self.motion_gate, serializer);
+    }
+}
+
+impl SseEncode for crate::location::LocationRecipient {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.peer_id, serializer);
+        <String>::sse_encode(self.display_name, serializer);
+    }
+}
+
 impl SseEncode for crate::location::LocationShareInput {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -5933,6 +6480,18 @@ impl SseEncode for crate::location::LocationShareInput {
         <u32>::sse_encode(self.send_interval_secs, serializer);
         <bool>::sse_encode(self.motion_gate, serializer);
         <String>::sse_encode(self.session_id, serializer);
+        <u32>::sse_encode(self.sequence, serializer);
+        <bool>::sse_encode(self.is_final, serializer);
+    }
+}
+
+impl SseEncode for crate::location::LocationTrackPoint {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <f64>::sse_encode(self.latitude, serializer);
+        <f64>::sse_encode(self.longitude, serializer);
+        <f64>::sse_encode(self.accuracy, serializer);
+        <f64>::sse_encode(self.timestamp_secs, serializer);
         <u32>::sse_encode(self.sequence, serializer);
         <bool>::sse_encode(self.is_final, serializer);
     }

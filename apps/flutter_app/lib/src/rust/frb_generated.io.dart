@@ -17,6 +17,7 @@ import 'notifications.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 import 'reactions.dart';
 import 'reply.dart';
+import 'settings.dart';
 import 'shares.dart';
 import 'theme.dart';
 
@@ -57,6 +58,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   double dco_decode_box_autoadd_f_64(dynamic raw);
+
+  @protected
+  LocationDefaults dco_decode_box_autoadd_location_defaults(dynamic raw);
 
   @protected
   LocationShareInput dco_decode_box_autoadd_location_share_input(dynamic raw);
@@ -127,6 +131,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ContactSortInput> dco_decode_list_contact_sort_input(dynamic raw);
 
   @protected
+  List<LocationRecipient> dco_decode_list_location_recipient(dynamic raw);
+
+  @protected
+  List<LocationTrackPoint> dco_decode_list_location_track_point(dynamic raw);
+
+  @protected
   List<MobileContactDevice> dco_decode_list_mobile_contact_device(dynamic raw);
 
   @protected
@@ -186,7 +196,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ShareEntry> dco_decode_list_share_entry(dynamic raw);
 
   @protected
+  LocationDefaults dco_decode_location_defaults(dynamic raw);
+
+  @protected
+  LocationRecipient dco_decode_location_recipient(dynamic raw);
+
+  @protected
   LocationShareInput dco_decode_location_share_input(dynamic raw);
+
+  @protected
+  LocationTrackPoint dco_decode_location_track_point(dynamic raw);
 
   @protected
   MobileAttachment dco_decode_mobile_attachment(dynamic raw);
@@ -357,6 +376,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double sse_decode_box_autoadd_f_64(SseDeserializer deserializer);
 
   @protected
+  LocationDefaults sse_decode_box_autoadd_location_defaults(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   LocationShareInput sse_decode_box_autoadd_location_share_input(
     SseDeserializer deserializer,
   );
@@ -443,6 +467,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<LocationRecipient> sse_decode_list_location_recipient(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<LocationTrackPoint> sse_decode_list_location_track_point(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<MobileContactDevice> sse_decode_list_mobile_contact_device(
     SseDeserializer deserializer,
   );
@@ -522,7 +556,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ShareEntry> sse_decode_list_share_entry(SseDeserializer deserializer);
 
   @protected
+  LocationDefaults sse_decode_location_defaults(SseDeserializer deserializer);
+
+  @protected
+  LocationRecipient sse_decode_location_recipient(SseDeserializer deserializer);
+
+  @protected
   LocationShareInput sse_decode_location_share_input(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  LocationTrackPoint sse_decode_location_track_point(
     SseDeserializer deserializer,
   );
 
@@ -720,6 +765,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_location_defaults(
+    LocationDefaults self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_location_share_input(
     LocationShareInput self,
     SseSerializer serializer,
@@ -827,6 +878,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_contact_sort_input(
     List<ContactSortInput> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_location_recipient(
+    List<LocationRecipient> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_location_track_point(
+    List<LocationTrackPoint> self,
     SseSerializer serializer,
   );
 
@@ -942,8 +1005,26 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_location_defaults(
+    LocationDefaults self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_location_recipient(
+    LocationRecipient self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_location_share_input(
     LocationShareInput self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_location_track_point(
+    LocationTrackPoint self,
     SseSerializer serializer,
   );
 

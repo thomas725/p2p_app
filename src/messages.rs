@@ -293,6 +293,58 @@ pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Resu
     Ok(msgs)
 }
 
+/// Load one device's received location track, optionally filtered by a
+/// Rust-parsed time range.
+///
+/// Device-centric by construction: the query keys on the sending device's
+/// `peer_id` only, never on a user/contact id, so two devices of one account
+/// can never be mixed into a single track. `from`/`to` are user-facing filters
+/// (`"24 hours ago"`, ISO dates, `"now"`, or empty for unbounded); Rust owns
+/// their grammar via [`crate::location::parse_location_time_filter`].
+///
+/// # Errors
+/// Returns a validation error for a bad filter or a human-readable DB error.
+pub fn load_location_track(
+    peer_id: String,
+    from_text: Option<String>,
+    to_text: Option<String>,
+) -> Result<Vec<crate::location::LocationTrackPoint>, String> {
+    let now = crate::fmt::current_timestamp();
+    let parse_bound = |text: Option<String>| -> Result<Option<f64>, String> {
+        text.map_or(Ok(None), |text| match text.trim() {
+            "" | "all" => Ok(None),
+            value => crate::location::parse_location_time_filter(value, now).map(Some),
+        })
+    };
+    let from = parse_bound(from_text)?;
+    let to = parse_bound(to_text)?;
+
+    let conn = &mut crate::sqlite_connect().map_err(|e| e.to_string())?;
+    let mut points: Vec<crate::location::LocationTrackPoint> = messages
+        .filter(crate::generated::schema::messages::peer_id.eq(peer_id))
+        .filter(crate::generated::schema::messages::is_direct.eq(1))
+        .filter(crate::generated::schema::messages::sent.eq(0))
+        .filter(crate::generated::schema::messages::deleted_at.is_null())
+        .order_by(crate::generated::schema::messages::created_at.asc())
+        .limit(crate::usize_limit_to_i64(crate::types::MAX_DM_HISTORY))
+        .select(Message::as_select())
+        .load(conn)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .filter_map(|row| crate::location::parse_location_message(&row.content))
+        .filter(|point| {
+            from.is_none_or(|bound| point.timestamp_secs >= bound)
+                && to.is_none_or(|bound| point.timestamp_secs <= bound)
+        })
+        .collect();
+    points.sort_by(|left, right| {
+        left.timestamp_secs
+            .total_cmp(&right.timestamp_secs)
+            .then_with(|| left.sequence.cmp(&right.sequence))
+    });
+    Ok(points)
+}
+
 /// Save a message receipt (delivery/read confirmation).
 ///
 /// Records when a message was delivered to or read by a peer.

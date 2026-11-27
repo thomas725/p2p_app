@@ -12,7 +12,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/api.dart'
     show BindShareParams, CreateShareParams, MobileShare, MobileShareGrant;
-import 'package:p2p_app_flutter/src/rust/location.dart' show LocationShareInput;
+import 'package:p2p_app_flutter/src/rust/location.dart'
+    show LocationRecipient, LocationShareInput, LocationTrackPoint;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
@@ -20,6 +21,7 @@ import 'package:p2p_app_flutter/src/rust/notifications.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
+import 'package:p2p_app_flutter/src/rust/settings.dart' show LocationDefaults;
 import 'package:p2p_app_flutter/src/rust/shares.dart'
     show ShareManifest, ShareOffer;
 import 'package:p2p_app_flutter/src/rust/theme.dart';
@@ -762,6 +764,152 @@ class FakeNodeApi implements NodeApi {
     final override = locationSendDueOverride;
     if (override != null) return override(lastSentAt, now, intervalSecs);
     throw UnimplementedError('set locationSendDueOverride in this test');
+  }
+
+  /// Rust-owned location message / track / recipient helpers. Each call
+  /// requires an override so a missing stub fails loudly in tests.
+  String? Function(String content)? locationMessageUrlOverride;
+  bool Function(double? lastQueryAt, double now, int intervalSecs)?
+  locationQueryDueOverride;
+  LocationDefaults Function()? getLocationDefaultsOverride;
+  Future<void> Function(LocationDefaults input)? setLocationDefaultsOverride;
+  double Function(String text, double now)? parseLocationTimeFilterOverride;
+  List<LocationTrackPoint> Function(
+    String peerId,
+    String? fromText,
+    String? toText,
+  )?
+  loadLocationTrackOverride;
+  String Function(List<LocationTrackPoint> points, String deviceLabel)?
+  locationGpxOverride;
+  String? Function(List<LocationTrackPoint> points)? locationTrackUrlOverride;
+  List<LocationRecipient> Function()? listLocationRecipientsOverride;
+  List<String> Function(
+    List<String> selectedPeerIds,
+    bool allDevices,
+    String body,
+  )?
+  sendLocationToDevicesOverride;
+
+  @override
+  Future<String?> locationMessageUrl({required String content}) {
+    _record('locationMessageUrl', content);
+    final override = locationMessageUrlOverride;
+    if (override != null) return Future.value(override(content));
+    throw StateError('set locationMessageUrlOverride in this test');
+  }
+
+  @override
+  Future<bool> locationQueryDue({
+    double? lastQueryAt,
+    required double now,
+    required int intervalSecs,
+  }) {
+    _record('locationQueryDue', {
+      'lastQueryAt': lastQueryAt,
+      'now': now,
+      'intervalSecs': intervalSecs,
+    });
+    final override = locationQueryDueOverride;
+    if (override != null) {
+      return Future.value(override(lastQueryAt, now, intervalSecs));
+    }
+    throw StateError('set locationQueryDueOverride in this test');
+  }
+
+  @override
+  Future<LocationDefaults> getLocationDefaults() {
+    _record('getLocationDefaults');
+    final override = getLocationDefaultsOverride;
+    if (override != null) return Future.value(override());
+    throw StateError('set getLocationDefaultsOverride in this test');
+  }
+
+  @override
+  Future<void> setLocationDefaults({required LocationDefaults input}) async {
+    _record('setLocationDefaults', input);
+    final override = setLocationDefaultsOverride;
+    if (override == null) {
+      throw StateError('set setLocationDefaultsOverride in this test');
+    }
+    await override(input);
+  }
+
+  @override
+  Future<double> parseLocationTimeFilter({
+    required String text,
+    required double now,
+  }) {
+    _record('parseLocationTimeFilter', {'text': text, 'now': now});
+    final override = parseLocationTimeFilterOverride;
+    if (override != null) return Future.value(override(text, now));
+    throw StateError('set parseLocationTimeFilterOverride in this test');
+  }
+
+  @override
+  Future<List<LocationTrackPoint>> loadLocationTrack({
+    required String peerId,
+    String? fromText,
+    String? toText,
+  }) {
+    _record('loadLocationTrack', {
+      'peerId': peerId,
+      'fromText': fromText,
+      'toText': toText,
+    });
+    final override = loadLocationTrackOverride;
+    if (override != null) {
+      return Future.value(override(peerId, fromText, toText));
+    }
+    throw StateError('set loadLocationTrackOverride in this test');
+  }
+
+  @override
+  Future<String> locationGpx({
+    required List<LocationTrackPoint> points,
+    required String deviceLabel,
+  }) {
+    _record('locationGpx', {
+      'points': points.length,
+      'deviceLabel': deviceLabel,
+    });
+    final override = locationGpxOverride;
+    if (override != null) return Future.value(override(points, deviceLabel));
+    throw StateError('set locationGpxOverride in this test');
+  }
+
+  @override
+  Future<String?> locationTrackUrl({required List<LocationTrackPoint> points}) {
+    _record('locationTrackUrl', points.length);
+    final override = locationTrackUrlOverride;
+    if (override != null) return Future.value(override(points));
+    throw StateError('set locationTrackUrlOverride in this test');
+  }
+
+  @override
+  Future<List<LocationRecipient>> listLocationRecipients() {
+    _record('listLocationRecipients');
+    final override = listLocationRecipientsOverride;
+    if (override != null) return Future.value(override());
+    throw StateError('set listLocationRecipientsOverride in this test');
+  }
+
+  @override
+  Future<List<String>> sendLocationToDevices({
+    required List<String> selectedPeerIds,
+    required bool allDevices,
+    required String body,
+  }) {
+    _record('sendLocationToDevices', {
+      'selectedPeerIds': selectedPeerIds,
+      'allDevices': allDevices,
+      'body': body,
+    });
+    final override = sendLocationToDevicesOverride;
+    if (override != null) {
+      return Future.value(override(selectedPeerIds, allDevices, body));
+    }
+    throw StateError('set sendLocationToDevicesOverride in this test');
   }
 
   @override

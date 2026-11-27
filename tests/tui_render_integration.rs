@@ -440,6 +440,51 @@ mod render_tests {
         assert!(text.contains("typing…"), "buffer: {text}");
     }
 
+    /// A location share arrives as an ordinary sealed DM: Rust builds the
+    /// canonical `[Location]` body (including the public OSM URL), and the TUI
+    /// renders that body verbatim. There is no inline hyperlink widget yet.
+    #[test]
+    fn test_render_dm_shows_canonical_location_message_as_plain_text() {
+        let body =
+            p2p_app::location::build_location_message(p2p_app::location::LocationShareInput {
+                latitude: 52.52,
+                longitude: 13.405,
+                accuracy: 12.5,
+                mode: "once".to_string(),
+                duration_secs: None,
+                sensor_interval_secs: 10,
+                send_interval_secs: 60,
+                motion_gate: false,
+                session_id: "session-render".to_string(),
+                sequence: 1,
+                is_final: false,
+            })
+            .expect("canonical location body");
+        let url = "https://www.openstreetmap.org/?mlat=52.520000&mlon=13.405000#map=17/52.520000/13.405000";
+        assert!(body.starts_with("[Location]"), "body: {body}");
+        assert!(body.contains(url), "body: {body}");
+
+        // A wide viewport keeps the whole DM line contiguous in the test
+        // buffer, so the canonical URL can be asserted without wrap padding.
+        let mut terminal = Terminal::new(TestBackend::new(200, 24)).unwrap();
+        let mut state = TuiRenderState::with_sample_data();
+        state.add_dm_message("Alice", format!("<Alice> {body}"));
+
+        terminal
+            .draw(|f| render_dm_content(f, f.area(), "Alice", &mut state))
+            .unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("[Location]"), "buffer: {text}");
+        assert!(text.contains(url), "buffer: {text}");
+        assert!(text.contains(&body), "buffer: {text}");
+    }
+
     #[test]
     fn test_render_log_content_library() {
         let mut terminal = create_test_terminal();

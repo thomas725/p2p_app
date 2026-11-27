@@ -128,6 +128,10 @@ pub struct AppState {
     /// input, [`p2p_app::InputMode::EditingNickname`] = nickname edit,
     /// [`p2p_app::InputMode::CreatingGroup`] = group name entry.
     pub input_mode: p2p_app::InputMode,
+    /// Device captured when a location-track export prompt opens. The export
+    /// always queries this exact sending device, never the user/contact or a
+    /// different DM tab. `None` outside [`p2p_app::InputMode::ExportingLocationTrack`].
+    pub location_export_peer_id: Option<String>,
 
     // Runtime environment (TUI input/output flags)
     /// Terminal input/output environment flags (see the individual docs).
@@ -493,6 +497,29 @@ impl AppState {
         matches!(self.input_mode, p2p_app::InputMode::DialingPeer)
     }
 
+    /// True while the shared input captures a device location-track filter.
+    #[must_use]
+    pub const fn is_exporting_location_track(&self) -> bool {
+        matches!(self.input_mode, p2p_app::InputMode::ExportingLocationTrack)
+    }
+
+    /// Open the one-line `from;to` export prompt for a single DM device.
+    pub fn begin_export_location_track(&mut self, peer_id: String) {
+        self.input_mode = p2p_app::InputMode::ExportingLocationTrack;
+        self.location_export_peer_id = Some(peer_id);
+        self.chat_input = TextArea::default();
+    }
+
+    /// Close the export prompt without writing anything.
+    pub fn cancel_export_location_track(&mut self) {
+        if !self.is_exporting_location_track() {
+            return;
+        }
+        self.input_mode = p2p_app::InputMode::Chat;
+        self.location_export_peer_id = None;
+        self.chat_input = TextArea::default();
+    }
+
     pub fn cancel_nickname_edit(&mut self) {
         if !self.is_editing_nickname() {
             return;
@@ -511,6 +538,7 @@ impl AppState {
     pub fn finalize_tab_input(&mut self) {
         self.cancel_nickname_edit();
         self.cancel_share_grant();
+        self.cancel_export_location_track();
         self.end_contact_search(true);
     }
 
@@ -1875,6 +1903,7 @@ impl AppState {
             share_event_notice: None,
             share_peer_selection: 0,
             input_mode: p2p_app::InputMode::Chat,
+            location_export_peer_id: None,
             dynamic_tabs: DynamicTabs::new(),
             active_tab: 0,
             chat_input: TextArea::default(),

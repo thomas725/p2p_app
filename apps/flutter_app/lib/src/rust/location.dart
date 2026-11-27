@@ -6,6 +6,31 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+/// One selectable destination device for a location share.
+///
+/// Flat and primitive-only for FRB/web: the account/device filtering stays in
+/// Rust, while the frontends only render the label and pass peer ids back.
+class LocationRecipient {
+  /// Peer ID of another device bound into this install's user.
+  final String peerId;
+
+  /// Canonical display label resolved through the same name cache as Contacts.
+  final String displayName;
+
+  const LocationRecipient({required this.peerId, required this.displayName});
+
+  @override
+  int get hashCode => peerId.hashCode ^ displayName.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LocationRecipient &&
+          runtimeType == other.runtimeType &&
+          peerId == other.peerId &&
+          displayName == other.displayName;
+}
+
 /// Everything a frontend needs to build one canonical location message.
 ///
 /// Deliberately flat and primitive-only: this is the FRB/web boundary DTO, so
@@ -87,6 +112,62 @@ class LocationShareInput {
           sendIntervalSecs == other.sendIntervalSecs &&
           motionGate == other.motionGate &&
           sessionId == other.sessionId &&
+          sequence == other.sequence &&
+          isFinal == other.isFinal;
+}
+
+/// One point parsed back from a canonical location DM body.
+///
+/// Flat and primitive-only so FRB/web can hand a whole track to a frontend
+/// without duplicating the body grammar there. `timestamp_secs` is the
+/// *sender's* sampling time embedded in the body, not the local row's
+/// `created_at`, so a GPX track keeps the device's clock even after forwarding.
+class LocationTrackPoint {
+  /// Latitude in decimal degrees.
+  final double latitude;
+
+  /// Longitude in decimal degrees.
+  final double longitude;
+
+  /// Estimated horizontal accuracy in metres.
+  final double accuracy;
+
+  /// Unix seconds at which the sending device sampled this point.
+  final double timestampSecs;
+
+  /// Monotonic sample number within the sending session.
+  final int sequence;
+
+  /// Whether this was the final point of the session.
+  final bool isFinal;
+
+  const LocationTrackPoint({
+    required this.latitude,
+    required this.longitude,
+    required this.accuracy,
+    required this.timestampSecs,
+    required this.sequence,
+    required this.isFinal,
+  });
+
+  @override
+  int get hashCode =>
+      latitude.hashCode ^
+      longitude.hashCode ^
+      accuracy.hashCode ^
+      timestampSecs.hashCode ^
+      sequence.hashCode ^
+      isFinal.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LocationTrackPoint &&
+          runtimeType == other.runtimeType &&
+          latitude == other.latitude &&
+          longitude == other.longitude &&
+          accuracy == other.accuracy &&
+          timestampSecs == other.timestampSecs &&
           sequence == other.sequence &&
           isFinal == other.isFinal;
 }

@@ -75,6 +75,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-27_rust_owned_share_readvertise.md](2026-11-27_rust_owned_share_readvertise.md) | Share re-advertising builds canonical offers in Rust; raw frontend offer-send binding removed | 2026-11-27 |
 | [2026-11-27_incoming_attachment_descriptors.md](2026-11-27_incoming_attachment_descriptors.md) | Live broadcast/DM attachment descriptors survive Flutter/web persistence and reload | 2026-11-27 |
 | [2026-11-27_tui_share_network_actions.md](2026-11-27_tui_share_network_actions.md) | TUI Shares manifest refresh and canonical re-advertise from one sorted connected-peer list | 2026-11-27 |
+| [2026-11-27_device_location_sharing.md](2026-11-27_device_location_sharing.md) | Device-centric location sharing: Rust-owned policy, sealed DMs, GPX tracks, TUI/Flutter/web/Android | 2026-11-27 |
 | [2026-11-02_sibling_device_claims.md](2026-11-02_sibling_device_claims.md) | Sibling devices may sign device-binding claims for the same user (P0 decision) | 2026-11-02 |
 | [2026-11-12_public_bootstrap_discovery.md](2026-11-12_public_bootstrap_discovery.md) | Internet-wide discovery: Kademlia DHT, NAT traversal, network details, configurable bootstrap/relay peers (US-050) | 2026-11-12 |
 

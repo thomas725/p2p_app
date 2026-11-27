@@ -57,28 +57,13 @@ Still open when the project moves to a PR flow:
 - pin the CI toolchain to the dev toolchain, or the stable/nightly clippy drift
   will produce false reds the moment the check becomes required.
 
-### Location sharing (DMs, Android GPS / browser Geolocation, TUI receive) — **Rust core shipped**
+### Location sharing (US-055) — **shipped**
 
-Rust owns the whole policy in `src/location.rs`: newtype-validated coordinates,
-canonical OpenStreetMap URLs, the three sharing modes (`once`, `limited`,
-`unlimited`), frequency/duration bounds, motion-gate flag, expiry/cadence
-helpers and the canonical DM body. Frontends only sample sensors and pass the
-flat `LocationShareInput` DTO across the FRB/web boundary; no coordinate maths
-or URL assembly is duplicated in Dart or Kotlin. Location rides the existing
-(sealed) DM path, so there is no new wire lane or DB column.
-
-- Rust unit coverage: `tests/unit/unit_location.rs`; web dispatch parity:
-  `web::methods::tests::location_methods_are_routed_and_validate_params`.
-- FRB/web surface: `locationMapUrl`, `buildLocationMessage`, `isLocationMessage`.
-
-Still open:
-
-- Android GPS + low-power motion adapter over a method channel; browser
-  Geolocation + `DeviceMotion` adapter behind conditional imports.
-- Flutter settings/dialog UI for mode, frequencies and the default-on motion
-  gate, plus the DM "share location" action and continued-sharing controller.
-- TUI receive/display path and frontend parity tests.
-- An archived design record once the frontend slices land.
+Rust owns validation, canonical bodies and URLs, cadence, expiry, recipient
+policy, time filters, GPX and map URLs; both frontends sample sensors and
+render Rust-owned strings. Location rides sealed DMs, and a track always keys
+on one exact sending device. Full record:
+[`archive/2026-11-27_device_location_sharing.md`](archive/2026-11-27_device_location_sharing.md).
 
 ### Database-level at-rest encryption
 
@@ -322,6 +307,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Device-centric location sharing (US-055) | 2026-11-27 | [`archive/2026-11-27_device_location_sharing.md`](archive/2026-11-27_device_location_sharing.md) |
 | Incoming attachment descriptors survive Flutter/web persistence | 2026-11-27 | [`archive/2026-11-27_incoming_attachment_descriptors.md`](archive/2026-11-27_incoming_attachment_descriptors.md) |
 | Rust-owned share re-advertising | 2026-11-27 | [`archive/2026-11-27_rust_owned_share_readvertise.md`](archive/2026-11-27_rust_owned_share_readvertise.md) |
 | TUI private-share grant editor | 2026-11-27 | [`archive/2026-11-27_tui_share_grant_editor.md`](archive/2026-11-27_tui_share_grant_editor.md) |

@@ -100,15 +100,25 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "publishShareSnapshot") => shares(m, params),
         "getTheme" => ok(api::get_theme()),
         "getNotificationSettings" => ok(api::get_notification_settings()),
+        "getLocationDefaults" => ok(api::get_location_defaults()),
+        "listLocationRecipients" => json(api::list_location_recipients()),
+        m @ ("locationMapUrl"
+        | "buildLocationMessage"
+        | "isLocationMessage"
+        | "locationMessageUrl"
+        | "locationSessionActive"
+        | "locationSendDue"
+        | "locationQueryDue"
+        | "parseLocationTimeFilter"
+        | "loadLocationTrack"
+        | "locationGpx"
+        | "locationTrackUrl"
+        | "sendLocationToDevices"
+        | "setLocationDefaults") => location(m, params),
         m @ ("formatTimeHhmm"
         | "isAtBottom"
         | "parseLastSeenMs"
         | "replyDraft"
-        | "locationMapUrl"
-        | "buildLocationMessage"
-        | "isLocationMessage"
-        | "locationSessionActive"
-        | "locationSendDue"
         | "setTheme"
         | "setNotificationSettings") => ui_helpers(m, params),
         other => Err(format!("unknown method: {other}")),
@@ -586,6 +596,84 @@ fn ui_helpers(method: &str, params: Value) -> Result<Value, String> {
     }
 }
 
+/// Location-sharing surface. Every policy decision (canonical bodies, time
+/// filters, GPX, cadence, recipients) is made by `crate::location`; the web
+/// arm only decodes camelCase JSON and re-encodes the result.
+fn location(method: &str, params: Value) -> Result<Value, String> {
+    match method {
+        "locationMapUrl" => {
+            let p: LocationMapUrlParams = parse(params)?;
+            ok(api::location_map_url(p.latitude, p.longitude))
+        }
+        "buildLocationMessage" => {
+            let p: BuildLocationMessageParams = parse(params)?;
+            json(api::build_location_message(p.into()))
+        }
+        "isLocationMessage" => {
+            let p: IsLocationMessageParams = parse(params)?;
+            ok(api::is_location_message(&p.content))
+        }
+        "locationMessageUrl" => {
+            let p: IsLocationMessageParams = parse(params)?;
+            ok(api::location_message_url(&p.content))
+        }
+        "locationSessionActive" => {
+            let p: LocationSessionParams = parse(params)?;
+            json(api::location_session_active(
+                p.started_at,
+                &p.mode,
+                p.duration_secs,
+                p.now,
+            ))
+        }
+        "locationSendDue" => {
+            let p: LocationSendDueParams = parse(params)?;
+            ok(api::location_send_due(
+                p.last_sent_at,
+                p.now,
+                p.interval_secs,
+            ))
+        }
+        "locationQueryDue" => {
+            let p: LocationQueryDueParams = parse(params)?;
+            ok(api::location_query_due(
+                p.last_query_at,
+                p.now,
+                p.interval_secs,
+            ))
+        }
+        "parseLocationTimeFilter" => {
+            let p: LocationTimeFilterParams = parse(params)?;
+            json(api::parse_location_time_filter(&p.text, p.now))
+        }
+        "loadLocationTrack" => {
+            let p: LoadLocationTrackParams = parse(params)?;
+            json(api::load_location_track(p.peer_id, p.from_text, p.to_text))
+        }
+        "locationGpx" => {
+            let p: LocationGpxParams = parse(params)?;
+            ok(api::location_gpx(p.points, p.device_label))
+        }
+        "locationTrackUrl" => {
+            let p: LocationTrackUrlParams = parse(params)?;
+            ok(api::location_track_url(p.points))
+        }
+        "sendLocationToDevices" => {
+            let p: SendLocationParams = parse(params)?;
+            json(api::send_location_to_devices(
+                p.selected_peer_ids,
+                p.all_devices,
+                &p.body,
+            ))
+        }
+        "setLocationDefaults" => {
+            let p: crate::settings::LocationDefaults = parse(params)?;
+            json(api::set_location_defaults(p))
+        }
+        other => Err(format!("method not routed to location: {other}")),
+    }
+}
+
 // --- Serialization + param helpers ---
 
 /// Wrap a fallible FRB-surface result.
@@ -851,6 +939,52 @@ struct LocationSendDueParams {
     interval_secs: u32,
 }
 
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LocationQueryDueParams {
+    last_query_at: Option<f64>,
+    now: f64,
+    interval_secs: u32,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LocationTimeFilterParams {
+    text: String,
+    now: f64,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LoadLocationTrackParams {
+    peer_id: String,
+    #[serde(default)]
+    from_text: Option<String>,
+    #[serde(default)]
+    to_text: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LocationGpxParams {
+    points: Vec<crate::location::LocationTrackPoint>,
+    device_label: String,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LocationTrackUrlParams {
+    points: Vec<crate::location::LocationTrackPoint>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SendLocationParams {
+    selected_peer_ids: Vec<String>,
+    all_devices: bool,
+    body: String,
+}
+
 /// Web JSON mirror of the flat FRB location-share DTO (camelCase on the wire).
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1093,14 +1227,23 @@ mod tests {
 
     #[test]
     fn location_methods_are_routed_and_validate_params() {
-        // All five methods take parameters, so Null is a safe probe that each
-        // is reachable through the shared dispatcher.
+        // Every method here takes parameters, so Null is a safe probe that each
+        // is reachable through the shared dispatcher (the no-arg methods are
+        // covered by the drift list in `web::mod`).
         for method in [
             "locationMapUrl",
             "buildLocationMessage",
             "isLocationMessage",
+            "locationMessageUrl",
             "locationSessionActive",
             "locationSendDue",
+            "locationQueryDue",
+            "parseLocationTimeFilter",
+            "loadLocationTrack",
+            "locationGpx",
+            "locationTrackUrl",
+            "sendLocationToDevices",
+            "setLocationDefaults",
         ] {
             let err = dispatch(method, Value::Null).expect_err("missing params must fail");
             assert!(

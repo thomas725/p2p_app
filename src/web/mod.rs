@@ -1099,6 +1099,8 @@ mod tests {
             "listBlockedPeers",
             "stopCallMedia",
             "listShares",
+            "getLocationDefaults",
+            "listLocationRecipients",
         ] {
             assert!(
                 source.contains(&format!("\"{method}\"")),

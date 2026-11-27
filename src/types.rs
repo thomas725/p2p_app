@@ -53,6 +53,9 @@ pub enum InputMode {
     /// Capturing a verified user id for a private-share grant (Shares tab;
     /// the action and mode are held in `AppState::share_grant_prompt`).
     EditingShareGrant,
+    /// Capturing a `from;to` time filter for a device location-track GPX export
+    /// (Direct/DM tab; the source device is held in `AppState::location_export_peer_id`).
+    ExportingLocationTrack,
 }
 
 impl InputMode {
@@ -74,6 +77,7 @@ impl InputMode {
                 | Self::DialingPeer
                 | Self::AddingNetworkPeer
                 | Self::EditingShareGrant
+                | Self::ExportingLocationTrack
         )
     }
 }

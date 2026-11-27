@@ -11,6 +11,8 @@
 //! side needs no new wire type or database column: both frontends already
 //! render canonical message text.
 
+use chrono::{DateTime, NaiveDate, NaiveDateTime, SecondsFormat, Utc};
+use num_traits::ToPrimitive as _;
 use serde::{Deserialize, Serialize};
 use std::fmt::Write as _;
 
@@ -36,6 +38,17 @@ pub const MAX_SEND_INTERVAL_SECS: u32 = 86_400;
 pub const MIN_DURATION_SECS: u32 = 60;
 /// Longest permitted limited-sharing window, in seconds (seven days).
 pub const MAX_DURATION_SECS: u32 = 604_800;
+
+/// Default sensor-query interval (seconds) offered in the sharing dialog.
+pub const DEFAULT_SENSOR_INTERVAL_SECS: u32 = 10;
+/// Default network-send interval (seconds) offered in the sharing dialog.
+pub const DEFAULT_SEND_INTERVAL_SECS: u32 = 60;
+
+/// Maximum waypoints accepted by the public OSM directions service.
+///
+/// The track URL builder keeps the newest points up to this cap so it stays
+/// within the service's documented limit; GPX exports are unbounded.
+pub const MAX_TRACK_URL_POINTS: usize = 50;
 
 /// A validated latitude in decimal degrees.
 ///
@@ -282,11 +295,12 @@ impl LocationShare {
         // Writing to a String cannot fail.
         let _ = write!(
             body,
-            "{} {:.6},{:.6} (±{:.0} m) {}",
+            "{} {:.6},{:.6} (±{:.0} m) @{:.0} {}",
             MESSAGE_PREFIX,
             self.latitude.value(),
             self.longitude.value(),
             self.accuracy,
+            crate::fmt::current_timestamp(),
             self.map_url(),
         );
         let _ = write!(body, " ({})", self.session_summary());
@@ -317,6 +331,18 @@ impl LocationShare {
 }
 
 /// Validate and normalise session settings (frequency bounds and duration).
+///
+/// Exposed so persisted UI defaults use exactly the same bounds and mode rules
+/// as a live share; no frontend holds a second copy of the policy.
+///
+/// # Errors
+/// Returns a human-readable error for an unknown mode or an out-of-range value.
+pub fn validate_location_settings(
+    settings: &LocationSessionSettings,
+) -> Result<LocationSessionSettings, String> {
+    validate_session(settings)
+}
+
 fn validate_session(settings: &LocationSessionSettings) -> Result<LocationSessionSettings, String> {
     if !(MIN_SENSOR_INTERVAL_SECS..=MAX_SENSOR_INTERVAL_SECS)
         .contains(&settings.sensor_interval_secs)
@@ -365,6 +391,23 @@ pub fn is_location_message(content: &str) -> bool {
     content.trim_start().starts_with(MESSAGE_PREFIX)
 }
 
+/// Extract the canonical map URL from a location message body.
+///
+/// Frontends use this to offer an "open map" action without parsing or
+/// rebuilding URLs themselves. A non-location body has no URL, even if it
+/// happens to contain one.
+#[must_use]
+pub fn location_message_url(content: &str) -> Option<String> {
+    // Only a canonical body may become an actionable map link. A chat message
+    // that merely starts with the marker (or carries a hand-written URL) must
+    // never masquerade as a device fix.
+    parse_location_message(content)?;
+    content
+        .split_whitespace()
+        .find(|part| part.starts_with(MAP_URL_PREFIX))
+        .map(str::to_owned)
+}
+
 /// Validate and render one canonical location message body.
 ///
 /// # Errors
@@ -403,13 +446,13 @@ pub fn location_session_active(
     duration_secs: Option<u32>,
     now: f64,
 ) -> Result<bool, String> {
-    let settings = LocationSessionSettings {
+    let settings = validate_location_settings(&LocationSessionSettings {
         mode: LocationMode::parse(mode)?,
         duration_secs,
         sensor_interval_secs: MIN_SENSOR_INTERVAL_SECS,
         send_interval_secs: MIN_SEND_INTERVAL_SECS,
         motion_gate: false,
-    };
+    })?;
     Ok(!location_session_expired(started_at, &settings, now))
 }
 
@@ -425,6 +468,335 @@ pub fn location_send_due(last_sent_at: Option<f64>, now: f64, interval_secs: u32
 #[must_use]
 pub fn location_query_due(last_query_at: Option<f64>, now: f64, interval_secs: u32) -> bool {
     location_send_due(last_query_at, now, interval_secs)
+}
+
+/// One point parsed back from a canonical location DM body.
+///
+/// Flat and primitive-only so FRB/web can hand a whole track to a frontend
+/// without duplicating the body grammar there. `timestamp_secs` is the
+/// *sender's* sampling time embedded in the body, not the local row's
+/// `created_at`, so a GPX track keeps the device's clock even after forwarding.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocationTrackPoint {
+    /// Latitude in decimal degrees.
+    pub latitude: f64,
+    /// Longitude in decimal degrees.
+    pub longitude: f64,
+    /// Estimated horizontal accuracy in metres.
+    pub accuracy: f64,
+    /// Unix seconds at which the sending device sampled this point.
+    pub timestamp_secs: f64,
+    /// Monotonic sample number within the sending session.
+    pub sequence: u32,
+    /// Whether this was the final point of the session.
+    pub is_final: bool,
+}
+
+/// Parse one canonical location body back into a track point.
+///
+/// Returns `None` for ordinary chat text and for a malformed body (a message
+/// that merely starts with the marker is not enough). The grammar is shared
+/// with [`LocationShare::message_body`], so Rust is the only owner of both
+/// halves and the frontends never implement a second parser.
+#[must_use]
+pub fn parse_location_message(content: &str) -> Option<LocationTrackPoint> {
+    let content = content.trim_start();
+    let rest = content.strip_prefix(MESSAGE_PREFIX)?.trim_start();
+    let coords = rest.split_whitespace().next()?;
+    let (lat, lon) = coords.split_once(',')?;
+    let latitude = Latitude::new(lat.parse().ok()?).ok()?.value();
+    let longitude = Longitude::new(lon.parse().ok()?).ok()?.value();
+
+    // The accuracy span contains a space (`(±12 m)`), so it must be read from
+    // the original string rather than from `split_whitespace()` tokens.
+    let after_coords = rest.get(coords.len()..)?.trim_start();
+    let accuracy_span = after_coords.split(" m)").next()?;
+    let accuracy = accuracy_span.strip_prefix("(±")?.parse::<f64>().ok()?;
+    if !accuracy.is_finite() || accuracy < 0.0 {
+        return None;
+    }
+    let after_accuracy = after_coords
+        .get(accuracy_span.len().saturating_add(" m)".len())..)?
+        .trim_start();
+    let mut trailing = after_accuracy.split_whitespace();
+    let timestamp_token = trailing.next()?;
+    let timestamp_secs = timestamp_token.strip_prefix('@')?.parse::<f64>().ok()?;
+    if !timestamp_secs.is_finite() {
+        return None;
+    }
+    // A body built by `build_location_message` always carries its canonical
+    // map URL immediately after the timestamp. Requiring it here keeps the
+    // sender boundary honest: a hand-written prefix plus coordinates is not a
+    // location update and must not enter the track store.
+    let map_url = trailing.next()?;
+    if map_url != location_map_url(latitude, longitude) {
+        return None;
+    }
+
+    let mut sequence = 1;
+    let mut is_final = false;
+    for part in after_accuracy.split_whitespace().skip(1) {
+        // OSM URLs carry their fragment (`#map=...`) inside a single token, so
+        // only a standalone numeric `#N` token is a sequence number.
+        if let Some(value) = part.strip_prefix('#') {
+            sequence = value.parse().ok()?;
+        }
+        if part == "(final)" {
+            is_final = true;
+        }
+    }
+    Some(LocationTrackPoint {
+        latitude,
+        longitude,
+        accuracy,
+        timestamp_secs,
+        sequence,
+        is_final,
+    })
+}
+
+/// Parse a user-facing time filter into Unix seconds.
+///
+/// Supported forms: `now`, `<n> <unit> ago` (seconds/minutes/hours/days/weeks),
+/// RFC 3339 (`2026-11-27T10:00:00Z`), `YYYY-MM-DD[T ]HH:MM:SS`, `YYYY-MM-DD`,
+/// and a bare epoch-seconds number. Rust owns this grammar so "24 hours ago"
+/// means the same in the TUI and the browser.
+///
+/// # Errors
+/// Returns a human-readable error for an unrecognised filter.
+pub fn parse_location_time_filter(text: &str, now: f64) -> Result<f64, String> {
+    let value = text.trim();
+    if value.eq_ignore_ascii_case("now") {
+        return Ok(now);
+    }
+    let lower = value.to_ascii_lowercase();
+    let words: Vec<&str> = lower.split_whitespace().collect();
+    if let [amount, unit, "ago"] = words.as_slice() {
+        let amount: u64 = amount
+            .parse()
+            .map_err(|_| format!("invalid relative time '{value}'"))?;
+        let unit_secs = match *unit {
+            "second" | "seconds" => 1,
+            "minute" | "minutes" => 60,
+            "hour" | "hours" => 3_600,
+            "day" | "days" => 86_400,
+            "week" | "weeks" => 604_800,
+            other => {
+                return Err(format!(
+                    "unknown time unit '{other}' (use seconds, minutes, hours, days or weeks)"
+                ));
+            }
+        };
+        let delta = amount
+            .saturating_mul(unit_secs)
+            .to_f64()
+            .ok_or_else(|| "relative time is too large".to_string())?;
+        return Ok(now - delta);
+    }
+    if let Ok(dt) = DateTime::parse_from_rfc3339(value) {
+        return dt
+            .timestamp()
+            .to_f64()
+            .ok_or_else(|| "timestamp is out of range".to_string());
+    }
+    for format in ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"] {
+        if let Ok(dt) = NaiveDateTime::parse_from_str(value, format) {
+            return dt
+                .and_utc()
+                .timestamp()
+                .to_f64()
+                .ok_or_else(|| "timestamp is out of range".to_string());
+        }
+    }
+    if let Ok(date) = NaiveDate::parse_from_str(value, "%Y-%m-%d")
+        && let Some(dt) = date.and_hms_opt(0, 0, 0)
+    {
+        return dt
+            .and_utc()
+            .timestamp()
+            .to_f64()
+            .ok_or_else(|| "timestamp is out of range".to_string());
+    }
+    value
+        .parse::<f64>()
+        .ok()
+        .filter(|epoch| epoch.is_finite())
+        .ok_or_else(|| {
+            format!("unrecognised time '{value}' (use 'now', '24 hours ago', or an ISO date)")
+        })
+}
+
+/// Escape text for inclusion in an XML element or attribute.
+fn xml_escape(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
+}
+
+/// Render a device's points as a GPX 1.1 track.
+///
+/// The device label is escaped, timestamps use RFC 3339 UTC, and accuracy is
+/// carried in a GPX `<extensions>` element (GPX has no accuracy field). Frontends
+/// write the returned string verbatim: no frontend builds GPX itself.
+#[must_use]
+pub fn location_gpx(
+    points: impl AsRef<[LocationTrackPoint]>,
+    device_label: impl AsRef<str>,
+) -> String {
+    let points = points.as_ref();
+    let label = xml_escape(device_label.as_ref());
+    let mut out = String::from(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
+         <gpx version=\"1.1\" creator=\"p2p-chat\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n",
+    );
+    let _ = writeln!(out, "  <metadata><name>{label}</name></metadata>");
+    let _ = writeln!(out, "  <trk><name>{label}</name><trkseg>");
+    for point in points {
+        let secs = point.timestamp_secs.to_i64().unwrap_or_default();
+        let time = DateTime::<Utc>::from_timestamp(secs, 0).map_or_else(String::new, |dt| {
+            dt.to_rfc3339_opts(SecondsFormat::Secs, true)
+        });
+        let _ = writeln!(
+            out,
+            "    <trkpt lat=\"{:.6}\" lon=\"{:.6}\">\
+             <time>{time}</time>\
+             <extensions><accuracy>{:.1}</accuracy></extensions>\
+             </trkpt>",
+            point.latitude, point.longitude, point.accuracy
+        );
+    }
+    out.push_str("  </trkseg></trk>\n</gpx>\n");
+    out
+}
+
+/// Build an OpenStreetMap directions URL showing the newest points of a track.
+///
+/// OSM directions accepts a semicolon-separated `route` of `lat,lon` pairs but
+/// caps the number of waypoints, so only the newest [`MAX_TRACK_URL_POINTS`]
+/// points are kept (oldest of that window first). A single point falls back to
+/// the ordinary marker URL. GPX remains the lossless export; this URL is the
+/// "show the last N positions" convenience.
+#[must_use]
+pub fn location_track_url(points: impl AsRef<[LocationTrackPoint]>) -> Option<String> {
+    let points = points.as_ref();
+    let newest = points
+        .iter()
+        .rev()
+        .take(MAX_TRACK_URL_POINTS)
+        .rev()
+        .collect::<Vec<_>>();
+    match newest.as_slice() {
+        [] => None,
+        [only] => Some(location_map_url(only.latitude, only.longitude)),
+        many => {
+            let route = many
+                .iter()
+                .map(|point| format!("{:.6},{:.6}", point.latitude, point.longitude))
+                .collect::<Vec<_>>()
+                .join(";");
+            Some(format!(
+                "https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route={route}"
+            ))
+        }
+    }
+}
+
+/// One selectable destination device for a location share.
+///
+/// Flat and primitive-only for FRB/web: the account/device filtering stays in
+/// Rust, while the frontends only render the label and pass peer ids back.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocationRecipient {
+    /// Peer ID of another device bound into this install's user.
+    pub peer_id: String,
+    /// Canonical display label resolved through the same name cache as Contacts.
+    pub display_name: String,
+}
+
+/// Every *other* device bound into this install's user, sorted by peer id.
+///
+/// Uses [`crate::db::existing_local_peer_id`] rather than generating an identity
+/// as a side effect of a read path. Database errors fail closed (no recipients)
+/// so a broken store cannot silently share with a peer outside the account.
+fn other_user_device_ids() -> Result<Vec<String>, String> {
+    let Some(local) = crate::db::existing_local_peer_id() else {
+        return Ok(Vec::new());
+    };
+    let local = local.to_string();
+    let Some(user_id) =
+        crate::identity::find_user_id_for_peer(&local).map_err(|e| e.to_string())?
+    else {
+        return Ok(Vec::new());
+    };
+    let mut devices: Vec<String> = crate::identity::list_user_devices(&user_id)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|device| device.peer_id)
+        .filter(|peer_id| *peer_id != local)
+        .collect();
+    devices.sort();
+    devices.dedup();
+    Ok(devices)
+}
+
+/// List the devices a location share may target, with Rust-resolved labels.
+///
+/// # Errors
+/// Returns a human-readable error if the device/identity tables cannot be read.
+pub fn list_location_recipients() -> Result<Vec<LocationRecipient>, String> {
+    other_user_device_ids().map(|devices| {
+        devices
+            .into_iter()
+            .map(|peer_id| LocationRecipient {
+                display_name: crate::nickname::get_peer_display_name_or_short(&peer_id),
+                peer_id,
+            })
+            .collect()
+    })
+}
+
+/// Resolve the devices a location share may target: every *other* device bound
+/// to this install's user, or a validated subset of those devices.
+///
+/// This is the device-centric counterpart of the user-level contact roster:
+/// only a device bound to the local account is eligible, and the local device
+/// is always excluded (sharing to yourself is pointless). The caller passes
+/// `all_devices` for "all", or explicit peer ids for specific devices.
+///
+/// # Errors
+/// Returns an error when there is no bound user, when no other device exists,
+/// or when a selected peer id is not another device of this user.
+pub fn location_recipient_peer_ids(
+    selected: impl AsRef<[String]>,
+    all_devices: bool,
+) -> Result<Vec<String>, String> {
+    let selected = selected.as_ref();
+    let devices = other_user_device_ids()?;
+    if all_devices {
+        return if devices.is_empty() {
+            Err("no other device is bound to your user".to_string())
+        } else {
+            Ok(devices)
+        };
+    }
+    if selected.is_empty() {
+        return Err("select at least one device (or share with all)".to_string());
+    }
+    selected
+        .iter()
+        .map(|peer_id| {
+            devices
+                .iter()
+                .find(|device| *device == peer_id)
+                .cloned()
+                .ok_or_else(|| format!("{peer_id} is not another device of your user"))
+        })
+        .collect()
 }
 
 #[cfg(test)]

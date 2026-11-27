@@ -72,6 +72,7 @@ src/
 ├── logging.rs          log helpers
 ├── network_config.rs   persisted bootstrap / relay multiaddrs (Settings, node start)
 ├── e2e.rs              DM envelope seal/open (X25519 → ChaCha20-Poly1305)
+├── location.rs         device-centric sharing policy: bodies, URLs, GPX, cadence
 ├── reactions.rs        per-message reaction persistence + summaries
 ├── reply.rs            canonical bounded reply preview + quoted header
 ├── notifications.rs    Rust-owned notification payload, policy, terminal sequence
@@ -125,6 +126,16 @@ sender-side outbox (`dm_outbox.rs`) already parks sealed envelopes for offline
 recipients and retries them on reconnect. See
 [`e2e_encryption.md`](e2e_encryption.md) for the threat model, the outbox
 lifecycle and the limits.
+
+Device-centric location sharing (US-055) reuses that sealed DM lane: there is
+no second wire protocol, message table or DB column. `location.rs` validates
+coordinates and cadence, builds the canonical `[Location]` body and OSM URLs,
+resolves recipients to *other devices bound to the local user*, parses tracks
+and renders GPX. Frontends only sample sensors and render Rust-owned strings;
+track queries key on one exact sender peer id, so two devices of the same user
+never mix. See
+[`archive/2026-11-27_device_location_sharing.md`](archive/2026-11-27_device_location_sharing.md)
+for the full slice.
 
 Gossipsub caps a single message at 256 KiB, so group and broadcast
 attachments travel **by reference**: the message carries a descriptor, and the

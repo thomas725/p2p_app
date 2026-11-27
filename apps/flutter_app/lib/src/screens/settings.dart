@@ -82,6 +82,7 @@ const Map<String, List<String>> _helpSections = {
     'Double-tap a message to select it, then Copy, Delete, Reply or Edit from the toolbar. Delete and Edit affect only your own sent messages on this device.',
     'Tap the add-reaction chip on a message to react, or an existing chip to toggle yours.',
     'Tap a sender name for Peer Info, an attachment chip to open the file, or the unread banner to jump to latest.',
+    'In a DM, Share location sends a fix to your other bound devices; Track opens that sender’s map/GPX.',
   ],
   'Contacts': [
     'Use the chevron to expand a contact’s devices.',
