@@ -768,6 +768,8 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
         p2plog_debug("Cancelled reaction".to_string());
     } else if s.cancel_share_grant() {
         p2plog_debug("Cancelled share grant edit".to_string());
+    } else if s.cancel_create_share() {
+        p2plog_debug("Cancelled share creation".to_string());
     } else if s.is_exporting_location_track() {
         s.cancel_export_location_track();
         p2plog_debug("Cancelled location track export".to_string());
@@ -1625,6 +1627,42 @@ fn toggle_share_public_write(s: &mut super::state::AppState) {
     apply_share_visibility(s, p2p_app::shares::ShareKind::Public, !share.public_write);
 }
 
+/// Create a private, read-only share from the shared name prompt.
+///
+/// Name validation and the DB write live in the canonical store, so a rejection
+/// keeps the editor open with its text for the next correction key.
+fn confirm_create_share(s: &mut super::state::AppState) {
+    let name = s.chat_input.lines().join("\n");
+    let Some(owner) = s.own_user_id.clone() else {
+        s.popup = Some("Local user is not provisioned".to_string());
+        return;
+    };
+    match p2p_app::shares::create_share(
+        &name,
+        &owner,
+        p2p_app::shares::ShareKind::Private,
+        false,
+        None,
+    ) {
+        Ok(share) => {
+            s.cancel_create_share();
+            s.reload_shares();
+            let fallback = s.share_selection;
+            let position = s
+                .shares
+                .iter()
+                .position(|row| row.share_id == share.share_id)
+                .unwrap_or(fallback);
+            s.select_share(position);
+            s.share_event_notice = Some(format!("Share created: {}", share.name));
+            p2plog_debug(format!("Created share: {}", share.share_id));
+        }
+        Err(error) => {
+            s.popup = Some(format!("Share not created: {error}"));
+        }
+    }
+}
+
 /// Commit the active grant editor through the canonical store, then re-read the
 /// Shares pane. Any validation or DB failure keeps the editor open with a hint.
 fn confirm_share_grant(s: &mut super::state::AppState) {
@@ -2001,6 +2039,8 @@ async fn handle_enter_dispatch(
         confirm_reaction(s, swarm_cmd_tx).await;
     } else if s.is_editing_share_grant() {
         confirm_share_grant(s);
+    } else if s.is_creating_share() {
+        confirm_create_share(s);
     } else if s.is_exporting_location_track() {
         let root = super::location_export::default_export_root();
         super::location_export::submit_location_export(s, &root);
@@ -2041,6 +2081,12 @@ fn handle_tab_specific_shortcut(
                 && matches!(tab, p2p_app::tui_tabs::TabContent::Settings) =>
         {
             handle_settings_shortcut(c, s);
+            true
+        }
+        crossterm::event::KeyCode::Char('c')
+            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
+        {
+            s.begin_create_share();
             true
         }
         crossterm::event::KeyCode::Char('a')

@@ -80,6 +80,30 @@ fn test_live_input_section_shows_armed_reply_preview() {
     );
 }
 
+/// The Shares tab has no ordinary input box, so the creation prompt must be
+/// rendered explicitly while it owns the keyboard.
+#[test]
+fn test_live_input_section_shows_share_creation_title_and_name() {
+    let mut state = test_app_state();
+    state.begin_create_share();
+    state.chat_input.insert_str("Docs");
+    assert!(state.is_creating_share());
+
+    let tab = TabContent::Shares;
+    assert!(!tab.is_input_enabled(), "Shares has no ordinary chat input");
+
+    let mut terminal = Terminal::new(TestBackend::new(80, 5)).unwrap();
+    terminal
+        .draw(|f| render_input_section(f, Rect::new(0, 0, 80, 5), &state, &tab))
+        .unwrap();
+    let text = buffer_text(&terminal);
+    assert!(
+        text.contains("Create share (name)"),
+        "missing creation prompt title in: {text}"
+    );
+    assert!(text.contains("Docs"), "missing typed name in: {text}");
+}
+
 /// Outside search mode the Contacts tab keeps the plain input-block chrome —
 /// the special search title/textarea must not leak into ordinary rendering.
 #[test]

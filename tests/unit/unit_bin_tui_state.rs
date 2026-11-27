@@ -1600,6 +1600,26 @@ fn test_group_leave_drops_the_group_selection_and_reply_draft() {
 }
 
 #[test]
+fn share_creation_prompt_is_modal_and_cancels_on_tab_switch() {
+    let mut s = test_app_state();
+    assert!(!s.is_creating_share());
+
+    s.begin_create_share();
+    assert!(s.is_creating_share());
+    assert!(s.is_modal_editor());
+    s.chat_input.insert_str("Notes");
+
+    s.finalize_tab_input();
+    assert!(!s.is_creating_share());
+    assert_eq!(s.chat_input.lines().join("\n"), "");
+
+    s.begin_create_share();
+    assert!(s.cancel_create_share());
+    assert!(!s.is_creating_share());
+    assert!(!s.cancel_create_share(), "cancel is idempotent");
+}
+
+#[test]
 fn share_peer_selection_uses_canonical_order_and_clamps() {
     use crossterm::event::KeyCode;
 

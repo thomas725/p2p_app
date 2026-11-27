@@ -5334,6 +5334,21 @@ fn share_grant_db_state(
     share_db_state("owner", kind, false, grants)
 }
 
+/// An isolated DB with a provisioned owner and no shares, landed on the Shares
+/// tab. The returned `TempDir` must outlive every DB call in the test.
+fn empty_share_db_state() -> (TempDir, AppState) {
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+
+    let mut state = test_app_state();
+    state.active_tab = shares_tab_index(&state);
+    state.own_user_id = Some("owner".to_string());
+    state.reload_shares();
+    (dir, state)
+}
+
 fn share_kind_and_write(share_id: &str) -> (p2p_app::shares::ShareKind, bool) {
     let share = p2p_app::shares::get_share(share_id)
         .expect("get share")
@@ -5649,6 +5664,164 @@ fn test_share_grant_editor_owns_tab_and_mouse_until_cancelled() {
             "Esc must leave the persisted grants untouched"
         );
         assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_creation_through_real_keys_persists_and_selects() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, state) = empty_share_db_state();
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('c').await);
+        let active_tab = session.state.lock().await.active_tab;
+        assert!(session.state.lock().await.is_creating_share());
+        assert!(session.state.lock().await.is_modal_editor());
+        assert_eq!(session.state.lock().await.chat_input.lines().join("\n"), "");
+        let frame = session.frame_text().await;
+        assert!(frame.contains("Create share (name)"), "frame: {frame}");
+        assert!(
+            frame.contains("c: create a private share"),
+            "frame: {frame}"
+        );
+
+        // A modal prompt owns Tab, arrows and the wheel: none may move the
+        // highlight or leave the Shares tab while a name is being typed.
+        assert!(!session.press_code(KeyCode::Tab).await);
+        assert!(!session.press_code(KeyCode::Down).await);
+        assert!(
+            !session
+                .press_mouse(wheel_event(MouseEventKind::ScrollDown))
+                .await
+        );
+        {
+            let s = session.state.lock().await;
+            assert_eq!(s.active_tab, active_tab);
+            assert!(s.is_creating_share());
+        }
+        assert!(!session.type_text("Roadmap").await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+
+        let shares = p2p_app::shares::list_shares().expect("list shares");
+        assert_eq!(shares.len(), 1, "Enter must persist exactly one share");
+        let share = &shares[0];
+        assert_eq!(share.name, "Roadmap");
+        assert_eq!(share.owner_user_id, "owner");
+        assert_eq!(share.kind, p2p_app::shares::ShareKind::Private);
+        assert!(!share.public_write);
+        assert_eq!(share.local_root, None);
+
+        {
+            let s = session.state.lock().await;
+            assert!(!s.is_creating_share());
+            assert_eq!(s.chat_input.lines().join("\n"), "");
+            assert_eq!(s.shares.len(), 1);
+            assert_eq!(s.share_selection, 0);
+            assert_eq!(
+                s.share_event_notice.as_deref(),
+                Some("Share created: Roadmap")
+            );
+        }
+        let frame = session.frame_text().await;
+        assert!(frame.contains("Roadmap"), "frame: {frame}");
+        assert!(frame.contains("Share created: Roadmap"), "frame: {frame}");
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_creation_validation_and_cancel_leave_store_untouched() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, state) = empty_share_db_state();
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('c').await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+        {
+            let s = session.state.lock().await;
+            assert!(
+                s.is_creating_share(),
+                "a rejected name keeps the editor open for correction"
+            );
+            assert!(
+                s.popup
+                    .as_deref()
+                    .is_some_and(|hint| hint.starts_with("Share not created:"))
+            );
+        }
+        assert!(
+            p2p_app::shares::list_shares()
+                .expect("list shares")
+                .is_empty(),
+            "validation must happen before any DB write"
+        );
+
+        assert!(!session.press_code(KeyCode::Esc).await);
+        assert!(!session.type_text("   ").await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.is_creating_share());
+            assert_eq!(s.chat_input.lines().join("\n"), "   ");
+            assert!(
+                s.popup
+                    .as_deref()
+                    .is_some_and(|hint| hint.starts_with("Share not created:"))
+            );
+        }
+
+        assert!(!session.press_code(KeyCode::Esc).await);
+        assert!(!session.press_code(KeyCode::Esc).await);
+        {
+            let s = session.state.lock().await;
+            assert!(!s.is_creating_share());
+            assert_eq!(s.chat_input.lines().join("\n"), "");
+        }
+        assert!(
+            p2p_app::shares::list_shares()
+                .expect("list shares")
+                .is_empty(),
+            "Esc must never create a share"
+        );
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_creation_requires_a_provisioned_owner() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, mut state) = empty_share_db_state();
+        state.own_user_id = None;
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('c').await);
+        assert!(!session.type_text("Docs").await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.is_creating_share());
+            assert_eq!(s.popup.as_deref(), Some("Local user is not provisioned"));
+        }
+        let shares = p2p_app::shares::list_shares().expect("list shares");
+        assert_eq!(shares, Vec::new());
     });
     close_share_grant_db();
 }

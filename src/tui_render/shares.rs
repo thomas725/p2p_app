@@ -37,6 +37,7 @@ fn detail_lines(
         lines.push(format!("Last event: {notice}"));
         lines.push(String::new());
     }
+    lines.push("c: create a private share".to_string());
     let Some(share) = share else {
         lines.push("No shares known to this install.".to_string());
         return lines;

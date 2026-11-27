@@ -393,6 +393,9 @@ fn test_input_mode_modal_editor_boundary() {
         InputMode::CreatingGroup,
         InputMode::DialingPeer,
         InputMode::AddingNetworkPeer,
+        InputMode::EditingShareGrant,
+        InputMode::CreatingShare,
+        InputMode::ExportingLocationTrack,
     ] {
         assert!(mode.is_modal_editor(), "{mode:?} must own the keyboard");
     }

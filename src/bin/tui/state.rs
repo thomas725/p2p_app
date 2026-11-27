@@ -214,7 +214,7 @@ pub struct AppState {
     // Selected group in the Groups list tab.
     pub group_selection: usize,
 
-    // File shares (read-only Shares tab)
+    // File shares (Shares tab)
     /// Shares known to this install, loaded from the canonical store at
     /// startup, on `share_*` events and on a manual `r` refresh.
     pub shares: Vec<p2p_app::shares::Share>,
@@ -538,6 +538,7 @@ impl AppState {
     pub fn finalize_tab_input(&mut self) {
         self.cancel_nickname_edit();
         self.cancel_share_grant();
+        self.cancel_create_share();
         self.cancel_export_location_track();
         self.end_contact_search(true);
     }
@@ -882,6 +883,29 @@ impl AppState {
     /// Cancel an in-progress grant edit, leaving the persisted grants untouched.
     pub fn cancel_share_grant(&mut self) -> bool {
         let was_editing = self.share_grant_prompt.take().is_some();
+        if was_editing {
+            self.input_mode = p2p_app::InputMode::Chat;
+            self.chat_input = TextArea::default();
+        }
+        was_editing
+    }
+
+    /// True while the shared input captures a new share display name.
+    #[must_use]
+    pub const fn is_creating_share(&self) -> bool {
+        matches!(self.input_mode, p2p_app::InputMode::CreatingShare)
+    }
+
+    /// Open the shared editor for a new private, read-only share. No local root
+    /// is captured here: binding a real folder stays a native-only action.
+    pub fn begin_create_share(&mut self) {
+        self.input_mode = p2p_app::InputMode::CreatingShare;
+        self.chat_input = TextArea::default();
+    }
+
+    /// Close the share-name prompt without writing anything.
+    pub fn cancel_create_share(&mut self) -> bool {
+        let was_editing = self.is_creating_share();
         if was_editing {
             self.input_mode = p2p_app::InputMode::Chat;
             self.chat_input = TextArea::default();

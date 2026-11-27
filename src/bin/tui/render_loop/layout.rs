@@ -47,6 +47,8 @@ pub fn render_input_section(
                 p2p_app::network_config::NetworkPeerKind::as_str
             )
         )
+    } else if state.is_creating_share() {
+        "Create share (name) - Enter to create, Esc to cancel".to_string()
     } else if state.is_exporting_location_track() {
         "Export location track (from;to) - Enter to export, Esc to cancel".to_string()
     } else if state.is_creating_group() {

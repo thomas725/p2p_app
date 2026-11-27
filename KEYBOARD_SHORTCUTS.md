@@ -23,8 +23,8 @@ Tabs are ordered: **Chat**, **Contacts**, **Groups**, group chats, DMs,
 Peer Info tabs, **Log**, **Settings**, **Shares**. Peer Info and DM tabs are
 transient — they are inserted, deduplicated by peer, and closed with `Ctrl+W`.
 Shares is a permanent suffix tab after Settings. While a modal prompt owns the
-input (nickname, message edit, reaction, group name, dial, network peer or
-share grant), `Tab` and `Shift+Tab` are no-ops so the prompt cannot be stranded
+input (nickname, message edit, reaction, group name, dial, network peer, share
+creation or share grant), `Tab` and `Shift+Tab` are no-ops so the prompt cannot be stranded
 on another tab — except in the add-grant prompt, where `Tab` toggles the mode.
 Contacts search is inline, not modal: Tab and arrows keep working there.
 Moving focus away from Contacts — by Tab, a tab click, a row click, or opening
@@ -342,8 +342,9 @@ network actions. The latest `share_offered` / `share_updated` /
 `share_rejected` event appears as a "Last event" line. Locally owned shares can
 be toggled between private/public and can allow anonymous writes while public;
 the canonical store refuses changes to accepted peer shares. Grants are
-editable here too, and connected peers are ordered by peer ID. Creation,
-binding, snapshots, discovery and publish actions remain Flutter/web actions.
+editable here too, and connected peers are ordered by peer ID. `c` creates a
+private, read-only share; binding, snapshots, discovery and publish actions
+remain Flutter/web actions.
 
 | Key | Action |
 |-----|--------|
@@ -353,6 +354,7 @@ binding, snapshots, discovery and publish actions remain Flutter/web actions.
 | `PgUp` / `PgDn` | Page the share selection |
 | `Home` / `End` | Jump to the first / last share |
 | `Click` in the list pane | Select that share (the detail pane follows) |
+| `c` | Create a private, read-only share from a name prompt |
 | `a` | Add or upgrade a grant on the selected private share |
 | `x` | Revoke the highlighted grant |
 | `p` | Toggle the selected owned share between private and public |
@@ -361,6 +363,10 @@ binding, snapshots, discovery and publish actions remain Flutter/web actions.
 | `o` | Re-advertise the share to the selected peer with a Rust-built offer |
 | `r` | Re-read the share list from Rust |
 | `Esc` | Return to the Chat tab |
+
+The creation prompt takes a share name. Rust validates it through
+`shares::validate_share_name`; invalid names keep the prompt open with an error
+popup, and a successful create selects the new row in the list.
 
 The add prompt takes a verified user id. `Tab` switches between `readonly`
 and `readwrite`, `Enter` saves through Rust's canonical grant store, and `Esc`

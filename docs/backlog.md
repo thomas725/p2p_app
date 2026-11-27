@@ -130,7 +130,7 @@ Still open (device adapters, not protocol work):
   both un-gated. Do **not** gate either behind it; that happened once and was
   corrected.
 
-### File shares / folder sync UI — **Rust core, both frontends' list/detail/grant editor, Flutter/web discovery, network actions and deletion publishing shipped; creation/binding/native snapshots deferred**
+### File shares / folder sync UI — **Rust core, both frontends' list/detail/grant editor, Flutter/web discovery, network actions and deletion publishing shipped; TUI creation shipped; binding/native snapshots deferred**
 
 The Rust core landed in `7dfaefe` (domain, DB, ACLs) and the share-lane
 follow-up (`/p2p-chat/shares/1.0.0` wire protocol, swarm handlers, events, GC
@@ -228,11 +228,16 @@ Shipped after the core:
   canonical offer in Rust before advertising it. The selection is clamped on
   connect/disconnect, and modal editors keep the keys. Record:
   [`archive/2026-11-27_tui_share_network_actions.md`](archive/2026-11-27_tui_share_network_actions.md).
+- TUI share creation: `c` opens a modal name prompt and commits a private,
+  read-only share through canonical `shares::create_share`. No local root is
+  captured, invalid names keep the text open, and the new row is selected after
+  the store reload. Record:
+  [`archive/2026-11-27_tui_share_creation.md`](archive/2026-11-27_tui_share_creation.md).
 
 Still open (UI/integration, not protocol work):
 
-- TUI Shares tab actions: create/bind/snapshot and discovery/publish actions
-  (the list, detail, event notice, grant/visibility editors and network
+- TUI Shares tab actions: bind/snapshot and discovery/publish actions (the
+  list, detail, event notice, creation, grant/visibility editors and network
   refresh/re-advertise already ship);
 - Native share creation/binding and folder snapshot UI. Deletion publishing,
   discovery, manifest refresh and re-advertise already ship on both transports;
@@ -307,6 +312,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| TUI share creation | 2026-11-27 | [`archive/2026-11-27_tui_share_creation.md`](archive/2026-11-27_tui_share_creation.md) |
 | Notification focus lifecycle + connected-only share pickers | 2026-11-27 | [`archive/2026-11-27_notification_focus_lifecycle.md`](archive/2026-11-27_notification_focus_lifecycle.md) |
 | Device-centric location sharing (US-055) | 2026-11-27 | [`archive/2026-11-27_device_location_sharing.md`](archive/2026-11-27_device_location_sharing.md) |
 | Incoming attachment descriptors survive Flutter/web persistence | 2026-11-27 | [`archive/2026-11-27_incoming_attachment_descriptors.md`](archive/2026-11-27_incoming_attachment_descriptors.md) |
