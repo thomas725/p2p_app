@@ -104,8 +104,6 @@
 
 | Folder | File                               | Lines | Chars | Depth | Description                           |
 |:-------|:-----------------------------------|------:|------:|------:|--------------------------------------:|
-| models | insertable_tests.rs                |    77 |  2371 |     3 | Diesel insertable model tests         |
-| models | queryable_tests.rs                 |   157 |  4819 |     3 | Diesel queryable model tests          |
 | shared | logging_test_utils.rs              |    18 |   877 |     2 | Logging test helpers                  |
 | shared | tui_test_state.rs                  |   250 |  7360 |     6 | TUI test state builders               |
 | tests  | additional_coverage.rs             |   146 |  4516 |     2 | Additional coverage tests             |
@@ -172,7 +170,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   422 | 12805 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 31,781 lines, 1,073,532 characters
+**Total:** 65 test files, 31,547 lines, 1,066,342 characters
 
 ## Dart Source Files
 

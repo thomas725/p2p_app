@@ -238,8 +238,6 @@ def get_test_file_purpose(filepath: str) -> str:
         'unit_files.rs': 'files module tests',
         'unit_shares.rs': 'shares module tests',
         'unit_identity.rs': 'identity module tests',
-        'queryable_tests.rs': 'Diesel queryable model tests',
-        'insertable_tests.rs': 'Diesel insertable model tests',
         'swarm_handler.rs': 'swarm_handler module tests',
         'tui_tabs_dedicated.rs': 'Dedicated TUI tabs tests',
         'tui_test_state_dedicated.rs': 'Dedicated TUI test-state tests',

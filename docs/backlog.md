@@ -276,6 +276,7 @@ here so they are not mistaken for unfinished work.
 |---|---|---|
 | Rust-owned seen timestamps in Flutter Contacts/Peer Info | 2026-11-27 | [`archive/2026-11-27_rust_owned_seen_timestamps.md`](archive/2026-11-27_rust_owned_seen_timestamps.md) |
 | Rust-owned last-connection label in Flutter Settings | 2026-11-27 | [`archive/2026-11-27_last_connection_rust_label.md`](archive/2026-11-27_last_connection_rust_label.md) |
+| Orphaned generated-model test files | 2026-11-27 | [`archive/2026-11-27_orphan_generated_model_tests.md`](archive/2026-11-27_orphan_generated_model_tests.md) |
 | Display-parity details (e2e reload marker, DM reactions, Peer Info stats) | 2026-11-27 | [`archive/2026-11-27_display_parity_details.md`](archive/2026-11-27_display_parity_details.md) |
 | TUI mouse ownership matches prompt/call/editor precedence | 2026-11-27 | [`archive/2026-11-27_tui_mouse_ownership.md`](archive/2026-11-27_tui_mouse_ownership.md) |
 | TUI modal-editor boundary + renderer parity | 2026-11-27 | [`archive/2026-11-27_tui_modal_editor_boundary.md`](archive/2026-11-27_tui_modal_editor_boundary.md) |
