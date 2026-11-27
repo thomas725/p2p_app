@@ -187,16 +187,21 @@ stored in `msg_id` so those rows can be replied to later; see
 `src/notifications.rs` owns the whole policy: it decides which incoming events
 notify, builds the display text, and attaches a `Notification` payload
 (`title`, bounded single-line `body`, a stable `conversationKey`, and `sound` /
-`desktop` flags) to every broadcast, DM and group swarm event. Frontends are
-thin delivery adapters: the TUI emits a bell / OSC 777 sequence after drawing,
-Flutter and web ask `lib/src/util/notifications.dart` to deliver, and Android
-posts through a MethodChannel. The one frontend rule — suppress when the app is
-foregrounded **and** that conversation is on screen — lives with the adapter;
-permission is requested only when the desktop channel is enabled. The two
-channels persist in `app_settings` (`getNotificationSettings` /
-`setNotificationSettings`, mirrored in web JSON). See
+`desktop` flags) to every broadcast, DM and group swarm event. The same module's
+`conversation_key_for_tab` maps a visible TUI chat tab to that key, so the
+notification payload and focus suppression cannot drift; `AppState::active_conversation_key`
+delegates to it. Frontends are thin delivery adapters: the TUI emits a bell /
+OSC 777 sequence after drawing, Flutter and web ask
+`lib/src/util/notifications.dart` to deliver, and Android posts through a
+MethodChannel. The one frontend rule — suppress when the app is foregrounded
+**and** that conversation is on screen — lives with the adapter; permission is
+requested only when the desktop channel is enabled. The two channels persist in
+`app_settings` (`getNotificationSettings` / `setNotificationSettings`, mirrored
+in web JSON). See
 [`archive/2026-11-21_notifications.md`](archive/2026-11-21_notifications.md)
-for the full slice.
+and
+[`archive/2026-11-27_notification_focus_key.md`](archive/2026-11-27_notification_focus_key.md)
+for the full records.
 
 ### Network diagnostics
 

@@ -1045,6 +1045,33 @@ fn test_active_conversation_key_tracks_the_visible_chat() {
         state.active_conversation_key().as_deref(),
         Some("dm:peer-42")
     );
+
+    // Inspecting the same peer's info is not the same as reading the DM.
+    let peer_info_tab = state.dynamic_tabs.add_peer_info_tab("peer-42".into());
+    state.active_tab = peer_info_tab;
+    assert_eq!(state.active_conversation_key(), None);
+
+    // The Shares suffix tab is not a conversation either.
+    state.active_tab = state.dynamic_tabs.total_tab_count().saturating_sub(1);
+    assert_eq!(state.active_conversation_key(), None);
+
+    // Notification focus ('broadcast') is not the draft/cursor key ('chat').
+    state.active_tab = 0;
+    assert_eq!(
+        state.active_conversation_key().as_deref(),
+        Some("broadcast")
+    );
+    assert_eq!(
+        p2p_app::notifications::conversation_key_for_tab(
+            &state.dynamic_tabs.tab_index_to_content(state.active_tab)
+        )
+        .as_deref(),
+        state.active_conversation_key().as_deref()
+    );
+    assert_eq!(
+        AppState::conversation_key(&p2p_app::tui_tabs::TabContent::Chat).as_deref(),
+        Some("chat")
+    );
 }
 
 // ── target_attachment_path (TUI received-attachment open, Flutter parity) ───

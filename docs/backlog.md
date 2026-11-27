@@ -285,6 +285,7 @@ here so they are not mistaken for unfinished work.
 | Item | When | Where |
 |---|---|---|
 | TUI private-share grant editor | 2026-11-27 | [`archive/2026-11-27_tui_share_grant_editor.md`](archive/2026-11-27_tui_share_grant_editor.md) |
+| Canonical notification focus keys | 2026-11-27 | [`archive/2026-11-27_notification_focus_key.md`](archive/2026-11-27_notification_focus_key.md) |
 | TUI message cursor + row-targeted chat verbs | 2026-11-27 | [`archive/2026-11-27_tui_message_selection.md`](archive/2026-11-27_tui_message_selection.md) |
 | Rust-owned seen timestamps in Flutter Contacts/Peer Info | 2026-11-27 | [`archive/2026-11-27_rust_owned_seen_timestamps.md`](archive/2026-11-27_rust_owned_seen_timestamps.md) |
 | Rust-owned last-connection label in Flutter Settings | 2026-11-27 | [`archive/2026-11-27_last_connection_rust_label.md`](archive/2026-11-27_last_connection_rust_label.md) |

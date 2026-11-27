@@ -1008,18 +1008,14 @@ impl AppState {
     }
 
     /// Notification focus key of the active tab (`broadcast`, `dm:<peer>`,
-    /// `group:<id>`), or `None` for tabs without a chat conversation. Mirrors
-    /// `notifications::conversation_key` so a message arriving in the
-    /// conversation already on screen does not fire a notification (US-028).
+    /// `group:<id>`), or `None` for tabs without a chat conversation. The
+    /// mapping lives with the notification payload so both sides use the same
+    /// rule and do not suppress a message that is not on screen (US-028).
     #[must_use]
     pub fn active_conversation_key(&self) -> Option<String> {
-        use p2p_app::tui_tabs::TabContent;
-        match self.dynamic_tabs.tab_index_to_content(self.active_tab) {
-            TabContent::Chat => Some("broadcast".to_string()),
-            TabContent::Direct(peer) => Some(format!("dm:{peer}")),
-            TabContent::GroupChat(id) => Some(format!("group:{id}")),
-            _ => None,
-        }
+        p2p_app::notifications::conversation_key_for_tab(
+            &self.dynamic_tabs.tab_index_to_content(self.active_tab),
+        )
     }
 
     /// Key shared by a conversation's reply draft and message cursor (`chat`,

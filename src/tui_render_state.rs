@@ -111,8 +111,9 @@ pub struct TuiRenderState {
     pub share_grant_selection: usize,
     /// Grants by share id, used by the Shares tab detail pane.
     pub share_grants: HashMap<String, Vec<crate::shares::ShareGrant>>,
-    /// Action label and mode of the active grant prompt, when one is open.
+    /// Action label of the active grant prompt, when one is open.
     pub share_grant_action: Option<&'static str>,
+    /// Selected access mode while adding a grant; `None` outside the prompt.
     pub share_grant_mode: Option<crate::shares::ShareMode>,
     /// Latest share-lane event (offer/update/rejection), shown on the Shares
     /// tab so swarm activity is visible without the Log tab.

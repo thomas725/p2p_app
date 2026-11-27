@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        71 |
-| Total Rust Lines      |    42,336 |
-| Total Rust Chars      | 1,607,859 |
-| Avg Lines/Rust File   |       596 |
-| Avg Chars/Rust File   |    22,645 |
+| Total Rust Lines      |    42,395 |
+| Total Rust Chars      | 1,610,296 |
+| Avg Lines/Rust File   |       597 |
+| Avg Chars/Rust File   |    22,680 |
 | Total Dart Files      |        50 |
 | Total Dart Lines      |    22,652 |
 | Total Dart Chars      |   727,960 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       153 |
 | Avg Chars/Kotlin File |     5,524 |
 
-**Grand Total:** 125 files, 65,600 lines, 2,357,918 characters
+**Grand Total:** 125 files, 65,659 lines, 2,360,355 characters
 
 ## Rust Source Files
 
@@ -53,7 +53,7 @@
 | src                     | network.rs           |     3 |  2655 |    84 |        - |       - | Network size classification                        |
 | src                     | network_config.rs    |     3 |  7751 |   216 |        - |       - | Source file                                        |
 | src                     | nickname.rs          |     5 | 13241 |   343 |        - |       - | Nickname management                                |
-| src                     | notifications.rs     |     4 |  8213 |   241 |        - |       - | Source file                                        |
+| src                     | notifications.rs     |     4 | 10791 |   303 |        - |       - | Source file                                        |
 | src                     | peers.rs             |     4 | 10590 |   294 |        - |       - | Peer management & tracking                         |
 | src                     | reactions.rs         |     5 | 17473 |   463 |        - |       - | Source file                                        |
 | src                     | relay.rs             |     5 |  3764 |    95 |        - |       - | Source file                                        |
@@ -64,7 +64,7 @@
 | src                     | swarm_handler.rs     |     7 | 100607 |  2620 |        - |       - | Network event translation                          |
 | src                     | theme.rs             |     4 |  7223 |   234 |        - |       - | Source file                                        |
 | src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities                   |
-| src                     | tui_render_state.rs  |     4 | 30841 |   805 |        - |       - | TUI render state & tab content                     |
+| src                     | tui_render_state.rs  |     4 | 30910 |   806 |        - |       - | TUI render state & tab content                     |
 | src                     | tui_tabs.rs          |     6 | 12023 |   348 |        - |       - | Tab management & navigation                        |
 | src                     | types.rs             |     4 | 19537 |   512 |        - |       - | Event & command type defs                          |
 | src/bin                 | p2p_chat.rs          |     7 |  6917 |   192 |        - |       - | CLI chat application                               |
@@ -79,7 +79,7 @@
 | src/bin/tui             | main_loop.rs         |     6 | 15979 |   400 |        - |       - | Task orchestration & async                         |
 | src/bin/tui             | message_handlers.rs  |     4 | 17819 |   536 |        - |       - | Message sending logic                              |
 | src/bin/tui             | scroll_handlers.rs   |     4 | 22994 |   621 |        - |       - | Scroll & hover-aware navigation                    |
-| src/bin/tui             | state.rs             |     8 | 87650 |  2081 |        - |       - | Shared application state                           |
+| src/bin/tui             | state.rs             |     8 | 87440 |  2077 |        - |       - | Shared application state                           |
 | src/bin/tui/render_loop | layout.rs            |     5 |  3857 |   102 |        - |       - | UI layout component rendering                      |
 | src/bin/tui/render_loop | mod.rs               |     6 | 16568 |   419 |        - |       - | Render loop orchestration (60 FPS)                 |
 | src/generated           | columns.rs           |     1 |  4561 |   108 |        - |       - | Auto-generated column definitions                  |
@@ -98,7 +98,7 @@
 | src/web                 | methods.rs           |     4 | 34382 |  1071 |        - |       - | Web JSON method dispatch                           |
 | src/web                 | mod.rs               |     7 | 64763 |  1689 |        - |       - | Web server (axum HTTP+WS)                          |
 
-**Total:** 71 files, 42,336 lines, 1,607,859 characters
+**Total:** 71 files, 42,395 lines, 1,610,296 characters
 
 ## Rust Test Files
 
@@ -137,7 +137,7 @@
 | unit   | unit_bin_tui_render_loop_layout.rs |    98 |  3437 |     2 | Test file                             |
 | unit   | unit_bin_tui_render_loop_mod.rs    |   494 | 17406 |     3 | Unit tests for TUI render loop        |
 | unit   | unit_bin_tui_scroll_handlers.rs    |   903 | 29318 |     4 | Unit tests for TUI scroll handlers    |
-| unit   | unit_bin_tui_state.rs              |  1573 | 52913 |     3 | Unit tests for TUI state              |
+| unit   | unit_bin_tui_state.rs              |  1600 | 53924 |     3 | Unit tests for TUI state              |
 | unit   | unit_bin_tui_test_helpers.rs       |   237 |  8407 |     5 | Unit tests for TUI test helpers       |
 | unit   | unit_blocklist.rs                  |   112 |  3932 |     3 | Test file                             |
 | unit   | unit_call_media.rs                 |   148 |  4734 |     3 | Test file                             |
@@ -170,7 +170,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   422 | 12805 |     3 | Unit tests for types module           |
 
-**Total:** 65 test files, 32,785 lines, 1,111,324 characters
+**Total:** 65 test files, 32,812 lines, 1,112,335 characters
 
 ## Dart Source Files
 

@@ -117,11 +117,37 @@ pub fn for_message(
 fn conversation_key(event_type: &str, peer_id: &str, group_id: Option<&str>) -> Option<String> {
     match event_type {
         "broadcast" => Some("broadcast".to_string()),
-        "dm" => Some(format!("dm:{peer_id}")),
+        "dm" => (!peer_id.is_empty()).then(|| format!("dm:{peer_id}")),
         "group_message" => group_id
             .filter(|id| !id.is_empty())
             .map(|id| format!("group:{id}")),
         _ => None,
+    }
+}
+
+/// Focus-suppression key of a visible chat tab.
+///
+/// Tabs are translated into the canonical message-event arguments so the TUI
+/// and the notification payload cannot drift: a message is suppressed only
+/// when the conversation it belongs to is already on screen. Non-chat tabs,
+/// including Peer Info for a DM partner, never suppress an alert.
+///
+/// This is deliberately distinct from the TUI's draft/cursor key, which uses
+/// `chat` instead of `broadcast` for the broadcast conversation.
+#[must_use]
+pub fn conversation_key_for_tab(tab: &crate::tui_tabs::TabContent) -> Option<String> {
+    use crate::tui_tabs::TabContent;
+
+    match tab {
+        TabContent::Chat => conversation_key("broadcast", "", None),
+        TabContent::Direct(peer_id) => conversation_key("dm", peer_id, None),
+        TabContent::GroupChat(group_id) => conversation_key("group_message", "", Some(group_id)),
+        TabContent::Contacts
+        | TabContent::Groups
+        | TabContent::Log
+        | TabContent::Settings
+        | TabContent::Shares
+        | TabContent::PeerInfo(_) => None,
     }
 }
 
@@ -210,9 +236,45 @@ mod tests {
             conversation_key("group_message", "peer", Some("grp1")).as_deref(),
             Some("group:grp1")
         );
-        // A group event without an id cannot be focused — never notify.
+        // Malformed ids cannot become focus keys — never notify for them.
+        assert!(conversation_key("dm", "", None).is_none());
         assert!(conversation_key("group_message", "peer", None).is_none());
+        assert!(conversation_key("group_message", "peer", Some("")).is_none());
         assert!(conversation_key("call_invite", "peer", None).is_none());
+    }
+
+    #[test]
+    fn conversation_key_for_tab_uses_the_same_rule_as_message_events() {
+        use crate::tui_tabs::TabContent;
+
+        assert_eq!(
+            conversation_key_for_tab(&TabContent::Chat).as_deref(),
+            conversation_key("broadcast", "", None).as_deref()
+        );
+        assert_eq!(
+            conversation_key_for_tab(&TabContent::Direct("peer42".to_string())).as_deref(),
+            conversation_key("dm", "peer42", None).as_deref()
+        );
+        assert_eq!(
+            conversation_key_for_tab(&TabContent::GroupChat("grp1".to_string())).as_deref(),
+            conversation_key("group_message", "", Some("grp1")).as_deref()
+        );
+
+        // Malformed tabs cannot focus a malformed message event.
+        assert!(conversation_key_for_tab(&TabContent::Direct(String::new())).is_none());
+        assert!(conversation_key_for_tab(&TabContent::GroupChat(String::new())).is_none());
+
+        // Peer Info for a DM partner is not the DM conversation.
+        for tab in [
+            TabContent::Contacts,
+            TabContent::Groups,
+            TabContent::Log,
+            TabContent::Settings,
+            TabContent::Shares,
+            TabContent::PeerInfo("peer42".to_string()),
+        ] {
+            assert_eq!(conversation_key_for_tab(&tab), None);
+        }
     }
 
     #[test]
