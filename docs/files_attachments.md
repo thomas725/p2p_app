@@ -177,8 +177,12 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   anonymous writes through `shares::set_visibility`, while Flutter's owner-only
   detail controls use the same setter via FRB/web `setShareVisibility`. Share
   events and editor commits reload the canonical store and leave a visible
-  notice. Native creation/binding/folder snapshots and TUI
-  offer/manifest/publish actions remain deferred.
+  notice. The TUI detail pane also lists connected peers in canonical peer-ID
+  order: `Left`/`Right` selects one, `m` queues `RequestShareManifest`, and `o`
+  rebuilds the offer through `shares::offer_for_share` before queueing
+  `SendShareOffer`. Selection is clamped on connect/disconnect, and modal
+  editors keep ownership of all keys. Native creation/binding/folder snapshots
+  and TUI share discovery/publish actions remain deferred.
 
 ## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
 

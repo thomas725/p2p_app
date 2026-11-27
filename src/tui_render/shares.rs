@@ -29,6 +29,8 @@ fn detail_lines(
     grant_selection: usize,
     notice: Option<&str>,
     own_user_id: Option<&str>,
+    peer_ids: &[String],
+    peer_selection: usize,
 ) -> Vec<String> {
     let mut lines = Vec::new();
     if let Some(notice) = notice {
@@ -85,6 +87,21 @@ fn detail_lines(
         }
         None => lines.push("Files: no manifest yet".to_string()),
     }
+    lines.push(String::new());
+    lines.push(format!("Connected peers ({}):", peer_ids.len()));
+    if peer_ids.is_empty() {
+        lines.push("  none".to_string());
+        return lines;
+    }
+    for (index, peer_id) in peer_ids.iter().enumerate() {
+        let marker = if index == peer_selection.min(peer_ids.len().saturating_sub(1)) {
+            ">"
+        } else {
+            " "
+        };
+        lines.push(format!(" {marker} {peer_id}"));
+    }
+    lines.push("  Left/Right select | m: refresh manifest | o: re-advertise".to_string());
     lines
 }
 
@@ -131,6 +148,8 @@ pub fn render_shares_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRend
         state.share_grant_selection,
         state.share_event_notice.as_deref(),
         state.own_user_id.as_deref(),
+        &state.share_peer_ids,
+        state.share_peer_selection,
     );
     let para = Paragraph::new(lines.join("\n"))
         .block(bordered_block("Share details".to_string()))

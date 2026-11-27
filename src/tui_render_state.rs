@@ -118,6 +118,10 @@ pub struct TuiRenderState {
     /// Latest share-lane event (offer/update/rejection), shown on the Shares
     /// tab so swarm activity is visible without the Log tab.
     pub share_event_notice: Option<String>,
+    /// Connected peers in canonical order, used by the Shares network pane.
+    pub share_peer_ids: Vec<String>,
+    /// Highlighted connected peer for Shares network actions.
+    pub share_peer_selection: usize,
     /// Scroll offset for chat tab
     pub chat_scroll_offset: usize,
     /// Whether chat tab and log tab auto-scroll to bottom
@@ -228,6 +232,8 @@ impl TuiRenderState {
             share_grant_action: None,
             share_grant_mode: None,
             share_event_notice: None,
+            share_peer_ids: Vec::new(),
+            share_peer_selection: 0,
             input_text: String::new(),
             log_messages: VecDeque::new(),
             input_mode: crate::InputMode::Chat,

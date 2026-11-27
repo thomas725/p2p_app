@@ -224,6 +224,9 @@ pub struct AppState {
     pub share_grant_prompt: Option<ShareGrantPrompt>,
     /// Latest share-lane event text, shown on the Shares tab.
     pub share_event_notice: Option<String>,
+    /// Peer targeted by the Shares tab's network actions. Indexes the canonical
+    /// sorted connected-peer list, never the `HashSet` iteration order.
+    pub share_peer_selection: usize,
 
     // UI State (TUI-specific)
     pub active_tab: usize,
@@ -604,6 +607,37 @@ impl AppState {
             self.share_grant_selection = 0;
         }
         self.share_selection = index;
+    }
+
+    /// Connected peers in the canonical order used by the Shares network pane.
+    #[must_use]
+    pub fn share_peer_ids(&self) -> Vec<String> {
+        self.connected.sorted_connected_peer_ids()
+    }
+
+    /// Peer the Shares network actions target, if any peer is connected.
+    #[must_use]
+    pub fn selected_share_peer_id(&self) -> Option<String> {
+        self.share_peer_ids()
+            .get(self.share_peer_selection)
+            .cloned()
+    }
+
+    /// Keep the network-peer cursor inside the current connected-peer list.
+    pub fn clamp_share_peer_selection(&mut self) {
+        let len = self.share_peer_ids().len();
+        self.share_peer_selection = self.share_peer_selection.min(len.saturating_sub(1));
+    }
+
+    /// Move the Shares network-peer cursor with Left/Right.
+    pub fn move_share_peer_selection(&mut self, key: crossterm::event::KeyCode) {
+        use crossterm::event::KeyCode;
+        let last = self.share_peer_ids().len().saturating_sub(1);
+        self.share_peer_selection = match key {
+            KeyCode::Left => self.share_peer_selection.saturating_sub(1),
+            KeyCode::Right => self.share_peer_selection.saturating_add(1).min(last),
+            _ => self.share_peer_selection,
+        };
     }
 
     /// Clamp the grant cursor after a store reload changes the selected share's
@@ -1839,6 +1873,7 @@ impl AppState {
             share_grant_selection: 0,
             share_grant_prompt: None,
             share_event_notice: None,
+            share_peer_selection: 0,
             input_mode: p2p_app::InputMode::Chat,
             dynamic_tabs: DynamicTabs::new(),
             active_tab: 0,

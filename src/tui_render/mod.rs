@@ -220,7 +220,7 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Ctrl+C: copy all | c: clear logs | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Shares => {
-            "Tab: next | Up/Down: select share | Ctrl+Up/Down: select grant | a: add grant | x: revoke grant | r: refresh | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Up/Down: select share | Left/Right: select peer | Ctrl+Up/Down: select grant | a: add grant | x: revoke grant | m: refresh manifest | o: re-advertise | r: refresh | F12: mouse | ?: help | Ctrl+Q: quit"
         }
     }
 }
@@ -253,7 +253,7 @@ Settings: Ctrl+P -> connected peer / bound device | click a peer row for its Pee
 Contacts: i Info | e expand | c call | d link device | / search | 1-5 sort | o reverse
 Groups: g create/join | d leave | y confirm leave
 Peer Info: n local nickname | c call | d link device | b block / unblock
-Shares: Up/Down select share | Ctrl+Up/Down select grant | a add | x revoke | r refresh
+Shares: Up/Down select share | Left/Right select peer | Ctrl+Up/Down select grant | a add | x revoke | m manifest | o re-advertise | r refresh
 Log: Ctrl+C copy all logs | c clear logs
 Settings: n own nickname | d dial | b/r add peer | x remove | l LAN only | t dark/light | c accent | s sound | o desktop alert
 

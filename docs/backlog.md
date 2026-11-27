@@ -215,12 +215,17 @@ Shipped after the core:
   canonical offer and sends it to one peer; the raw `sendShareOffer` FRB/web
   binding is gone and all Dart transports pass only share and peer IDs. Record:
   [`archive/2026-11-27_rust_owned_share_readvertise.md`](archive/2026-11-27_rust_owned_share_readvertise.md).
+- TUI share network actions: `Left`/`Right` selects a connected peer from the
+  canonical sorted list, `m` requests that peer's manifest, and `o` rebuilds a
+  canonical offer in Rust before advertising it. The selection is clamped on
+  connect/disconnect, and modal editors keep the keys. Record:
+  [`archive/2026-11-27_tui_share_network_actions.md`](archive/2026-11-27_tui_share_network_actions.md).
 
 Still open (UI/integration, not protocol work):
 
-- TUI Shares tab actions: create/bind/snapshot and offer/manifest/publish
-  actions (the list, detail, event notice, grant and visibility editors
-  already ship);
+- TUI Shares tab actions: create/bind/snapshot and discovery/publish actions
+  (the list, detail, event notice, grant/visibility editors and network
+  refresh/re-advertise already ship);
 - Native share creation/binding and folder snapshot UI. Deletion publishing,
   discovery, manifest refresh and re-advertise already ship on both transports;
   the browser remains a display client — adding new files needs a real local

@@ -330,16 +330,18 @@ message while the Settings tab is active.
 
 A selectable list of this install's shares on the left and the highlighted
 share's details on the right: owner, local root, revision, visibility,
-private-share grants and manifest files. The latest `share_offered` /
-`share_updated` / `share_rejected` event appears as a "Last event" line.
-Locally owned shares can be toggled between private/public and can allow
-anonymous writes while public; the canonical store refuses changes to accepted
-peer shares. Grants are editable here too. Creation, binding, snapshots and
-publish actions remain Flutter/web actions.
+private-share grants, manifest files and the connected peers available for
+network actions. The latest `share_offered` / `share_updated` /
+`share_rejected` event appears as a "Last event" line. Locally owned shares can
+be toggled between private/public and can allow anonymous writes while public;
+the canonical store refuses changes to accepted peer shares. Grants are
+editable here too, and connected peers are ordered by peer ID. Creation,
+binding, snapshots, discovery and publish actions remain Flutter/web actions.
 
 | Key | Action |
 |-----|--------|
 | `↑` / `↓` | Move the share selection |
+| `←` / `→` | Move the connected-peer selection for network actions |
 | `Ctrl+Up` / `Ctrl+Down` | Move the grant cursor in the detail pane |
 | `PgUp` / `PgDn` | Page the share selection |
 | `Home` / `End` | Jump to the first / last share |
@@ -348,6 +350,8 @@ publish actions remain Flutter/web actions.
 | `x` | Revoke the highlighted grant |
 | `p` | Toggle the selected owned share between private and public |
 | `w` | Toggle anonymous writes on the selected owned public share |
+| `m` | Ask the selected peer for the share's current manifest |
+| `o` | Re-advertise the share to the selected peer with a Rust-built offer |
 | `r` | Re-read the share list from Rust |
 | `Esc` | Return to the Chat tab |
 
@@ -358,8 +362,11 @@ edited, and `Enter` removes the highlighted user's grant. Both keep the
 prompt open with an error popup if the store rejects the change. Changing the
 share resets the grant cursor, so `x` cannot retarget after a wheel or click.
 
-Clicking the detail pane does not change the selection. `r` is tab-specific:
-on Settings it adds a relay, on Shares it refreshes.
+`m` and `o` target the highlighted connected peer; both require a selected
+share and fail with a popup when no peer is connected. Re-advertising uses the
+same Rust offer builder as the mobile/web binding, so no local-only owner marker
+is put on the wire. Clicking the detail pane does not change the selection. `r`
+is tab-specific: on Settings it adds a relay, on Shares it refreshes.
 Share events and grant commits also refresh the list automatically, so `r` is
 only needed after an action whose result arrives asynchronously.
 

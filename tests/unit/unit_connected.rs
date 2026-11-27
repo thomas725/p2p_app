@@ -63,3 +63,22 @@ fn connected_peer_ids_iterates_current_set() {
     t.on_peer_disconnected("a", 1.0);
     assert_eq!(t.connected_peer_ids().count(), 1);
 }
+
+#[test]
+fn sorted_connected_peer_ids_is_deterministic_and_tracks_disconnects() {
+    let mut t = ConnectedTracker::new();
+    for peer in ["peer-c", "peer-a", "peer-b"] {
+        t.on_peer_connected(peer.to_string());
+    }
+    assert_eq!(
+        t.sorted_connected_peer_ids(),
+        vec!["peer-a", "peer-b", "peer-c"]
+    );
+
+    t.on_peer_disconnected("peer-a", 1.0);
+    assert_eq!(t.sorted_connected_peer_ids(), vec!["peer-b", "peer-c"]);
+    assert!(
+        !t.sorted_connected_peer_ids()
+            .contains(&"peer-a".to_string())
+    );
+}

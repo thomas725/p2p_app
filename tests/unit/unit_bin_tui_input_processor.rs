@@ -5760,3 +5760,167 @@ fn test_share_visibility_keys_refuse_foreign_shares_and_private_writes() {
     });
     close_share_grant_db();
 }
+
+// ── Shares network actions ────────────────────────────────────────────────
+
+#[test]
+#[serial]
+fn test_share_network_keys_select_peer_and_queue_canonical_commands() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, mut state, share_id) =
+            share_db_state("owner", p2p_app::shares::ShareKind::Public, false, &[]);
+        // Insertion order is deliberately the reverse of canonical order.
+        state.connected.on_peer_connected("peer-b".to_string());
+        state.connected.on_peer_connected("peer-a".to_string());
+        let mut session = KeySession::new(state);
+
+        let frame = session.frame_text().await;
+        assert!(frame.contains("Connected peers (2)"), "frame: {frame}");
+        assert!(frame.contains("> peer-a"), "frame: {frame}");
+
+        assert!(!session.press_code(KeyCode::Right).await);
+        assert_eq!(
+            session
+                .state
+                .lock()
+                .await
+                .selected_share_peer_id()
+                .as_deref(),
+            Some("peer-b")
+        );
+        let frame = session.frame_text().await;
+        assert!(frame.contains("> peer-b"), "frame: {frame}");
+
+        assert!(!session.press_char('m').await);
+        let commands = session.drain_commands();
+        assert_eq!(commands.len(), 1);
+        match &commands[0] {
+            SwarmCommand::RequestShareManifest {
+                peer_id,
+                share_id: id,
+            } => {
+                assert_eq!(peer_id, "peer-b");
+                assert_eq!(id, &share_id);
+            }
+            other => panic!("expected manifest request, got {other:?}"),
+        }
+        assert_eq!(
+            session.state.lock().await.share_event_notice.as_deref(),
+            Some("Manifest requested from peer-b")
+        );
+
+        assert!(!session.press_char('o').await);
+        let commands = session.drain_commands();
+        assert_eq!(commands.len(), 1);
+        match &commands[0] {
+            SwarmCommand::SendShareOffer { peer_ids, offer } => {
+                assert_eq!(peer_ids, &vec!["peer-b".to_string()]);
+                assert_eq!(offer.share_id, share_id);
+                assert_eq!(offer.name, "Docs");
+                assert_eq!(offer.owner_user_id.as_deref(), Some("owner"));
+            }
+            other => panic!("expected share offer, got {other:?}"),
+        }
+        assert_eq!(
+            session.state.lock().await.share_event_notice.as_deref(),
+            Some("Share re-advertised to peer-b")
+        );
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_network_actions_require_share_and_connected_peer() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, mut state, share_id) =
+            share_db_state("owner", p2p_app::shares::ShareKind::Public, false, &[]);
+        state.connected.on_peer_connected("peer-a".to_string());
+        state.shares.clear();
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('m').await);
+        assert_eq!(
+            session.state.lock().await.popup.as_deref(),
+            Some("Select a share and a connected peer")
+        );
+        assert!(session.drain_commands().is_empty());
+        assert!(!session.press_code(KeyCode::Esc).await);
+
+        {
+            let mut s = session.state.lock().await;
+            s.reload_shares();
+            s.connected.on_peer_disconnected("peer-a", 1.0);
+        }
+        assert!(!session.press_char('m').await);
+        assert_eq!(
+            session.state.lock().await.popup.as_deref(),
+            Some("Select a share and a connected peer")
+        );
+        assert!(session.drain_commands().is_empty());
+        assert!(!session.press_code(KeyCode::Esc).await);
+
+        p2p_app::shares::delete_share(&share_id).expect("delete share");
+        session
+            .state
+            .lock()
+            .await
+            .connected
+            .on_peer_connected("peer-a".to_string());
+        assert!(!session.press_char('o').await);
+        assert_eq!(
+            session.state.lock().await.popup.as_deref(),
+            Some("Share no longer exists")
+        );
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_network_keys_are_inert_while_grant_editor_is_open() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, mut state, share_id) = share_grant_db_state(
+            p2p_app::shares::ShareKind::Private,
+            &[("alice", p2p_app::shares::ShareMode::ReadOnly)],
+        );
+        state.connected.on_peer_connected("peer-b".to_string());
+        state.connected.on_peer_connected("peer-a".to_string());
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('a').await);
+        assert!(!session.press_code(KeyCode::Right).await);
+        assert!(!session.press_char('m').await);
+        assert!(!session.press_char('o').await);
+
+        {
+            let s = session.state.lock().await;
+            assert!(s.is_editing_share_grant());
+            assert_eq!(s.selected_share_peer_id().as_deref(), Some("peer-a"));
+            assert_eq!(s.chat_input.lines().join("\n"), "mo");
+            assert_eq!(s.share_selection, 0);
+        }
+        assert!(session.drain_commands().is_empty());
+        assert_eq!(
+            p2p_app::shares::list_grants(&share_id)
+                .expect("list grants")
+                .len(),
+            1,
+            "modal keys must not touch the canonical store"
+        );
+    });
+    close_share_grant_db();
+}

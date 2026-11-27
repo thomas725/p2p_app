@@ -7,6 +7,18 @@
 //! bookkeeping.
 
 use std::collections::HashSet;
+use std::hash::BuildHasher;
+
+/// Currently connected peers in deterministic peer-ID order.
+///
+/// Every frontend-facing list that lets a user choose a peer uses this order,
+/// so insertion into the hash set cannot change which row a key or click hits.
+#[must_use]
+pub fn sorted_connected_peer_ids<S: BuildHasher>(connected: &HashSet<String, S>) -> Vec<String> {
+    let mut ids: Vec<String> = connected.iter().cloned().collect();
+    ids.sort();
+    ids
+}
 
 /// Tracks which peers are currently connected and, on disconnect, remembers the
 /// most recent disconnection so frontends can show `last connected to <peer>`.
@@ -54,6 +66,12 @@ impl ConnectedTracker {
     /// Iterate over the IDs of the currently connected peers (`HashSet` order).
     pub fn connected_peer_ids(&self) -> impl Iterator<Item = &str> {
         self.connected.iter().map(String::as_str)
+    }
+
+    /// Currently connected peers in deterministic peer-ID order.
+    #[must_use]
+    pub fn sorted_connected_peer_ids(&self) -> Vec<String> {
+        sorted_connected_peer_ids(&self.connected)
     }
 
     /// The most recent disconnection as `(peer_id, epoch_seconds)`, if any.

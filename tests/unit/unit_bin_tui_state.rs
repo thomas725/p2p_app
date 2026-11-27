@@ -1598,3 +1598,34 @@ fn test_group_leave_drops_the_group_selection_and_reply_draft() {
     p2p_app::db::release_db_lock();
     p2p_app::db::reset_db_url();
 }
+
+#[test]
+fn share_peer_selection_uses_canonical_order_and_clamps() {
+    use crossterm::event::KeyCode;
+
+    let mut s = test_app_state();
+    assert_eq!(s.share_peer_ids(), Vec::<String>::new());
+    assert!(s.selected_share_peer_id().is_none());
+
+    for peer in ["peer-c", "peer-a", "peer-b"] {
+        s.connected.on_peer_connected(peer.to_string());
+    }
+    assert_eq!(s.share_peer_ids(), vec!["peer-a", "peer-b", "peer-c"]);
+    assert_eq!(s.selected_share_peer_id().as_deref(), Some("peer-a"));
+
+    s.move_share_peer_selection(KeyCode::Right);
+    assert_eq!(s.selected_share_peer_id().as_deref(), Some("peer-b"));
+    s.move_share_peer_selection(KeyCode::Left);
+    assert_eq!(s.selected_share_peer_id().as_deref(), Some("peer-a"));
+
+    s.share_peer_selection = usize::MAX;
+    s.clamp_share_peer_selection();
+    assert_eq!(s.selected_share_peer_id().as_deref(), Some("peer-c"));
+
+    for peer in ["peer-a", "peer-b", "peer-c"] {
+        s.connected.on_peer_disconnected(peer, 1.0);
+    }
+    s.clamp_share_peer_selection();
+    assert_eq!(s.share_peer_selection, 0);
+    assert!(s.selected_share_peer_id().is_none());
+}

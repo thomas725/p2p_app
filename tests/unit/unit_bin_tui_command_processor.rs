@@ -828,6 +828,68 @@ async fn test_process_swarm_event_peer_disconnected_decrements() {
 }
 
 #[test]
+fn test_process_swarm_event_share_peer_selection_clamps() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().unwrap();
+    let db_path = dir.path().join("share-peer-selection.db");
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let state = Arc::new(Mutex::new(test_app_state()));
+        let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(8);
+        state.lock().await.share_peer_selection = usize::MAX;
+
+        process_swarm_event(
+            SwarmEvent::PeerConnected("peer-b".to_string()),
+            &state,
+            &swarm_cmd_tx,
+        )
+        .await;
+        {
+            let s = state.lock().await;
+            assert_eq!(s.share_peer_selection, 0);
+            assert_eq!(s.selected_share_peer_id().as_deref(), Some("peer-b"));
+        }
+
+        process_swarm_event(
+            SwarmEvent::PeerConnected("peer-a".to_string()),
+            &state,
+            &swarm_cmd_tx,
+        )
+        .await;
+        process_swarm_event(
+            SwarmEvent::PeerDisconnected("peer-a".to_string()),
+            &state,
+            &swarm_cmd_tx,
+        )
+        .await;
+        {
+            let s = state.lock().await;
+            assert_eq!(s.share_peer_selection, 0);
+            assert_eq!(s.selected_share_peer_id().as_deref(), Some("peer-b"));
+        }
+
+        process_swarm_event(
+            SwarmEvent::PeerDisconnected("peer-b".to_string()),
+            &state,
+            &swarm_cmd_tx,
+        )
+        .await;
+        let s = state.lock().await;
+        assert_eq!(s.share_peer_ids(), Vec::<String>::new());
+        assert_eq!(s.share_peer_selection, 0);
+        assert!(s.selected_share_peer_id().is_none());
+    });
+
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
+
+#[test]
 fn test_process_swarm_event_receipt_stored_in_state() {
     let _guard = p2p_app::db::shared_db_test_lock()
         .lock()

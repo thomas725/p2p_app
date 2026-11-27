@@ -249,6 +249,7 @@ fn apply_peer_connected_state(state: &mut AppState, peer_id: &str) {
         state.resort_peers();
     }
     state.connected.on_peer_connected(peer_id.to_string());
+    state.clamp_share_peer_selection();
 }
 
 /// State mutation: add peer to peer list and re-sort.
@@ -776,6 +777,7 @@ async fn handle_peer_disconnected(state: &SharedState, peer_id: String) {
         s.connected
             .on_peer_disconnected(&peer_id, p2p_app::current_timestamp());
         s.clear_typing(&peer_id);
+        s.clamp_share_peer_selection();
         count
     };
     p2plog_debug(format!("Peer disconnected: {peer_id} (total: {count})"));

@@ -1430,6 +1430,89 @@ fn handle_share_grant_selection_key(
     true
 }
 
+/// Left/Right move the Shares network-peer cursor. Modal editors own every key,
+/// so grant/nickname prompts never move the target underneath the user.
+fn handle_share_peer_selection_key(
+    key_event: &crossterm::event::KeyEvent,
+    s: &mut super::state::AppState,
+    tab: &p2p_app::tui_tabs::TabContent,
+) -> bool {
+    use crossterm::event::KeyCode;
+    use p2p_app::tui_tabs::TabContent;
+
+    if s.is_modal_editor() || !matches!(tab, TabContent::Shares) {
+        return false;
+    }
+    if !matches!(key_event.code, KeyCode::Left | KeyCode::Right) {
+        return false;
+    }
+    s.move_share_peer_selection(key_event.code);
+    true
+}
+
+/// Share id plus canonical connected peer selected for a Shares network action.
+fn share_action_target(s: &super::state::AppState) -> Option<(String, String)> {
+    let share_id = s
+        .shares
+        .get(s.share_selection)
+        .map(|share| share.share_id.clone())?;
+    let peer_id = s.selected_share_peer_id()?;
+    Some((share_id, peer_id))
+}
+
+/// Ask the selected peer for the highlighted share's current manifest.
+fn request_share_manifest(
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) {
+    let Some((share_id, peer_id)) = share_action_target(s) else {
+        s.popup = Some("Select a share and a connected peer".to_string());
+        return;
+    };
+    match swarm_cmd_tx.try_send(SwarmCommand::RequestShareManifest {
+        peer_id: peer_id.clone(),
+        share_id,
+    }) {
+        Ok(()) => {
+            s.share_event_notice = Some(format!("Manifest requested from {peer_id}"));
+        }
+        Err(error) => {
+            s.popup = Some(format!("Could not request share manifest: {error}"));
+        }
+    }
+}
+
+/// Re-advertise the highlighted share to the selected peer. The offer is built
+/// in Rust so no frontend can hand-build or spoof an ownership claim.
+fn readvertise_share(s: &mut super::state::AppState, swarm_cmd_tx: &mpsc::Sender<SwarmCommand>) {
+    let Some((share_id, peer_id)) = share_action_target(s) else {
+        s.popup = Some("Select a share and a connected peer".to_string());
+        return;
+    };
+    match p2p_app::shares::offer_for_share(&share_id) {
+        Ok(Some(offer)) => {
+            match swarm_cmd_tx.try_send(SwarmCommand::SendShareOffer {
+                peer_ids: vec![peer_id.clone()],
+                offer: Box::new(offer),
+            }) {
+                Ok(()) => {
+                    s.share_event_notice = Some(format!("Share re-advertised to {peer_id}"));
+                }
+                Err(error) => {
+                    s.popup = Some(format!("Could not re-advertise share: {error}"));
+                }
+            }
+        }
+        Ok(None) => {
+            s.popup = Some("Share no longer exists".to_string());
+            s.reload_shares();
+        }
+        Err(error) => {
+            s.popup = Some(format!("Could not build share offer: {error}"));
+        }
+    }
+}
+
 /// Arm the add-grant editor for the highlighted private share.
 fn arm_add_share_grant(s: &mut super::state::AppState) {
     let Some((share_id, kind)) = s
@@ -1614,6 +1697,9 @@ async fn handle_key_dispatch(
     if handle_share_grant_selection_key(&key_event, is_ctrl, &tab, s) {
         return;
     }
+    if handle_share_peer_selection_key(&key_event, s, &tab) {
+        return;
+    }
     if handle_global_navigation(&key_event, is_ctrl, on_direct, s).await {
         return;
     }
@@ -1666,7 +1752,7 @@ async fn handle_key_dispatch(
                             | p2p_app::tui_tabs::TabContent::Groups
                             | p2p_app::tui_tabs::TabContent::Log
                     ))
-                && handle_tab_specific_shortcut(key_event.code, s, &tab) => {}
+                && handle_tab_specific_shortcut(key_event.code, s, &tab, swarm_cmd_tx) => {}
         // Remaining Contacts-tab keys: `/` opens the search box (which then owns
         // every keystroke, so typing never re-sorts) and anything else is a
         // column-sort shortcut; `e`/`i`/`c` were handled above.
@@ -1924,6 +2010,7 @@ fn handle_tab_specific_shortcut(
     code: crossterm::event::KeyCode,
     s: &mut super::state::AppState,
     tab: &p2p_app::tui_tabs::TabContent,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
 ) -> bool {
     if s.is_modal_editor() {
         return false;
@@ -1966,6 +2053,18 @@ fn handle_tab_specific_shortcut(
             if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
         {
             toggle_share_public_write(s);
+            true
+        }
+        crossterm::event::KeyCode::Char('m')
+            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
+        {
+            request_share_manifest(s, swarm_cmd_tx);
+            true
+        }
+        crossterm::event::KeyCode::Char('o')
+            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
+        {
+            readvertise_share(s, swarm_cmd_tx);
             true
         }
         crossterm::event::KeyCode::Char(c)
