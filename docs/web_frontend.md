@@ -116,8 +116,12 @@ Implemented and verified end to end:
   `p2p_chat_server` binary, and unit tests inside `src/web/mod.rs` / `src/api/mod.rs`.
 - Flutter: `NodeApi` abstraction with `FrbNodeApi`/`HttpNodeApi`/`FakeNodeApi`, the `kIsWeb`
   boot branch, web attachment pick/open, plus Dart transport tests.
-- Every FRB-exposed method has a matching server arm; the no-param arms are guarded by the
-  source-string drift list in `src/web/mod.rs`, and every parameterised arm is covered by a
+- Every FRB-exposed method has a matching server arm. A generated-source guard in
+  `src/web/mod.rs` parses the `wire__crate__…_impl` functions from `frb_generated.rs`,
+  converts them to Dart method names and asserts each appears in `src/web/methods.rs`;
+  only four native-only wires are exempt (Flutter bootstrap/poll, peer-id probe and the
+  local attachment path, which web replaces with `/api/files/{file_id}`). The no-param
+  arms keep their explicit drift list, and every parameterised arm is covered by a
   `methods::dispatch(name, Null)` routing test asserting `invalid params:`.
 - Feature surface equals the union of the TUI and Flutter feature sets (group leave, per-peer
   local nickname, calls, device binding, files/attachments, backfill, stats), plus the Rust

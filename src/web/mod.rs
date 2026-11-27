@@ -520,6 +520,7 @@ mod tests {
     use super::*;
     use serde_json::json;
     use serial_test::serial;
+    use std::collections::BTreeSet;
     use std::future::IntoFuture as _;
     use tokio_tungstenite::tungstenite::Message as WsMessage;
     use tower::ServiceExt as _;
@@ -1064,6 +1065,107 @@ mod tests {
             format!("no deletable sent message with id {incoming_id}")
         );
         assert!(!hidden, "the deleted row must disappear from history");
+    }
+
+    /// FRB wires that deliberately have no JSON arm.
+    ///
+    /// The web server owns node startup and event pushing, so Flutter's
+    /// bootstrap/poll and peer-id probes have no browser equivalent. Browser
+    /// attachment downloads go through `GET /api/files/{file_id}` instead of a
+    /// local filesystem path.
+    const NATIVE_ONLY_WEB_EXEMPTIONS: [&str; 4] = [
+        "initMobileDatabase",
+        "pollEvent",
+        "attachmentFilePath",
+        "getNodePeerId",
+    ];
+
+    /// Convert an FRB wire function's `snake_case` name to its Dart method name.
+    fn snake_case_to_camel_case(name: &str) -> String {
+        let mut parts = name.split('_');
+        let mut camel = parts.next().unwrap_or_default().to_owned();
+        for part in parts {
+            let mut chars = part.chars();
+            if let Some(first) = chars.next() {
+                camel.push(first.to_ascii_uppercase());
+                camel.push_str(chars.as_str());
+            }
+        }
+        camel
+    }
+
+    /// Parse the generated wire function names from `frb_generated.rs`.
+    fn frb_wire_methods(generated: &str) -> BTreeSet<String> {
+        generated
+            .lines()
+            .filter_map(|line| {
+                let rest = line.trim_start().strip_prefix("fn wire__crate__")?;
+                let (_, name) = rest.rsplit_once("__")?;
+                let snake = name.strip_suffix("_impl(")?;
+                Some(snake_case_to_camel_case(snake))
+            })
+            .collect()
+    }
+
+    /// Read the generated bridge source from the crate root.
+    fn generated_frb_source() -> String {
+        std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/frb_generated.rs"),
+        )
+        .expect("frb_generated.rs is readable")
+    }
+
+    /// Read just the dispatch portion of `methods.rs`, without its test module.
+    fn production_methods_source() -> String {
+        let source = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/web/methods.rs"),
+        )
+        .expect("methods.rs is readable");
+        source
+            .split("#[cfg(test)]")
+            .next()
+            .unwrap_or(source.as_str())
+            .to_owned()
+    }
+
+    #[test]
+    fn frb_wire_method_parser_handles_modules_and_snake_case() {
+        let generated = r"
+fn wire__crate__api__accept_device_binding_impl(
+fn wire__crate__mobile_node__get_node_peer_id_impl(
+fn wire__crate__mobile_api__parse_last_seen_ms_impl(
+";
+        let parsed = frb_wire_methods(generated);
+        assert_eq!(parsed.len(), 3, "unexpected parse: {parsed:?}");
+        assert!(parsed.contains("acceptDeviceBinding"));
+        assert!(parsed.contains("getNodePeerId"));
+        assert!(parsed.contains("parseLastSeenMs"));
+    }
+
+    #[test]
+    fn every_frb_wire_method_has_a_web_arm_or_a_native_only_reason() {
+        let wire_methods = frb_wire_methods(&generated_frb_source());
+        assert!(
+            wire_methods.contains("acceptDeviceBinding"),
+            "failed to parse FRB wire functions from src/frb_generated.rs"
+        );
+        for exemption in NATIVE_ONLY_WEB_EXEMPTIONS {
+            assert!(
+                wire_methods.contains(exemption),
+                "native-only exemption {exemption} is no longer FRB-exposed; remove it from the list"
+            );
+        }
+
+        let methods = production_methods_source();
+        for method in wire_methods {
+            if NATIVE_ONLY_WEB_EXEMPTIONS.contains(&method.as_str()) {
+                continue;
+            }
+            assert!(
+                methods.contains(&format!("\"{method}\"")),
+                "FRB method {method} has no web dispatch arm"
+            );
+        }
     }
 
     #[test]

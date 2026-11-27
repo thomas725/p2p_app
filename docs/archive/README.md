@@ -78,6 +78,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-27_tui_share_network_actions.md](2026-11-27_tui_share_network_actions.md) | TUI Shares manifest refresh and canonical re-advertise from one sorted connected-peer list | 2026-11-27 |
 | [2026-11-27_tui_share_creation.md](2026-11-27_tui_share_creation.md) | Modal TUI share creation through the canonical Rust store with private/read-only defaults | 2026-11-27 |
 | [2026-11-27_device_location_sharing.md](2026-11-27_device_location_sharing.md) | Device-centric location sharing: Rust-owned policy, sealed DMs, GPX tracks, TUI/Flutter/web/Android | 2026-11-27 |
+| [2026-11-27_frb_web_drift_guard.md](2026-11-27_frb_web_drift_guard.md) | Generated-source guard that every FRB wire has a web arm or a documented native-only reason | 2026-11-27 |
 | [2026-11-27_share_manifest_hardening.md](2026-11-27_share_manifest_hardening.md) | Equal-revision manifest conflicts and ACL checked inside the submission write transaction | 2026-11-27 |
 | [2026-11-27_share_owner_claim_hardening.md](2026-11-27_share_owner_claim_hardening.md) | Offer owner claims stay local markers until Rust verifies the serving/publishing peer | 2026-11-27 |
 | [2026-11-02_sibling_device_claims.md](2026-11-02_sibling_device_claims.md) | Sibling devices may sign device-binding claims for the same user (P0 decision) | 2026-11-02 |
