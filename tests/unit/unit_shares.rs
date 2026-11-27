@@ -877,7 +877,7 @@ fn disconnect_abandons_only_that_peers_pending_apply() {
 
 #[test]
 #[serial(db)]
-fn accept_offer_keeps_the_remote_id_and_is_idempotent() {
+fn accept_offer_marks_the_remote_claim_unverified_and_is_idempotent() {
     with_test_db(|| {
         let offer = ShareOffer {
             share_id: "remote-share-42".to_string(),
@@ -889,12 +889,211 @@ fn accept_offer_keeps_the_remote_id_and_is_idempotent() {
         };
         let share = accept_offer(&offer, None).expect("accept");
         assert_eq!(share.share_id, "remote-share-42");
-        assert_eq!(share.owner_user_id, "owner-user");
+        assert_eq!(share.owner_user_id, unverified_claim_id("owner-user"));
+        assert!(is_unknown_owner_id(&share.owner_user_id));
         assert_eq!(share.kind, ShareKind::Public);
 
         let same = accept_offer(&offer, None).expect("repeat offer");
         assert_eq!(same.share_id, share.share_id);
+        assert_eq!(same.owner_user_id, unverified_claim_id("owner-user"));
         assert_eq!(list_shares().expect("list").len(), 1);
+    });
+}
+
+#[test]
+#[serial(db)]
+fn accept_offer_rejects_marker_and_oversized_owner_claims() {
+    with_test_db(|| {
+        let marker_claim = accept_offer(
+            &ShareOffer {
+                share_id: "marker-claim".to_string(),
+                name: "Marker".to_string(),
+                kind: ShareKind::Private,
+                revision: 0,
+                public_write: false,
+                owner_user_id: Some(unverified_claim_id("owner-user")),
+            },
+            None,
+        )
+        .expect("reject marker claim");
+        assert_eq!(marker_claim.owner_user_id, unknown_owner_id("marker-claim"));
+
+        let oversized_claim = accept_offer(
+            &ShareOffer {
+                share_id: "oversized-claim".to_string(),
+                name: "Oversized".to_string(),
+                kind: ShareKind::Private,
+                revision: 0,
+                public_write: false,
+                owner_user_id: Some("x".repeat(MAX_OWNER_CLAIM_LEN + 1)),
+            },
+            None,
+        )
+        .expect("reject oversized claim");
+        assert_eq!(
+            oversized_claim.owner_user_id,
+            unknown_owner_id("oversized-claim")
+        );
+        let marker_owner = unknown_owner_id("any");
+        assert!(
+            !record_verified_owner(&oversized_claim.share_id, Some(marker_owner.as_str()))
+                .expect("marker is never a verified owner")
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn unverified_owner_claim_denies_owner_shortcuts_until_rust_verifies_it() {
+    with_test_db(|| {
+        let offer = ShareOffer {
+            share_id: "claimed-share".to_string(),
+            name: "Claimed".to_string(),
+            kind: ShareKind::Private,
+            revision: 0,
+            public_write: false,
+            owner_user_id: Some("owner-user".to_string()),
+        };
+        let share = accept_offer(&offer, None).expect("accept claim");
+        assert_eq!(share.owner_user_id, unverified_claim_id("owner-user"));
+        assert!(is_unknown_owner_id(&share.owner_user_id));
+        assert_eq!(
+            offer_for_share(&share.share_id)
+                .expect("read offer")
+                .expect("present")
+                .owner_user_id,
+            None,
+            "a local marker is not a claim peers can verify"
+        );
+
+        bind_peer("owner-device", "owner-user");
+        assert!(
+            !can_write(&share.share_id, "owner-device"),
+            "an offer's claim is not an ACL"
+        );
+        assert!(
+            set_visibility(&share.share_id, "owner-user", ShareKind::Public, true).is_err(),
+            "a claim cannot unlock owner-only visibility toggles"
+        );
+
+        assert!(
+            !record_verified_owner(&share.share_id, Some("stranger-user"))
+                .expect("wrong-user upgrade"),
+            "a different verified user must not take over the claim"
+        );
+        assert_eq!(
+            get_share(&share.share_id)
+                .expect("get")
+                .expect("present")
+                .owner_user_id,
+            unverified_claim_id("owner-user")
+        );
+
+        assert!(record_verified_owner(&share.share_id, Some("owner-user")).expect("upgrade"));
+        let verified = get_share(&share.share_id).expect("get").expect("present");
+        assert_eq!(verified.owner_user_id, "owner-user");
+        assert!(can_write(&share.share_id, "owner-device"));
+        assert_eq!(
+            offer_for_share(&share.share_id)
+                .expect("read offer")
+                .expect("present")
+                .owner_user_id
+                .as_deref(),
+            Some("owner-user")
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn verified_owner_upgrade_never_rewrites_no_claim_or_locally_owned_rows() {
+    with_test_db(|| {
+        let anonymous = accept_offer(
+            &ShareOffer {
+                share_id: "no-claim".to_string(),
+                name: "No claim".to_string(),
+                kind: ShareKind::Private,
+                revision: 0,
+                public_write: false,
+                owner_user_id: None,
+            },
+            None,
+        )
+        .expect("accept anonymous offer");
+        assert_eq!(anonymous.owner_user_id, unknown_owner_id("no-claim"));
+        assert!(
+            !record_verified_owner(&anonymous.share_id, Some("owner-user"))
+                .expect("no-claim upgrade"),
+            "only an exact claim marker may be upgraded"
+        );
+        assert_eq!(
+            get_share(&anonymous.share_id)
+                .expect("get")
+                .expect("present")
+                .owner_user_id,
+            unknown_owner_id("no-claim")
+        );
+
+        let owned = create_share("Mine", "owner-user", ShareKind::Private, false, None)
+            .expect("create owned share");
+        assert!(
+            !record_verified_owner(&owned.share_id, Some("owner-user")).expect("owned upgrade"),
+            "a locally owned row is never a claim marker"
+        );
+        assert_eq!(
+            get_share(&owned.share_id)
+                .expect("get")
+                .expect("present")
+                .owner_user_id,
+            "owner-user"
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn verified_owner_can_publish_to_a_mirror_holding_their_claim() {
+    with_test_db(|| {
+        let share = accept_offer(
+            &ShareOffer {
+                share_id: "mirror-share".to_string(),
+                name: "Mirror".to_string(),
+                kind: ShareKind::Private,
+                revision: 0,
+                public_write: false,
+                owner_user_id: Some("owner-user".to_string()),
+            },
+            None,
+        )
+        .expect("accept offer");
+        assert_eq!(share.owner_user_id, unverified_claim_id("owner-user"));
+        let manifest = ShareManifest {
+            share_id: share.share_id.clone(),
+            name: share.name.clone(),
+            revision: 0,
+            entries: vec![],
+        };
+
+        bind_peer("stranger-device", "stranger-user");
+        assert!(
+            accept_submitted_manifest(&share.share_id, "stranger-device", 0, &manifest).is_err(),
+            "a stranger must not publish through an unverified claim"
+        );
+        assert_eq!(
+            get_share(&share.share_id)
+                .expect("get")
+                .expect("present")
+                .owner_user_id,
+            unverified_claim_id("owner-user")
+        );
+
+        bind_peer("owner-device", "owner-user");
+        let stats = accept_submitted_manifest(&share.share_id, "owner-device", 0, &manifest)
+            .expect("publish");
+        assert_eq!(stats.written, 0);
+        let stored = get_share(&share.share_id).expect("get").expect("present");
+        assert_eq!(stored.owner_user_id, "owner-user");
+        assert_eq!(stored.revision, 1);
     });
 }
 

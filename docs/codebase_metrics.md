@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        73 |
-| Total Rust Lines      |    45,881 |
-| Total Rust Chars      | 1,745,871 |
-| Avg Lines/Rust File   |       628 |
-| Avg Chars/Rust File   |    23,916 |
+| Total Rust Lines      |    45,972 |
+| Total Rust Chars      | 1,749,797 |
+| Avg Lines/Rust File   |       629 |
+| Avg Chars/Rust File   |    23,969 |
 | Total Dart Files      |        61 |
 | Total Dart Lines      |    26,758 |
 | Total Dart Chars      |   860,591 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 139 files, 73,699 lines, 2,646,042 characters
+**Grand Total:** 139 files, 73,790 lines, 2,649,968 characters
 
 ## Rust Source Files
 
@@ -60,9 +60,9 @@
 | src                     | relay.rs             |     5 |  3764 |    95 |        - |       - | Source file                                        |
 | src                     | reply.rs             |     4 |  7747 |   206 |        - |       - | Source file                                        |
 | src                     | settings.rs          |     4 |  9991 |   251 |        - |       - | Source file                                        |
-| src                     | shares.rs            |     6 | 49608 |  1329 |        - |       - | File shares & folder sync (ACLs, manifests, apply) |
+| src                     | shares.rs            |     6 | 53059 |  1410 |        - |       - | File shares & folder sync (ACLs, manifests, apply) |
 | src                     | shares_json.rs       |     4 |  6336 |   195 |        - |       - | Source file                                        |
-| src                     | swarm_handler.rs     |     7 | 100607 |  2620 |        - |       - | Network event translation                          |
+| src                     | swarm_handler.rs     |     7 | 101082 |  2630 |        - |       - | Network event translation                          |
 | src                     | theme.rs             |     4 |  7223 |   234 |        - |       - | Source file                                        |
 | src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities                   |
 | src                     | tui_render_state.rs  |     4 | 31201 |   812 |        - |       - | TUI render state & tab content                     |
@@ -100,7 +100,7 @@
 | src/web                 | methods.rs           |     4 | 44822 |  1399 |        - |       - | Web JSON method dispatch                           |
 | src/web                 | mod.rs               |     9 | 66458 |  1722 |        - |       - | Web server (axum HTTP+WS)                          |
 
-**Total:** 73 files, 45,881 lines, 1,745,871 characters
+**Total:** 73 files, 45,972 lines, 1,749,797 characters
 
 ## Rust Test Files
 
@@ -166,7 +166,7 @@
 | unit   | unit_relay.rs                      |    51 |  1450 |     2 | Test file                             |
 | unit   | unit_reply.rs                      |   215 |  7626 |     3 | Test file                             |
 | unit   | unit_settings.rs                   |   173 |  5340 |     4 | Test file                             |
-| unit   | unit_shares.rs                     |  1164 | 42271 |     6 | shares module tests                   |
+| unit   | unit_shares.rs                     |  1363 | 49262 |     6 | shares module tests                   |
 | unit   | unit_swarm_handler.rs              |   461 | 15592 |     4 | Unit tests for swarm_handler module   |
 | unit   | unit_tui_helpers.rs                |   694 | 23223 |     5 | Unit tests for TUI helpers            |
 | unit   | unit_tui_render_state.rs           |   415 | 13085 |     2 | Unit tests for TUI render state       |
@@ -174,7 +174,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   425 | 12920 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 34,337 lines, 1,166,467 characters
+**Total:** 67 test files, 34,536 lines, 1,173,458 characters
 
 ## Dart Source Files
 

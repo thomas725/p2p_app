@@ -48,6 +48,9 @@ pub const MAX_SHARE_NAME_LEN: usize = 512;
 /// Maximum length of a validated relative path.
 pub const MAX_SHARE_PATH_LEN: usize = 4096;
 
+/// Maximum length of an ownership claim copied into a local marker.
+const MAX_OWNER_CLAIM_LEN: usize = 512;
+
 /// Visibility of a share.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -176,8 +179,8 @@ pub struct ShareOffer {
     pub revision: u64,
     /// Whether a public share accepts writes.
     pub public_write: bool,
-    /// Owner's verified user id when the receiver can resolve it. Used only for
-    /// local bookkeeping — the owner enforces the ACL itself.
+    /// Claimed owner id. The receiver never treats it as verified until Rust
+    /// resolves the peer serving the share to that same user id.
     pub owner_user_id: Option<String>,
 }
 
@@ -401,6 +404,8 @@ pub fn offer_for(
 
 /// Prefix of the local-only marker for a share with no verifiable owner.
 const UNKNOWN_OWNER_PREFIX: &str = "unknown:share:";
+/// Prefix of the local-only marker preserving an unverified ownership claim.
+const UNVERIFIED_CLAIM_PREFIX: &str = "unknown:claim:";
 
 /// Owner id recorded when an offer or manifest has no verifiable owner.
 ///
@@ -412,14 +417,68 @@ pub fn unknown_owner_id(share_id: &str) -> String {
     format!("{UNKNOWN_OWNER_PREFIX}{share_id}")
 }
 
-/// Whether an owner id is the local-only "unknown owner" marker.
+/// Record an offer's ownership claim without believing it.
 ///
-/// The marker must never leave this install: it identifies no real user, so
-/// advertising it would make a peer store a meaningless owner id. Ownership
+/// The claim is kept only so [`record_verified_owner`] can later upgrade it
+/// when Rust resolves the serving peer to that exact verified user id. No ACL
+/// or UI owner check may treat this marker as a real account id.
+#[must_use]
+fn unverified_claim_id(claimed_owner: &str) -> String {
+    format!("{UNVERIFIED_CLAIM_PREFIX}{claimed_owner}")
+}
+
+/// Whether an owner id is a local-only marker rather than a verified account id.
+///
+/// Markers must never leave this install: they identify no verified user, so
+/// advertising one would make a peer store a meaningless owner id. Ownership
 /// claims on the wire stay `None` until they can be verified.
 #[must_use]
 pub fn is_unknown_owner_id(owner_user_id: &str) -> bool {
     owner_user_id.starts_with(UNKNOWN_OWNER_PREFIX)
+        || owner_user_id.starts_with(UNVERIFIED_CLAIM_PREFIX)
+}
+
+/// Upgrade a local unverified claim when Rust resolves a peer to that user.
+///
+/// The conditional update matches only the exact marker for `verified_owner`,
+/// so a wrong claim, a no-claim sentinel, and a locally owned row are all
+/// no-ops. Returns whether a marker was replaced.
+fn upgrade_verified_owner_conn(
+    conn: &mut diesel::SqliteConnection,
+    share_id: &str,
+    verified_owner: Option<&str>,
+) -> color_eyre::Result<bool> {
+    let Some(verified_owner) =
+        verified_owner.filter(|owner| !owner.is_empty() && !is_unknown_owner_id(owner))
+    else {
+        return Ok(false);
+    };
+    let changed = diesel::update(
+        shares::table
+            .filter(shares::share_id.eq(share_id))
+            .filter(shares::owner_user_id.eq(unverified_claim_id(verified_owner))),
+    )
+    .set(shares::owner_user_id.eq(verified_owner))
+    .execute(conn)
+    .wrap_err("failed to record verified share owner")?;
+    Ok(changed > 0)
+}
+
+/// Learn a share's verified owner from a Rust-resolved peer identity.
+///
+/// Real owners are recorded only when the row still carries the exact marker
+/// created from their claim. This keeps an offer's claimed id from ever being
+/// treated as verified while still letting a legitimate owner publish or serve
+/// a manifest to a mirror that accepted the offer first.
+///
+/// # Errors
+/// Returns an error if the DB update fails.
+pub fn record_verified_owner(
+    share_id: &str,
+    verified_owner: Option<&str>,
+) -> color_eyre::Result<bool> {
+    let conn = &mut crate::sqlite_connect()?;
+    upgrade_verified_owner_conn(conn, share_id, verified_owner)
 }
 
 /// `public_write` is meaningful only for public shares. Normalising it at the
@@ -806,7 +865,9 @@ fn permission_for_share(
     peer_id: &str,
 ) -> Option<ShareMode> {
     let requester = crate::identity::find_user_id_for_peer_conn(conn, peer_id).ok()?;
-    if requester.as_deref() == Some(share.owner_user_id.as_str()) {
+    if !is_unknown_owner_id(&share.owner_user_id)
+        && requester.as_deref() == Some(share.owner_user_id.as_str())
+    {
         return Some(ShareMode::ReadWrite);
     }
     if share.kind == ShareKind::Public {
@@ -869,7 +930,8 @@ pub fn offer_for_share(share_id: &str) -> color_eyre::Result<Option<ShareOffer>>
 /// idempotent by `share_id`. An offer is untrusted (it came from a peer): for a
 /// share we own, have bound to a folder, or already hold a manifest for, it is
 /// a no-op — it can never rewrite our ACL, root or revision. For a bare remote
-/// stub, only the display name is refreshed.
+/// stub, only the display name is refreshed, and a legacy raw owner claim is
+/// demoted to the local unverified marker.
 ///
 /// # Errors
 /// Returns an error if the offer is invalid or the DB write fails.
@@ -886,22 +948,35 @@ pub fn accept_offer(offer: &ShareOffer, local_root: Option<&str>) -> color_eyre:
         if existing.local_root.is_some() || existing.manifest.is_some() || locally_owned {
             return Ok(existing);
         }
-        // A pure remote stub: refresh only the cosmetic name, never `kind`,
-        // `public_write`, `revision`, root or owner (all untrusted in an offer).
+        // A pure remote stub: refresh only cosmetic fields. Never trust the
+        // offered owner; normalise any legacy raw claim to the local marker.
+        let owner_user_id = if is_unknown_owner_id(&existing.owner_user_id) {
+            existing.owner_user_id.clone()
+        } else {
+            unverified_claim_id(&existing.owner_user_id)
+        };
         let conn = &mut crate::sqlite_connect()?;
         diesel::update(shares::table.filter(shares::share_id.eq(&offer.share_id)))
             .set((
                 shares::name.eq(&name),
+                shares::owner_user_id.eq(&owner_user_id),
                 shares::updated_at.eq(chrono::Utc::now().naive_utc()),
             ))
             .execute(conn)
             .wrap_err("failed to refresh share offer")?;
-        return Ok(Share { name, ..existing });
+        return Ok(Share {
+            owner_user_id,
+            name,
+            ..existing
+        });
     }
     let owner_user_id = offer
         .owner_user_id
-        .clone()
-        .unwrap_or_else(|| unknown_owner_id(&offer.share_id));
+        .as_deref()
+        .filter(|claim| {
+            !claim.is_empty() && claim.len() <= MAX_OWNER_CLAIM_LEN && !is_unknown_owner_id(claim)
+        })
+        .map_or_else(|| unknown_owner_id(&offer.share_id), unverified_claim_id);
     create_share_with_id(
         &offer.share_id,
         &name,
@@ -1102,6 +1177,12 @@ pub fn accept_submitted_manifest(
         let conn = &mut crate::sqlite_connect()?;
         conn.transaction::<(Option<ShareManifest>, Option<String>), color_eyre::Report, _>(
             |conn| {
+                // A real owner may be publishing to a mirror that stored their
+                // offer before either side could verify the claim. Resolve the
+                // connection's user first and upgrade that exact claim inside
+                // the same transaction as the ACL and revision checks.
+                let requester = crate::identity::find_user_id_for_peer_conn(conn, peer_id)?;
+                upgrade_verified_owner_conn(conn, share_id, requester.as_deref())?;
                 let share = shares::table
                     .filter(shares::share_id.eq(share_id))
                     .select(ShareRow::as_select())

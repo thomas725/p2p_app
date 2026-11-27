@@ -120,7 +120,13 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   and `shares::permission_for_share`, both fail-closed. A remote `ShareOffer` is
   untrusted: for a share we own, have bound, or already hold a manifest for,
   accepting a repeated offer is a no-op — it can never rewrite our ACL, root or
-  revision. Received manifests are monotonic: `save_manifest` rejects a lower
+  revision — and a claimed owner id is stored only as a local `unknown:claim:`
+  marker until Rust resolves the serving/publishing peer to that exact user.
+  Both marker forms are ignored by owner ACL shortcuts, owner-only visibility
+  toggles and re-advertising; `handle_share_manifest_response` and
+  `accept_submitted_manifest` upgrade only an exact matching claim (the latter
+  inside the submission transaction), so a spoofed claim never becomes a
+  verified owner. Received manifests are monotonic: `save_manifest` rejects a lower
   revision (and an unknown share) so a replayed peer response cannot roll local
   state back; an equal revision is accepted only as an idempotent re-fetch — if
   cached JSON exists it must be byte-identical, otherwise the differing snapshot
@@ -146,7 +152,10 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   `tests/unit/unit_shares.rs` covers revocation (including ACL reads on the
   write connection and a denied submission after a committed revoke), same-
   revision conflicts with different content, stale writes with changed entries,
-  superseded pending applies and disconnect cleanup. A real blob-pull → apply
+  superseded pending applies and disconnect cleanup. Unit coverage also pins
+  spoofed owner claims: a claim cannot unlock the owner ACL, visibility toggles
+  or publishing; only a matching Rust-resolved user upgrades the marker, and
+  no-claim/locally owned rows are never rewritten. A real blob-pull → apply
   test drives two nodes on separate OS threads with per-thread DB and blob
   stores, covering blob delivery, manifest apply and folder contents.
 - **Facade**: `src/api/mod.rs` exposes the share store as `createShare`,

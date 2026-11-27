@@ -2363,15 +2363,20 @@ async fn handle_share_manifest_response(
     {
         return;
     }
+    // The peer serving the manifest is the only identity we can verify here.
+    // Resolve it once: an offer's claimed owner stays a local marker until this
+    // exact user is confirmed from the device-binding table.
+    let verified_owner = crate::identity::find_user_id_for_peer(peer_id)
+        .ok()
+        .flatten();
     let existing = if let Some(share) = crate::shares::get_share(&manifest.share_id).ok().flatten()
     {
         share
     } else {
         // A manifest can arrive before the UI materialised its offer. Record a
         // minimal local row so the snapshot has a home.
-        let owner = crate::identity::find_user_id_for_peer(peer_id)
-            .ok()
-            .flatten()
+        let owner = verified_owner
+            .clone()
             .unwrap_or_else(|| crate::shares::unknown_owner_id(&manifest.share_id));
         let offer = crate::shares::ShareOffer {
             share_id: manifest.share_id.clone(),
@@ -2389,6 +2394,11 @@ async fn handle_share_manifest_response(
     let previous = existing.manifest;
     if crate::shares::save_manifest(&manifest.share_id, manifest).is_err() {
         return;
+    }
+    if let Err(error) =
+        crate::shares::record_verified_owner(&manifest.share_id, verified_owner.as_deref())
+    {
+        p2plog_debug(format!("Failed to verify share owner: {error}"));
     }
     let queued = crate::shares::queue_apply(peer_id.to_string(), previous, manifest.clone());
     for applied in queued.applied {
