@@ -130,7 +130,7 @@ Still open (device adapters, not protocol work):
   both un-gated. Do **not** gate either behind it; that happened once and was
   corrected.
 
-### File shares / folder sync UI — **Rust core, both frontends' list/detail/grant editor, discovery, network actions and deletion publishing shipped; TUI creation, folder binding, snapshotting and snapshot publishing shipped; adding files deferred**
+### File shares / folder sync UI — **Rust core, both frontends' list/detail/grant editor, creation, discovery, network actions and deletion publishing shipped; TUI folder binding, snapshotting and snapshot publishing shipped; adding files deferred**
 
 The Rust core landed in `7dfaefe` (domain, DB, ACLs) and the share-lane
 follow-up (`/p2p-chat/shares/1.0.0` wire protocol, swarm handlers, events, GC
@@ -264,13 +264,19 @@ Shipped after the core:
   the prompt open, modal keys cannot retarget it, and Rust owns validation, blob
   storage, ACLs and stale-write rejection. Record:
   [`archive/2026-11-27_tui_share_folder_binding.md`](archive/2026-11-27_tui_share_folder_binding.md).
+- Flutter/web share creation: the File shares list has a "Create private share"
+  action mirroring the TUI's `c` — rootless, private and read-only, with Rust
+  owning name validation and owner resolution. The name dialog reports Rust's
+  error in place and the list reloads on success; binding a folder and taking a
+  native snapshot stay native-only. Record:
+  [`archive/2026-11-27_flutter_web_share_creation.md`](archive/2026-11-27_flutter_web_share_creation.md).
 
 Still open (UI/integration, not protocol work):
 
 - TUI Shares tab action for adding files (the list, detail, event notice,
   creation, folder binding/snapshot/publish, grant/visibility editors, network
   refresh/re-advertise, deletion publishing and discovery already ship);
-- Native share creation/binding and folder snapshot UI. Deletion publishing,
+- Native share binding and folder snapshot UI. Creation, deletion publishing,
   discovery, manifest refresh and re-advertise already ship on both transports;
   the browser remains a display client — adding new files needs a real local
   folder snapshot, which only a native install can produce.

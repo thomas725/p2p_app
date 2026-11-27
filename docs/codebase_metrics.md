@@ -10,17 +10,17 @@
 | Avg Lines/Rust File   |       644 |
 | Avg Chars/Rust File   |    24,563 |
 | Total Dart Files      |        61 |
-| Total Dart Lines      |    27,006 |
-| Total Dart Chars      |   868,538 |
-| Avg Lines/Dart File   |       442 |
-| Avg Chars/Dart File   |    14,238 |
+| Total Dart Lines      |    27,162 |
+| Total Dart Chars      |   873,320 |
+| Avg Lines/Dart File   |       445 |
+| Avg Chars/Dart File   |    14,316 |
 | Total Kotlin Files    |         5 |
 | Total Kotlin Lines    |     1,060 |
 | Total Kotlin Chars    |    39,580 |
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 139 files, 75,128 lines, 2,701,269 characters
+**Grand Total:** 139 files, 75,284 lines, 2,706,051 characters
 
 ## Rust Source Files
 
@@ -132,7 +132,7 @@
 | tests  | types.rs                           |   662 | 20583 |     3 | types module tests                    |
 | unit   | unit_behavior.rs                   |   122 |  3894 |     3 | Unit tests for behavior module        |
 | unit   | unit_bin_tui_click_handlers.rs     |   938 | 34577 |     4 | Unit tests for TUI click handlers     |
-| unit   | unit_bin_tui_command_processor.rs  |  1664 | 56716 |     5 | Unit tests for TUI command processor  |
+| unit   | unit_bin_tui_command_processor.rs  |  1735 | 59173 |     5 | Unit tests for TUI command processor  |
 | unit   | unit_bin_tui_event_source.rs       |    44 |  1352 |     2 | Unit tests for TUI event source       |
 | unit   | unit_bin_tui_input_processor.rs    |  6811 | 241734 |     5 | Unit tests for TUI input processor    |
 | unit   | unit_bin_tui_main_loop.rs          |   233 |  7007 |     3 | Unit tests for TUI main loop          |
@@ -174,7 +174,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   425 | 12920 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 35,845 lines, 1,220,612 characters
+**Total:** 67 test files, 35,916 lines, 1,223,069 characters
 
 ## Dart Source Files
 
@@ -209,16 +209,16 @@
 | lib          | dm_chat.dart                     |    12 | 26800 |   754 |        - |       - | Direct-message chat screen       |
 | lib          | group_chat.dart                  |     8 | 12409 |   366 |        - |       - | Group chat screen                |
 | lib          | group_list.dart                  |    17 |  7931 |   235 |        - |       - | Group list screen                |
-| lib          | home.dart                        |     9 | 47727 |  1397 |        - |       - | App shell & broadcast chat       |
+| lib          | home.dart                        |     9 | 48379 |  1417 |        - |       - | App shell & broadcast chat       |
 | lib          | location_share.dart              |    13 | 14465 |   409 |        - |       - | Dart source file                 |
 | lib          | location_track.dart              |    13 |  7843 |   242 |        - |       - | Dart source file                 |
 | lib          | log_tab.dart                     |    10 |  3493 |   123 |        - |       - | Log tab screen                   |
 | lib          | messages.dart                    |    15 | 48622 |  1430 |        - |       - | Shared chat widgets              |
 | lib          | nav_bar.dart                     |     3 |  1252 |    34 |        - |       - | Tab navigation bar               |
 | lib          | peer_info.dart                   |    11 | 17646 |   518 |        - |       - | Peer Info screen                 |
-| lib          | settings.dart                    |    16 | 42880 |  1240 |        - |       - | Settings screen                  |
+| lib          | settings.dart                    |    16 | 42944 |  1241 |        - |       - | Settings screen                  |
 | lib          | share_discovery.dart             |    15 |  9090 |   270 |        - |       - | Dart source file                 |
-| lib          | share_list.dart                  |    17 | 21539 |   647 |        - |       - | Dart source file                 |
+| lib          | share_list.dart                  |    17 | 25605 |   782 |        - |       - | Dart source file                 |
 | lib          | share_network.dart               |    12 |  4947 |   151 |        - |       - | Dart source file                 |
 | lib          | share_publish.dart               |    14 |  7826 |   240 |        - |       - | Dart source file                 |
 | lib          | attachments.dart                 |     4 |  3656 |    92 |        - |       - | File picker & opener seams       |
@@ -242,7 +242,7 @@
 | lib          | theme.dart                       |     2 |  1821 |    49 |        - |       - | Dart source file                 |
 | lib          | ui_utils.dart                    |     2 |  1233 |    29 |        - |       - | Shared formatting & env helpers  |
 
-**Total:** 61 files, 27,006 lines, 868,538 characters
+**Total:** 61 files, 27,162 lines, 873,320 characters
 
 ## Dart Test Files
 
@@ -271,12 +271,12 @@
 | widget  | settings_network_peers_test.dart |   128 |  4028 |     3 | Dart test file                        |
 | widget  | settings_test.dart               |   514 | 15959 |     6 | Settings widget tests                 |
 | widget  | share_discovery_test.dart        |   231 |  7265 |     4 | Dart test file                        |
-| widget  | share_list_test.dart             |   551 | 17334 |     9 | Dart test file                        |
+| widget  | share_list_test.dart             |   654 | 20323 |     9 | Dart test file                        |
 | widget  | share_network_test.dart          |   168 |  4841 |     7 | Dart test file                        |
 | widget  | share_publish_test.dart          |   321 |  9700 |     6 | Dart test file                        |
 | test    | widget_test.dart                 |    21 |   624 |     2 | Widget smoke tests                    |
 
-**Total:** 27 test files, 9,135 lines, 286,398 characters
+**Total:** 27 test files, 9,238 lines, 289,387 characters
 
 ## Kotlin Source Files
 

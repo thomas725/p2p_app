@@ -96,9 +96,10 @@ const Map<String, List<String>> _helpSections = {
   ],
   'Shares': [
     'Settings → File shares lists local shares; tap one for its grants and manifest files.',
-    'Discover peer offers, accept one, refresh or re-advertise a manifest, '
-        'and publish deletions here.',
-    'Creating, binding and native folder snapshots remain Rust operations.',
+    'Create an empty private share here, or discover peer offers and accept one.',
+    'Refresh or re-advertise a manifest, and publish deletions here.',
+    'Binding a local folder and taking a native folder snapshot stay '
+        'native-only actions.',
   ],
   'Keyboard': [
     'No custom letter or Ctrl shortcuts are installed here.',

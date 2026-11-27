@@ -20,16 +20,31 @@ List<String> connectedShareActionPeerIds(Iterable<String> connectedPeerIds) {
   return ids;
 }
 
-/// List of this install's file shares. The list itself is read-only; creating,
-/// binding and native folder snapshots stay in Rust (see `docs/backlog.md`).
-/// Both transports can inspect shares, discover and accept peer offers,
-/// re-advertise manifests and publish deletion revisions.
-class ShareList extends StatelessWidget {
-  const ShareList({super.key, required this.shares, required this.onOpenShare});
+/// List of this install's file shares. An empty private share can be created
+/// here; binding a local folder and native folder snapshots stay on native
+/// installs (see `docs/backlog.md`). Both transports can inspect shares,
+/// discover and accept peer offers, re-advertise manifests and publish deletion
+/// revisions.
+class ShareList extends StatefulWidget {
+  const ShareList({
+    super.key,
+    required this.shares,
+    required this.onOpenShare,
+    this.onCreateShare,
+  });
 
   final List<MobileShare> shares;
   final void Function(MobileShare) onOpenShare;
 
+  /// Optional creation seam. Home supplies it on both transports; hiding the
+  /// action when absent keeps read-only embeds honest.
+  final Future<void> Function(String name)? onCreateShare;
+
+  @override
+  State<ShareList> createState() => _ShareListState();
+}
+
+class _ShareListState extends State<ShareList> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -44,16 +59,25 @@ class ShareList extends StatelessWidget {
               const Icon(Icons.folder_shared, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Shares (${shares.length})',
+                'Shares (${widget.shares.length})',
                 style: Theme.of(
                   context,
                 ).textTheme.titleMedium?.copyWith(color: cs.onPrimaryContainer),
               ),
+              const Spacer(),
+              if (widget.onCreateShare != null)
+                IconButton(
+                  key: const Key('shares-create'),
+                  icon: const Icon(Icons.add),
+                  tooltip: 'Create private share',
+                  color: cs.onPrimaryContainer,
+                  onPressed: _showCreateDialog,
+                ),
             ],
           ),
         ),
         Expanded(
-          child: shares.isEmpty
+          child: widget.shares.isEmpty
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -65,8 +89,8 @@ class ShareList extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'No shares yet. Shares appear when the node creates or '
-                        'accepts one.',
+                        'No shares yet. Create one here, or wait for a peer '
+                        'share to be accepted.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.grey[500]),
                       ),
@@ -74,10 +98,10 @@ class ShareList extends StatelessWidget {
                   ),
                 )
               : ListView.separated(
-                  itemCount: shares.length,
+                  itemCount: widget.shares.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, i) {
-                    final share = shares[i];
+                    final share = widget.shares[i];
                     final bound = share.localRoot == null ? '' : ' · bound';
                     return ListTile(
                       key: Key('share-row-${share.shareId}'),
@@ -89,12 +113,21 @@ class ShareList extends StatelessWidget {
                         '${share.kind} · rev ${share.revision.toInt()}$bound',
                       ),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => onOpenShare(share),
+                      onTap: () => widget.onOpenShare(share),
                     );
                   },
                 ),
         ),
       ],
+    );
+  }
+
+  Future<void> _showCreateDialog() async {
+    final create = widget.onCreateShare;
+    if (create == null) return;
+    await showDialog<bool>(
+      context: context,
+      builder: (_) => _CreateShareDialog(onSubmit: create),
     );
   }
 }
@@ -106,6 +139,7 @@ class ShareListScreen extends StatelessWidget {
     super.key,
     required this.shares,
     required this.onOpenShare,
+    this.onCreateShare,
     this.onDiscoverShares,
     this.onNavigate,
     this.currentTab = 4,
@@ -113,6 +147,7 @@ class ShareListScreen extends StatelessWidget {
 
   final List<MobileShare> shares;
   final void Function(MobileShare) onOpenShare;
+  final Future<void> Function(String name)? onCreateShare;
   final void Function()? onDiscoverShares;
   final void Function(int)? onNavigate;
   final int currentTab;
@@ -132,7 +167,11 @@ class ShareListScreen extends StatelessWidget {
             ),
         ],
       ),
-      body: ShareList(shares: shares, onOpenShare: onOpenShare),
+      body: ShareList(
+        shares: shares,
+        onOpenShare: onOpenShare,
+        onCreateShare: onCreateShare,
+      ),
       bottomNavigationBar: onNavigate == null
           ? null
           : MainTabNavBar(
@@ -534,6 +573,102 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
 
   /// Content addresses are 64 hex characters; keep the subtitle readable.
   String _shortId(String id) => id.length > 8 ? '${id.substring(0, 8)}…' : id;
+}
+
+/// Creates an empty private share. Rust validates the name and resolves the
+/// local owner through the same facade the TUI uses; this dialog only collects
+/// the name and shows the error Rust returns. No local root is supplied here:
+/// binding a folder is a separate native-only action, so both transports
+/// create the same rootless share.
+class _CreateShareDialog extends StatefulWidget {
+  const _CreateShareDialog({required this.onSubmit});
+
+  final Future<void> Function(String name) onSubmit;
+
+  @override
+  State<_CreateShareDialog> createState() => _CreateShareDialogState();
+}
+
+class _CreateShareDialogState extends State<_CreateShareDialog> {
+  final _controller = TextEditingController();
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final name = _controller.text.trim();
+    if (name.isEmpty || _submitting) return;
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await widget.onSubmit(name);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = 'Failed to create share: $e';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Create private share'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            key: const Key('share-create-name'),
+            controller: _controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Share name',
+              hintText: 'Holiday photos',
+            ),
+            enabled: !_submitting,
+            onSubmitted: (_) => _submit(),
+          ),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                _error!,
+                key: const Key('share-create-dialog-error'),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          key: const Key('share-create-cancel'),
+          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          key: const Key('share-create-submit'),
+          onPressed: _submitting ? null : _submit,
+          child: _submitting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Create'),
+        ),
+      ],
+    );
+  }
 }
 
 /// Adds one grant to a private share. The user ID must be a verified account

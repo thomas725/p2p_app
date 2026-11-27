@@ -35,9 +35,14 @@ MobileShare makeShare(
 Widget listApp({
   required List<MobileShare> shares,
   required void Function(MobileShare) onOpen,
+  Future<void> Function(String name)? onCreate,
 }) => MaterialApp(
   home: Scaffold(
-    body: ShareList(shares: shares, onOpenShare: onOpen),
+    body: ShareList(
+      shares: shares,
+      onOpenShare: onOpen,
+      onCreateShare: onCreate,
+    ),
   ),
 );
 
@@ -74,7 +79,8 @@ void main() {
     expect(find.text('Shares (0)'), findsOneWidget);
     expect(
       find.text(
-        'No shares yet. Shares appear when the node creates or accepts one.',
+        'No shares yet. Create one here, or wait for a peer share to be '
+        'accepted.',
       ),
       findsOneWidget,
     );
@@ -126,6 +132,103 @@ void main() {
     expect(find.byKey(const Key('shares-discover')), findsOneWidget);
     await tester.tap(find.byKey(const Key('shares-discover')));
     expect(taps, 1);
+  });
+
+  testWidgets('list screen exposes creation only when Home supplies a callback', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShareListScreen(shares: const [], onOpenShare: (_) {}),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('shares-create')), findsNothing);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShareListScreen(
+          shares: const [],
+          onOpenShare: (_) {},
+          onCreateShare: (_) async {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('shares-create')), findsOneWidget);
+  });
+
+  testWidgets('create sends the trimmed name and closes the dialog', (
+    tester,
+  ) async {
+    final names = <String>[];
+    await tester.pumpWidget(
+      listApp(
+        shares: const [],
+        onOpen: (_) {},
+        onCreate: (name) async => names.add(name),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('shares-create')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('share-create-name')),
+      '  Holiday photos  ',
+    );
+    await tester.tap(find.byKey(const Key('share-create-submit')));
+    await tester.pumpAndSettle();
+
+    expect(names, ['Holiday photos']);
+    expect(find.byKey(const Key('share-create-name')), findsNothing);
+  });
+
+  testWidgets('empty name never calls the creator', (tester) async {
+    final names = <String>[];
+    await tester.pumpWidget(
+      listApp(
+        shares: const [],
+        onOpen: (_) {},
+        onCreate: (name) async => names.add(name),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('shares-create')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('share-create-name')), '   ');
+    await tester.tap(find.byKey(const Key('share-create-submit')));
+    await tester.pumpAndSettle();
+
+    expect(names, isEmpty);
+    expect(find.text('Create private share'), findsOneWidget);
+  });
+
+  testWidgets('create failure stays in the dialog with an error', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      listApp(
+        shares: const [],
+        onOpen: (_) {},
+        onCreate: (_) async => throw Exception('invalid name'),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('shares-create')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('share-create-name')),
+      'Photos',
+    );
+    await tester.tap(find.byKey(const Key('share-create-submit')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Create private share'), findsOneWidget);
+    expect(find.byKey(const Key('share-create-dialog-error')), findsOneWidget);
+    expect(find.textContaining('Failed to create share'), findsOneWidget);
   });
 
   testWidgets('detail shows overview, grants and manifest files', (

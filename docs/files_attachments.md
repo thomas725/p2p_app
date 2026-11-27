@@ -8,11 +8,11 @@ DMs, broadcast, and groups.
 This document is the lane's reference: the wire design, the store surface, and
 the blob lifecycle. It also covers the versioned file-share/folder-sync
 extension built on the same store. Its Rust core and both frontends' list,
-detail, private-share grant and visibility editors have shipped, along with
-discovery, network actions, deletion publishing and (in the TUI) creation,
-folder binding, snapshotting and snapshot publishing; adding files from an
-explicit picker stays open in [`backlog.md`](backlog.md). The code is the
-authority.
+detail, private-share grant and visibility editors, creation, discovery,
+network actions and deletion publishing have shipped; the TUI additionally
+binds a local folder, snapshots it and publishes that snapshot. Adding files
+from an explicit picker stays open in [`backlog.md`](backlog.md). The code is
+the authority.
 
 ## Wire design
 

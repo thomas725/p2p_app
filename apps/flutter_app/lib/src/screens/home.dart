@@ -8,7 +8,10 @@ import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/data/shares_json.dart'
     show shareRevisionToPlatformInt64;
 import 'package:p2p_app_flutter/src/rust/api.dart'
-    show MobileShare, ReviseShareManifestForDeletionParams;
+    show
+        CreateShareParams,
+        MobileShare,
+        ReviseShareManifestForDeletionParams;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
@@ -1163,6 +1166,7 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => ShareListScreen(
           shares: _shares,
           onOpenShare: _openShareDetail,
+          onCreateShare: _createShare,
           onDiscoverShares: _openShareDiscovery,
           onNavigate: _navigateToTab,
           currentTab: 4,
@@ -1171,6 +1175,22 @@ class _HomeScreenState extends State<HomeScreen> {
     ).then((_) {
       if (mounted) _refreshShares();
     });
+  }
+
+  /// Create an empty private share, mirroring the TUI's `c` action: no local
+  /// root and no anonymous writes. Rust validates the name and resolves the
+  /// owner, so both transports produce the same share; the caller's dialog
+  /// surfaces any error for correction. The refreshed list shows the new row.
+  Future<void> _createShare(String name) async {
+    await nodeApi.createShare(
+      params: CreateShareParams(
+        name: name,
+        kind: 'private',
+        publicWrite: false,
+        localRoot: null,
+      ),
+    );
+    await _refreshShares();
   }
 
   /// Open peer-share discovery. Clearing here (rather than after the request)
