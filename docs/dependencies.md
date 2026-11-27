@@ -85,6 +85,10 @@ silently ignored. Three rows remain, all allowed *warnings*:
 
 Everything else has been fixed upstream and pulled in. Recent rounds:
 
+- **2026-11-27** — `url 2.5.8 → 2.5.9` (RUSTSEC-2026-0592: stack overflow in
+  `Url::origin()` on nested `blob:` URLs) and its companion
+  `form_urlencoded 1.2.2 → 1.2.3`. Both are transitive (`multiaddr` and
+  `hickory-proto`), so this was a lockfile-only change with no source edits.
 - **2026-11-17** — `diesel 2.3.14 → 2.4.0` and `diesel_migrations 2.3.2 →
   2.4.0` (diesel widened the `libsqlite3-sys` range to `<0.41.0`), then
   `libsqlite3-sys 0.38.2 → 0.39.1` (RUSTSEC-2026-0459: C SQLite

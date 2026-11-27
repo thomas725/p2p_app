@@ -225,10 +225,11 @@ own archive entries.
 
 ### Dependency bumps — nothing urgent right now
 
-The 2026-11-17 round cleared the last security advisories: diesel 2.4.0 widened
-the SQLite range so `libsqlite3-sys 0.39.1` could land, alongside
-`libp2p-gossipsub 0.50.1` and `quinn-proto 0.11.19`. `cargo audit` exits 0 with
-three unfixable allowed warnings (`chrono`, `paste`, `yoke-derive`).
+`cargo audit` exits 0 with three unfixable allowed warnings (`chrono`, `paste`,
+`yoke-derive`). The 2026-11-17 round cleared the earlier security advisories:
+diesel 2.4.0 widened the SQLite range so `libsqlite3-sys 0.39.1` could land,
+alongside `libp2p-gossipsub 0.50.1` and `quinn-proto 0.11.19`. The 2026-11-27
+round took the transitive `url 2.5.8 → 2.5.9` patch for RUSTSEC-2026-0592.
 
 `cargo outdated --depth 1` now prints a table again (diesel no longer blocks
 the probe) with five direct rows after the 2026-11-22 round took the last
@@ -271,6 +272,7 @@ here so they are not mistaken for unfinished work.
 | Item | When | Where |
 |---|---|---|
 | Key-driven TUI sessions + input/reply-preview fixes | 2026-11-27 | [`archive/2026-11-27_tui_key_driven_sessions.md`](archive/2026-11-27_tui_key_driven_sessions.md) |
+| `url` 2.5.9 + `form_urlencoded` 1.2.3 (RUSTSEC-2026-0592) | 2026-11-27 | `deps: take url 2.5.9` |
 | Reply snapshots canonicalized at every trust boundary | 2026-11-27 | [`archive/2026-11-27_reply_ref_boundary_canonicalization.md`](archive/2026-11-27_reply_ref_boundary_canonicalization.md) |
 | Group names validated at the Rust choke point | 2026-11-27 | [`archive/2026-11-27_group_name_validation.md`](archive/2026-11-27_group_name_validation.md) |
 | Rust-owned quick-reaction palette in both frontends | 2026-11-27 | [`archive/2026-11-27_quick_reaction_palette_parity.md`](archive/2026-11-27_quick_reaction_palette_parity.md) |

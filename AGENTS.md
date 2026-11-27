@@ -123,7 +123,10 @@ indexes. This file keeps only instruction-type guidance for future tasks.
   widened the SQLite range so `libsqlite3-sys 0.38.2 → 0.39.1` could land
   (RUSTSEC-2026-0459), plus `libp2p-gossipsub 0.50.0 → 0.50.1` (RUSTSEC-2026-0534)
   and `quinn-proto 0.11.18 → 0.11.19` (RUSTSEC-2026-0524); `quinn-udp` and
-  `rustix` followed as lockfile-only bumps.
+  `rustix` followed as lockfile-only bumps. 2026-11-27 took the transitive
+  `url 2.5.8 → 2.5.9` (with `form_urlencoded 1.2.2 → 1.2.3`) for
+  RUSTSEC-2026-0592 (stack overflow in `Url::origin()` on nested `blob:` URLs),
+  restoring a clean `cargo audit`.
   The three remaining rows are *allowed warnings*, not
   failures: the unmaintained `chrono` 0.4.45 (RUSTSEC-2026-0543, no fixed upgrade),
   the unmaintained `paste` 1.0.15 (RUSTSEC-2024-0436, a build-time proc-macro from
