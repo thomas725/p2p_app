@@ -122,7 +122,7 @@ Still open (device adapters, not protocol work):
   both un-gated. Do **not** gate either behind it; that happened once and was
   corrected.
 
-### File shares / folder sync UI — **Rust core, Flutter/web list, detail, grant editor, discovery, network actions and deletion publishing, plus a read-only TUI Shares tab shipped; creation/binding/native snapshots deferred**
+### File shares / folder sync UI — **Rust core, both frontends' list/detail/grant editor, Flutter/web discovery, network actions and deletion publishing shipped; creation/binding/native snapshots deferred**
 
 The Rust core landed in `7dfaefe` (domain, DB, ACLs) and the share-lane
 follow-up (`/p2p-chat/shares/1.0.0` wire protocol, swarm handlers, events, GC
@@ -189,18 +189,28 @@ Shipped after the core:
   manifests and selections are blocked client-side, while Rust remains the ACL
   and optimistic-concurrency authority. Record:
   [`archive/2026-11-26_flutter_share_publish.md`](archive/2026-11-26_flutter_share_publish.md).
-- a read-only TUI Shares tab (after Settings): a selectable list with each
-  share's kind/write flag, owner, local root, revision and manifest files, plus
-  a "Last event" line fed by `share_offered`/`share_updated`/`share_rejected`.
-  `r` re-reads `shares::list_shares()`; events also reload and leave a notice,
-  never a second manifest apply. Record:
+- a TUI Shares tab (after Settings): a selectable list with each share's
+  kind/write flag, owner, local root, revision, private-share grants and
+  manifest files, plus a "Last event" line fed by
+  `share_offered`/`share_updated`/`share_rejected`. `r` re-reads
+  `shares::list_shares()` and `list_all_grants()`; events also reload and leave
+  a notice, never a second manifest apply. Record:
   [`archive/2026-11-26_tui_readonly_shares_tab.md`](archive/2026-11-26_tui_readonly_shares_tab.md).
+- a TUI private-share grant editor matching Flutter's: `a` adds/upgrades a
+  grant (`Tab` toggles canonical `readonly`/`readwrite`), `x` revokes the
+  highlighted grant (`Ctrl+Up`/`Ctrl+Down` moves the grant cursor), and `Enter`
+  commits through `shares::set_grant`/`remove_grant` while `Esc` cancels. A
+  revoke stores its target user id in the prompt, so the prefilled text is
+  confirmation only; changing shares resets the grant cursor. Real key/mouse
+  sessions cover both prompts, cursor isolation, validation failures, DB
+  effects and prompt pointer ownership. Record:
+  [`archive/2026-11-27_tui_share_grant_editor.md`](archive/2026-11-27_tui_share_grant_editor.md).
 
 Still open (UI/integration, not protocol work):
 
-- TUI Shares tab actions: create/bind/snapshot, grant editor, public/write
-  toggles and offer/manifest/publish actions (the list, detail and event notice
-  already ship);
+- TUI Shares tab actions: create/bind/snapshot, public/write toggles and
+  offer/manifest/publish actions (the list, detail, event notice and grant
+  editor already ship);
 - Native share creation/binding and folder snapshot UI. Deletion publishing,
   discovery, manifest refresh and re-advertise already ship on both transports;
   the browser remains a display client — adding new files needs a real local
@@ -274,6 +284,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| TUI private-share grant editor | 2026-11-27 | [`archive/2026-11-27_tui_share_grant_editor.md`](archive/2026-11-27_tui_share_grant_editor.md) |
 | TUI message cursor + row-targeted chat verbs | 2026-11-27 | [`archive/2026-11-27_tui_message_selection.md`](archive/2026-11-27_tui_message_selection.md) |
 | Rust-owned seen timestamps in Flutter Contacts/Peer Info | 2026-11-27 | [`archive/2026-11-27_rust_owned_seen_timestamps.md`](archive/2026-11-27_rust_owned_seen_timestamps.md) |
 | Rust-owned last-connection label in Flutter Settings | 2026-11-27 | [`archive/2026-11-27_last_connection_rust_label.md`](archive/2026-11-27_last_connection_rust_label.md) |

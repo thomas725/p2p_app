@@ -1,4 +1,4 @@
-use super::super::state::AppState;
+use super::super::state::{AppState, ShareGrantAction};
 use p2p_app::tui_tabs::TabContent;
 use ratatui::{
     Frame,
@@ -21,6 +21,22 @@ pub fn render_input_section(
         )
     } else if state.is_editing_message() {
         "Edit sent message - Enter to save locally, Esc to cancel".to_string()
+    } else if state.is_editing_share_grant() {
+        match state
+            .share_grant_prompt
+            .as_ref()
+            .map(|prompt| &prompt.action)
+        {
+            Some(ShareGrantAction::Add { mode }) => format!(
+                "Add share grant ({}) - Tab: mode, Enter: save, Esc: cancel",
+                p2p_app::shares::mode_label(*mode)
+            ),
+            Some(ShareGrantAction::Revoke { user_id }) => format!(
+                "Revoke share grant ({}) - Enter to remove, Esc to cancel",
+                p2p_app::short_peer_id(user_id)
+            ),
+            None => "Share grant - Enter to save, Esc to cancel".to_string(),
+        }
     } else if state.is_dialing_peer() {
         "Dial peer address - Enter to dial, Esc to cancel".to_string()
     } else if state.is_adding_network_peer() {

@@ -351,12 +351,13 @@ fn scroll_settings_tab(key_code: crossterm::event::KeyCode, state: &mut AppState
 
 /// Move the Shares list selection; its detail pane follows the selected row.
 fn scroll_shares_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
-    state.share_selection = compute_new_peer_selection(
+    let selected = compute_new_peer_selection(
         key_code,
         state.share_selection,
         state.shares.len(),
         state.chat_area_height.max(1),
     );
+    state.select_share(selected);
 }
 
 /// Handle scroll key for a group chat tab

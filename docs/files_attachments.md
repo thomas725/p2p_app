@@ -7,10 +7,11 @@ DMs, broadcast, and groups.
 
 This document is the lane's reference: the wire design, the store surface, and
 the blob lifecycle. It also covers the versioned file-share/folder-sync
-extension built on the same store; its Rust core and the Flutter/web share
-list, detail and private-share grant editor have shipped, while the TUI share
-UI and creation/binding/publishing screens are still open work in
-[`backlog.md`](backlog.md). The code is the authority.
+extension built on the same store. Its Rust core and both frontends' list,
+detail and private-share grant editor have shipped, along with Flutter/web
+discovery, network actions and deletion publishing; native creation/binding/
+snapshot UI, public/write toggles and TUI offer/manifest/publish actions stay
+open in [`backlog.md`](backlog.md). The code is the authority.
 
 ## Wire design
 
@@ -163,8 +164,15 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   is never advertised. `lib/src/screens/share_publish.dart` submits a deletion
   revision through `publishShareSnapshot` with the loaded manifest revision as
   `baseRevision`; stale manifests/selections are blocked before the call, and a
-  caller still cannot bypass the owner's ACL check. The TUI still just logs
-  these events, and native creation/binding/folder snapshots remain deferred.
+  caller still cannot bypass the owner's ACL check. The TUI mirrors the
+  list/detail flow and adds a private-share grant editor: `a` adds or upgrades
+  a grant, `x` revokes the highlighted grant, and `Ctrl+Up`/`Ctrl+Down` moves
+  the grant cursor. `Enter` commits through `shares::set_grant` /
+  `shares::remove_grant` directly, so no FRB/web method changed; `Esc` leaves
+  the persisted grants untouched. Share events and grant commits reload the
+  canonical store and leave a visible notice. Native creation/binding/folder
+  snapshots, public/write toggles and TUI offer/manifest/publish actions remain
+  deferred.
 
 ## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
 

@@ -23,9 +23,10 @@ Tabs are ordered: **Chat**, **Contacts**, **Groups**, group chats, DMs,
 Peer Info tabs, **Log**, **Settings**, **Shares**. Peer Info and DM tabs are
 transient — they are inserted, deduplicated by peer, and closed with `Ctrl+W`.
 Shares is a permanent suffix tab after Settings. While a modal prompt owns the
-input (nickname, message edit, reaction, group name, dial or network peer),
-`Tab` and `Shift+Tab` are no-ops so the prompt cannot be stranded on another
-tab. Contacts search is inline, not modal: Tab and arrows keep working there.
+input (nickname, message edit, reaction, group name, dial, network peer or
+share grant), `Tab` and `Shift+Tab` are no-ops so the prompt cannot be stranded
+on another tab — except in the add-grant prompt, where `Tab` toggles the mode.
+Contacts search is inline, not modal: Tab and arrows keep working there.
 Moving focus away from Contacts — by Tab, a tab click, a row click, or opening
 Peer Info — closes the search box but keeps the applied filter; the shared input
 is cleared so a Composer draft does not inherit the query.
@@ -41,7 +42,7 @@ follows the selection.
 | Key/Action | Behavior |
 |------------|----------|
 | `↑` / `↓` | Scroll the hovered message section one line; move the list selection one row |
-| `Ctrl+Up` / `Ctrl+Down` | Move the message cursor on Chat / DM / Group chat; clamped at both ends |
+| `Ctrl+Up` / `Ctrl+Down` | Move the message cursor on Chat / DM / Group chat, or the grant cursor on Shares; clamped at both ends |
 | `PgUp` / `PgDn` | Page-scroll the hovered message section; page the list selection |
 | `Home` | Jump to the first message / list row in the focused section |
 | `End` | Jump to the newest message / last list row (re-enters auto-scroll in a conversation) |
@@ -66,8 +67,10 @@ returning to Chat; each conversation keeps its own cursor.
 
 Peer Info has no scrollable content and ignores the wheel. On Contacts, Groups,
 Settings and Shares, `↑`/`↓`, `PgUp`/`PgDn`, `Home`/`End` and the wheel move the
-highlighted row; Settings moves the persisted network-peer row, and the Shares
-detail pane wraps to show the selected share's manifest.
+highlighted row; Settings moves the persisted network-peer row. On Shares the
+detail pane wraps to show the selected share's grants and manifest, and
+`Ctrl+Up`/`Ctrl+Down` moves the grant cursor independently of the share row.
+Changing shares resets the grant cursor, so `x` always targets that share.
 
 Mouse input follows the same ownership order as the keyboard. A device-binding,
 group-leave or delete-message prompt and a live call swallow every click and
@@ -325,31 +328,42 @@ message while the Settings tab is active.
 
 ## Shares tab
 
-A read-only view of this install's shares: a selectable list on the left and
-the highlighted share's details (owner, local root, revision, manifest files)
-on the right. The latest `share_offered` / `share_updated` / `share_rejected`
-event appears as a "Last event" line. Creation, binding, grants and publishing
-are Flutter/web actions only for now.
+A selectable list of this install's shares on the left and the highlighted
+share's details on the right: owner, local root, revision, private-share
+grants and manifest files. The latest `share_offered` / `share_updated` /
+`share_rejected` event appears as a "Last event" line. Creation, binding,
+snapshots, public/write toggles and publish actions are still Flutter/web
+actions; grants are editable here too.
 
 | Key | Action |
 |-----|--------|
 | `↑` / `↓` | Move the share selection |
-| `PgUp` / `PgDn` | Page the selection |
+| `Ctrl+Up` / `Ctrl+Down` | Move the grant cursor in the detail pane |
+| `PgUp` / `PgDn` | Page the share selection |
 | `Home` / `End` | Jump to the first / last share |
 | `Click` in the list pane | Select that share (the detail pane follows) |
+| `a` | Add or upgrade a grant on the selected private share |
+| `x` | Revoke the highlighted grant |
 | `r` | Re-read the share list from Rust |
 | `Esc` | Return to the Chat tab |
 
+The add prompt takes a verified user id. `Tab` switches between `readonly`
+and `readwrite`, `Enter` saves through Rust's canonical grant store, and `Esc`
+cancels. The revoke prompt is a confirmation: its prefilled id cannot be
+edited, and `Enter` removes the highlighted user's grant. Both keep the
+prompt open with an error popup if the store rejects the change. Changing the
+share resets the grant cursor, so `x` cannot retarget after a wheel or click.
+
 Clicking the detail pane does not change the selection. `r` is tab-specific:
 on Settings it adds a relay, on Shares it refreshes.
-Share events also refresh the list automatically, so `r` is only needed after
-an action whose result arrives asynchronously.
+Share events and grant commits also refresh the list automatically, so `r` is
+only needed after an action whose result arrives asynchronously.
 
 ## Input and editing
 
 | Key | Action |
 |-----|--------|
-| `Enter` | Send the message / save a local message edit / save the nickname / confirm the group prompt |
+| `Enter` | Send the message / save a local message edit / save the nickname / confirm the group or share-grant prompt |
 | `Shift+Enter` | New line in a multi-line message |
 | `Esc` | Cancel the edit in progress, or unwind one layer (see the chain below) |
 | `/file <path>` | Attach a local file and send it (see below) |
@@ -384,20 +398,20 @@ failed launch reports the error in the same popup.
 | `Ctrl+Q` | Exit the application |
 
 `?` is a plain key, so it opens the help overlay only when no input box owns
-the keyboard. It does nothing while an editor, the Contacts search, a dial or
-network-peer prompt, the device-binding/group-leave prompt, or a call overlay
-is active. The overlay uses the ordinary popup slot: press any key or click to
-dismiss it, which is why typing `?` inside a prompt still inserts a question
-mark.
+the keyboard. It does nothing while an editor (including a share-grant prompt),
+the Contacts search, a dial or network-peer prompt, the
+device-binding/group-leave prompt, or a call overlay is active. The overlay
+uses the ordinary popup slot: press any key or click to dismiss it, which is
+why typing `?` inside a prompt still inserts a question mark.
 
 `Esc` unwinds one level at a time. The single-slot prompts own it first —
 decline a device-binding request, cancel a group leave, or cancel a local
 message deletion — followed by a live call overlay. Otherwise it cancels the
 innermost active layer: dismiss the popup → cancel a local message edit →
-cancel a reaction → clear the Contacts search → cancel a nickname edit →
-cancel the group create/join prompt → cancel a peer dial → cancel network-peer
-entry → clear the active conversation's reply draft → clear that conversation's
-message selection → return to the Chat tab. A second `Esc` is needed for the
+cancel a reaction → cancel a share-grant edit → clear the Contacts search →
+cancel a nickname edit → cancel the group create/join prompt → cancel a peer
+dial → cancel network-peer entry → clear the active conversation's reply draft
+→ clear that conversation's message selection → return to the Chat tab. A second `Esc` is needed for the
 next layer; for example, dismissing a network-peer validation popup leaves the
 rejected address open for correction.
 

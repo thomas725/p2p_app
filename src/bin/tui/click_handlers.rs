@@ -540,7 +540,7 @@ fn handle_share_row_click(state: &mut AppState, row: u16, column: u16) -> bool {
         p2p_app::tui_helpers::peer_table_visible_range(0, Some(selected), total, page_height);
     let share_row = start.saturating_add(usize::from(row).saturating_sub(2));
     if share_row < total {
-        state.share_selection = share_row;
+        state.select_share(share_row);
         return true;
     }
     false

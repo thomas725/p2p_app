@@ -373,6 +373,70 @@ async fn test_mouse_wheel_moves_shares_selection_through_real_dispatch() {
     assert_wheel_moves_list_selection(state, "Shares", "s-wheel-2", |s| s.share_selection).await;
 }
 
+#[test]
+#[serial]
+fn test_share_selection_resets_grant_cursor_through_real_mouse_input() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let share = |id: &str| p2p_app::shares::Share {
+            share_id: id.to_string(),
+            owner_user_id: "user".to_string(),
+            name: id.to_string(),
+            kind: p2p_app::shares::ShareKind::Private,
+            public_write: false,
+            local_root: None,
+            revision: 1,
+            manifest: None,
+        };
+        let grant = |user_id: &str| p2p_app::shares::ShareGrant {
+            user_id: user_id.to_string(),
+            mode: p2p_app::shares::ShareMode::ReadOnly,
+        };
+        let mut state = test_app_state();
+        state.active_tab = shares_tab_index(&state);
+        state.terminal_width = 160;
+        state.chat_area_height = 20;
+        state.shares = vec![share("s-grant-1"), share("s-grant-2")];
+        state
+            .share_grants
+            .insert("s-grant-1".to_string(), vec![grant("alice"), grant("bob")]);
+        state
+            .share_grants
+            .insert("s-grant-2".to_string(), vec![grant("carol")]);
+        state.share_selection = 0;
+        state.share_grant_selection = 1;
+        let mut session = KeySession::new(state);
+
+        assert!(
+            !session
+                .press_mouse(wheel_event(MouseEventKind::ScrollDown))
+                .await
+        );
+        {
+            let s = session.state.lock().await;
+            assert_eq!(s.share_selection, 1);
+            assert_eq!(
+                s.share_grant_selection, 0,
+                "wheel cannot carry a grant index"
+            );
+        }
+        assert!(session.frame_text().await.contains("s-grant-2"));
+
+        // A click back to the first share must also reset the cursor: the
+        // pointer path shares the same selection method as the wheel.
+        assert!(!session.press_mouse(left_click_event(2, 1)).await);
+        {
+            let s = session.state.lock().await;
+            assert_eq!(s.share_selection, 0);
+            assert_eq!(s.share_grant_selection, 0);
+        }
+        assert!(session.drain_commands().is_empty());
+    });
+}
+
 #[tokio::test]
 async fn test_mouse_wheel_on_peer_info_is_noop_without_redraw() {
     let state = Arc::new(Mutex::new(test_app_state()));
@@ -5233,4 +5297,341 @@ async fn test_group_message_cursor_highlights_row_through_real_keys() {
         "an unselected group row inherited the highlight: {highlighted:?}"
     );
     assert!(session.drain_commands().is_empty());
+}
+
+// ── private-share grant editor (Flutter parity) ──────────────────────────
+
+/// Set up one share in an isolated DB and land the real app on its Shares tab.
+/// The returned `TempDir` must outlive every DB call in the test.
+fn share_grant_db_state(
+    kind: p2p_app::shares::ShareKind,
+    grants: &[(&str, p2p_app::shares::ShareMode)],
+) -> (TempDir, AppState, String) {
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+
+    let share =
+        p2p_app::shares::create_share("Docs", "owner", kind, false, None).expect("create share");
+    for &(user_id, mode) in grants {
+        p2p_app::shares::set_grant(&share.share_id, user_id, mode).expect("seed grant");
+    }
+
+    let mut state = test_app_state();
+    state.active_tab = shares_tab_index(&state);
+    state.reload_shares();
+    (dir, state, share.share_id)
+}
+
+fn close_share_grant_db() {
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
+
+fn grant_mode(share_id: &str, user_id: &str) -> Option<p2p_app::shares::ShareMode> {
+    p2p_app::shares::list_grants(share_id)
+        .expect("list grants")
+        .into_iter()
+        .find(|grant| grant.user_id == user_id)
+        .map(|grant| grant.mode)
+}
+
+#[test]
+#[serial]
+fn test_share_grant_add_through_real_keys_persists_and_reloads() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, state, share_id) =
+            share_grant_db_state(p2p_app::shares::ShareKind::Private, &[]);
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('a').await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.is_editing_share_grant());
+            assert_eq!(s.chat_input.lines().join("\n"), "");
+            assert!(matches!(
+                s.share_grant_prompt.as_ref().map(|prompt| &prompt.action),
+                Some(crate::tui::state::ShareGrantAction::Add {
+                    mode: p2p_app::shares::ShareMode::ReadOnly,
+                })
+            ));
+        }
+        assert!(
+            session
+                .frame_text()
+                .await
+                .contains("Add share grant (readonly)"),
+            "the prompt title must show the default canonical mode"
+        );
+
+        assert!(!session.type_text("alice").await);
+        assert!(!session.press_code(KeyCode::Tab).await);
+        {
+            let s = session.state.lock().await;
+            assert_eq!(s.chat_input.lines().join("\n"), "alice");
+            assert!(matches!(
+                s.share_grant_prompt.as_ref().map(|prompt| &prompt.action),
+                Some(crate::tui::state::ShareGrantAction::Add {
+                    mode: p2p_app::shares::ShareMode::ReadWrite,
+                })
+            ));
+        }
+        assert!(
+            session
+                .frame_text()
+                .await
+                .contains("Add share grant (readwrite)"),
+            "Tab must toggle the mode in place"
+        );
+
+        assert!(!session.press_code(KeyCode::Enter).await);
+        assert_eq!(
+            grant_mode(&share_id, "alice"),
+            Some(p2p_app::shares::ShareMode::ReadWrite)
+        );
+        {
+            let s = session.state.lock().await;
+            assert!(!s.is_editing_share_grant());
+            assert!(s.share_grant_prompt.is_none());
+            assert_eq!(s.chat_input.lines().join("\n"), "");
+            assert_eq!(s.share_event_notice.as_deref(), Some("Grant set for alice"));
+        }
+        let frame = session.frame_text().await;
+        assert!(frame.contains("alice (readwrite)"), "frame: {frame}");
+        assert!(frame.contains("Grant set for alice"), "frame: {frame}");
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_grant_revoke_uses_highlighted_grant_not_typed_text() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, state, share_id) = share_grant_db_state(
+            p2p_app::shares::ShareKind::Private,
+            &[
+                ("alice", p2p_app::shares::ShareMode::ReadOnly),
+                ("bob", p2p_app::shares::ShareMode::ReadWrite),
+            ],
+        );
+        let mut session = KeySession::new(state);
+
+        let ctrl_down = KeyEvent::new(KeyCode::Down, KeyModifiers::CONTROL);
+        let ctrl_up = KeyEvent::new(KeyCode::Up, KeyModifiers::CONTROL);
+        assert!(!session.press_key(ctrl_up).await);
+        assert_eq!(session.state.lock().await.share_grant_selection, 0);
+        assert!(!session.press_key(ctrl_down).await);
+        assert!(!session.press_key(ctrl_down).await);
+        let (target, other) = {
+            let s = session.state.lock().await;
+            assert_eq!(s.share_grant_selection, 1);
+            let grants = s.selected_share_grants();
+            let target = grants[1].user_id.clone();
+            let other = grants[0].user_id.clone();
+            (target, other)
+        };
+        assert!(
+            session.frame_text().await.contains(&format!("> {target}")),
+            "the grant cursor must be visible in the detail pane"
+        );
+
+        assert!(!session.press_char('x').await);
+        {
+            let s = session.state.lock().await;
+            assert!(matches!(
+                s.share_grant_prompt.as_ref().map(|prompt| &prompt.action),
+                Some(crate::tui::state::ShareGrantAction::Revoke { user_id })
+                    if user_id == &target
+            ));
+            assert_eq!(s.chat_input.lines().join("\n"), target);
+        }
+
+        // The prefilled id is a confirmation, not an editable target: even if a
+        // stray key lands, the stored action still owns the DB write.
+        assert!(!session.type_text("mallory").await);
+        assert_eq!(
+            session.state.lock().await.chat_input.lines().join("\n"),
+            target
+        );
+
+        assert!(!session.press_code(KeyCode::Enter).await);
+        assert_eq!(grant_mode(&share_id, &target), None);
+        assert!(
+            grant_mode(&share_id, &other).is_some(),
+            "the other grant must survive"
+        );
+        let expected_notice = format!("Grant revoked for {target}");
+        {
+            let s = session.state.lock().await;
+            assert!(!s.is_editing_share_grant());
+            assert_eq!(s.share_grant_selection, 0, "cursor clamps after reload");
+            assert_eq!(
+                s.share_event_notice.as_deref(),
+                Some(expected_notice.as_str())
+            );
+        }
+        let frame = session.frame_text().await;
+        assert!(frame.contains(&expected_notice), "frame: {frame}");
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_grant_add_rejects_empty_user_id_without_writing() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, state, share_id) =
+            share_grant_db_state(p2p_app::shares::ShareKind::Private, &[]);
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('a').await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+        assert!(
+            session.state.lock().await.is_editing_share_grant(),
+            "a rejected id keeps the editor open for correction"
+        );
+        assert_eq!(
+            session.state.lock().await.popup.as_deref(),
+            Some("Enter a verified user ID")
+        );
+        assert_eq!(
+            p2p_app::shares::list_grants(&share_id).expect("list"),
+            Vec::new()
+        );
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_grant_actions_refuse_public_shares_and_missing_grants() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, state, share_id) = share_grant_db_state(p2p_app::shares::ShareKind::Public, &[]);
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('a').await);
+        assert_eq!(
+            session.state.lock().await.popup.as_deref(),
+            Some("Grants only apply to private shares")
+        );
+        assert!(!session.state.lock().await.is_editing_share_grant());
+
+        // A key dismisses the popup before the next shortcut is dispatched.
+        assert!(!session.press_code(KeyCode::Esc).await);
+        assert!(!session.press_char('x').await);
+        assert_eq!(
+            session.state.lock().await.popup.as_deref(),
+            Some("Grants only apply to private shares")
+        );
+        assert_eq!(
+            p2p_app::shares::list_grants(&share_id).expect("list"),
+            Vec::new()
+        );
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_grant_revoke_without_selected_grant_shows_hint() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, state, share_id) =
+            share_grant_db_state(p2p_app::shares::ShareKind::Private, &[]);
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('x').await);
+        assert!(!session.state.lock().await.is_editing_share_grant());
+        assert_eq!(
+            session.state.lock().await.popup.as_deref(),
+            Some("No grant selected to revoke")
+        );
+        assert_eq!(
+            p2p_app::shares::list_grants(&share_id).expect("list"),
+            Vec::new()
+        );
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_grant_editor_owns_tab_and_mouse_until_cancelled() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, state, share_id) = share_grant_db_state(
+            p2p_app::shares::ShareKind::Private,
+            &[("alice", p2p_app::shares::ShareMode::ReadOnly)],
+        );
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('a').await);
+        let active_tab = session.state.lock().await.active_tab;
+        assert!(!session.type_text("bob").await);
+
+        assert!(!session.press_code(KeyCode::Tab).await);
+        assert!(
+            !session
+                .press_mouse(wheel_event(MouseEventKind::ScrollDown))
+                .await
+        );
+        assert!(!session.press_mouse(left_click_event(1, 4)).await);
+
+        let frame = session.frame_text().await;
+        assert!(frame.contains("Add share grant"), "frame: {frame}");
+        {
+            let s = session.state.lock().await;
+            assert_eq!(s.active_tab, active_tab, "Tab stayed in the prompt");
+            assert!(s.is_editing_share_grant());
+            assert_eq!(s.chat_input.lines().join("\n"), "bob");
+            assert_eq!(s.share_selection, 0);
+        }
+        assert!(session.drain_commands().is_empty());
+
+        assert!(!session.press_code(KeyCode::Esc).await);
+        {
+            let s = session.state.lock().await;
+            assert!(!s.is_editing_share_grant());
+            assert!(s.share_grant_prompt.is_none());
+            assert_eq!(s.chat_input.lines().join("\n"), "");
+        }
+        assert_eq!(
+            p2p_app::shares::list_grants(&share_id).expect("list"),
+            vec![p2p_app::shares::ShareGrant {
+                user_id: "alice".to_string(),
+                mode: p2p_app::shares::ShareMode::ReadOnly,
+            }],
+            "Esc must leave the persisted grants untouched"
+        );
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
 }

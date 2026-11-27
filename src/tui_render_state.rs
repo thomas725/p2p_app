@@ -107,8 +107,13 @@ pub struct TuiRenderState {
     pub shares: Vec<crate::shares::Share>,
     /// Highlighted share in the Shares list.
     pub share_selection: usize,
-    /// Grants by share id, used by the read-only Shares tab detail pane.
+    /// Highlighted grant in the selected share's detail pane.
+    pub share_grant_selection: usize,
+    /// Grants by share id, used by the Shares tab detail pane.
     pub share_grants: HashMap<String, Vec<crate::shares::ShareGrant>>,
+    /// Action label and mode of the active grant prompt, when one is open.
+    pub share_grant_action: Option<&'static str>,
+    pub share_grant_mode: Option<crate::shares::ShareMode>,
     /// Latest share-lane event (offer/update/rejection), shown on the Shares
     /// tab so swarm activity is visible without the Log tab.
     pub share_event_notice: Option<String>,
@@ -218,6 +223,9 @@ impl TuiRenderState {
             shares: Vec::new(),
             share_grants: HashMap::new(),
             share_selection: 0,
+            share_grant_selection: 0,
+            share_grant_action: None,
+            share_grant_mode: None,
             share_event_notice: None,
             input_text: String::new(),
             log_messages: VecDeque::new(),
@@ -294,6 +302,12 @@ impl TuiRenderState {
     #[must_use]
     pub const fn is_adding_reaction(&self) -> bool {
         matches!(self.input_mode, crate::InputMode::AddingReaction)
+    }
+
+    /// True while the shared input captures a private-share grant user id.
+    #[must_use]
+    pub const fn is_editing_share_grant(&self) -> bool {
+        matches!(self.input_mode, crate::InputMode::EditingShareGrant)
     }
 
     /// True while the editor sets the local display name of `nickname_peer_id`.

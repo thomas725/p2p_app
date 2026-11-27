@@ -50,6 +50,9 @@ pub enum InputMode {
     /// Capturing a bootstrap/relay multiaddr to persist in `network_peers`
     /// (Settings tab; the kind is held in `AppState::network_peer_kind`).
     AddingNetworkPeer,
+    /// Capturing a verified user id for a private-share grant (Shares tab;
+    /// the action and mode are held in `AppState::share_grant_prompt`).
+    EditingShareGrant,
 }
 
 impl InputMode {
@@ -70,6 +73,7 @@ impl InputMode {
                 | Self::CreatingGroup
                 | Self::DialingPeer
                 | Self::AddingNetworkPeer
+                | Self::EditingShareGrant
         )
     }
 }

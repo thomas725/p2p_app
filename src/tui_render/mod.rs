@@ -145,6 +145,12 @@ pub fn render_input_section(
         "Reaction emoji".to_string()
     } else if state.is_editing_message() {
         "Edit message (local only)".to_string()
+    } else if state.is_editing_share_grant() {
+        let action = state.share_grant_action.unwrap_or("Share grant");
+        state.share_grant_mode.map_or_else(
+            || action.to_string(),
+            |mode| format!("{action} ({})", crate::shares::mode_label(mode)),
+        )
     } else if state.is_dialing_peer() {
         "Dial peer address".to_string()
     } else if state.is_adding_network_peer() {
@@ -214,7 +220,7 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Ctrl+C: copy all | c: clear logs | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Shares => {
-            "Tab: next | Up/Down: select share | PgUp/PgDn: page | Home/End: first/last | r: refresh | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Up/Down: select share | Ctrl+Up/Down: select grant | a: add grant | x: revoke grant | r: refresh | F12: mouse | ?: help | Ctrl+Q: quit"
         }
     }
 }
@@ -247,7 +253,7 @@ Settings: Ctrl+P -> connected peer / bound device | click a peer row for its Pee
 Contacts: i Info | e expand | c call | d link device | / search | 1-5 sort | o reverse
 Groups: g create/join | d leave | y confirm leave
 Peer Info: n local nickname | c call | d link device | b block / unblock
-Shares: Up/Down select | r refresh
+Shares: Up/Down select share | Ctrl+Up/Down select grant | a add | x revoke | r refresh
 Log: Ctrl+C copy all logs | c clear logs
 Settings: n own nickname | d dial | b/r add peer | x remove | l LAN only | t dark/light | c accent | s sound | o desktop alert
 

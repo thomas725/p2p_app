@@ -1,6 +1,6 @@
 use super::event_source::InputEvent;
 use super::main_loop::RenderEvent;
-use super::state::{CallMediaStatus, SharedState};
+use super::state::{CallMediaStatus, ShareGrantAction, SharedState};
 use p2p_app::{SwarmCommand, p2plog_debug};
 use tokio::sync::mpsc;
 
@@ -766,6 +766,8 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
         p2plog_debug("Cancelled message edit".to_string());
     } else if s.cancel_reaction() {
         p2plog_debug("Cancelled reaction".to_string());
+    } else if s.cancel_share_grant() {
+        p2plog_debug("Cancelled share grant edit".to_string());
     } else if s.is_searching_contacts() {
         s.end_contact_search(false);
         p2plog_debug("Cleared Contacts search".to_string());
@@ -1378,6 +1380,136 @@ fn sync_contact_search(s: &mut super::state::AppState) {
     s.set_contact_search(&query);
 }
 
+/// `Tab` toggles the canonical mode while the add-grant prompt is open.
+///
+/// This runs before global navigation: a modal editor normally makes Tab a
+/// no-op so a prompt cannot be stranded on another tab, but here Tab is the
+/// prompt's own mode selector. Revoke prompts have no mode and keep the
+/// standard modal Tab behavior.
+fn handle_share_grant_prompt_key(
+    key_event: &crossterm::event::KeyEvent,
+    is_ctrl: bool,
+    s: &mut super::state::AppState,
+) -> bool {
+    use crossterm::event::KeyCode;
+
+    let is_add = s
+        .share_grant_prompt
+        .as_ref()
+        .is_some_and(|prompt| matches!(&prompt.action, ShareGrantAction::Add { .. }));
+    if is_ctrl || !s.is_editing_share_grant() || !is_add {
+        return false;
+    }
+    if !matches!(key_event.code, KeyCode::Tab | KeyCode::BackTab) {
+        return false;
+    }
+    s.toggle_share_grant_mode();
+    true
+}
+
+/// `Ctrl+Up`/`Ctrl+Down` moves the grant cursor on the Shares tab. Bare arrows
+/// keep owning the share list, matching the message-cursor pattern on chat tabs.
+fn handle_share_grant_selection_key(
+    key_event: &crossterm::event::KeyEvent,
+    is_ctrl: bool,
+    tab: &p2p_app::tui_tabs::TabContent,
+    s: &mut super::state::AppState,
+) -> bool {
+    use crossterm::event::KeyCode;
+    use p2p_app::tui_tabs::TabContent;
+
+    if !is_ctrl || s.is_modal_editor() || !matches!(tab, TabContent::Shares) {
+        return false;
+    }
+    let delta = match key_event.code {
+        KeyCode::Up => -1,
+        KeyCode::Down => 1,
+        _ => return false,
+    };
+    s.move_share_grant_selection(delta);
+    true
+}
+
+/// Arm the add-grant editor for the highlighted private share.
+fn arm_add_share_grant(s: &mut super::state::AppState) {
+    let Some((share_id, kind)) = s
+        .shares
+        .get(s.share_selection)
+        .map(|share| (share.share_id.clone(), share.kind))
+    else {
+        s.popup = Some("No share selected".to_string());
+        return;
+    };
+    if kind != p2p_app::shares::ShareKind::Private {
+        s.popup = Some("Grants only apply to private shares".to_string());
+        return;
+    }
+    s.begin_add_share_grant(share_id);
+}
+
+/// Arm the revoke-grant editor for the highlighted grant on a private share.
+fn arm_revoke_share_grant(s: &mut super::state::AppState) {
+    let Some((share_id, kind)) = s
+        .shares
+        .get(s.share_selection)
+        .map(|share| (share.share_id.clone(), share.kind))
+    else {
+        s.popup = Some("No share selected".to_string());
+        return;
+    };
+    if kind != p2p_app::shares::ShareKind::Private {
+        s.popup = Some("Grants only apply to private shares".to_string());
+        return;
+    }
+    let Some(user_id) = s
+        .selected_share_grants()
+        .get(s.share_grant_selection)
+        .map(|grant| grant.user_id.clone())
+    else {
+        s.popup = Some("No grant selected to revoke".to_string());
+        return;
+    };
+    s.begin_revoke_share_grant(share_id, user_id);
+}
+
+/// Commit the active grant editor through the canonical store, then re-read the
+/// Shares pane. Any validation or DB failure keeps the editor open with a hint.
+fn confirm_share_grant(s: &mut super::state::AppState) {
+    let Some(prompt) = s.share_grant_prompt.clone() else {
+        return;
+    };
+    let (outcome, notice) = match prompt.action {
+        ShareGrantAction::Add { mode } => {
+            let user_id = s.chat_input.lines().join("\n").trim().to_string();
+            if user_id.is_empty() {
+                s.popup = Some("Enter a verified user ID".to_string());
+                return;
+            }
+            (
+                p2p_app::shares::set_grant(&prompt.share_id, &user_id, mode),
+                format!("Grant set for {user_id}"),
+            )
+        }
+        // The highlighted grant is the authority for a revoke; the prefilled
+        // text is only a confirmation and cannot retarget the write.
+        ShareGrantAction::Revoke { user_id } => (
+            p2p_app::shares::remove_grant(&prompt.share_id, &user_id),
+            format!("Grant revoked for {user_id}"),
+        ),
+    };
+    match outcome {
+        Ok(()) => {
+            s.cancel_share_grant();
+            s.share_event_notice = Some(notice.clone());
+            s.reload_shares();
+            p2plog_debug(format!("Share grant editor: {notice}"));
+        }
+        Err(error) => {
+            s.popup = Some(format!("Could not update share grant: {error}"));
+        }
+    }
+}
+
 /// Dispatch a fully-unlocked key event against the active tab.
 ///
 /// Tab lookups and modifier flags are computed once up front; shared
@@ -1399,6 +1531,7 @@ async fn handle_key_dispatch(
     let on_contacts = matches!(&tab, p2p_app::tui_tabs::TabContent::Contacts);
     let on_peer_info = matches!(&tab, p2p_app::tui_tabs::TabContent::PeerInfo(_));
     let on_direct = matches!(&tab, p2p_app::tui_tabs::TabContent::Direct(_));
+    let on_shares = matches!(&tab, p2p_app::tui_tabs::TabContent::Shares);
     let dm_peer_id = match &tab {
         p2p_app::tui_tabs::TabContent::Direct(peer_id) => Some(peer_id.clone()),
         _ => None,
@@ -1406,6 +1539,12 @@ async fn handle_key_dispatch(
     let input_enabled = tab.is_input_enabled();
 
     if handle_message_selection_key(&key_event, is_ctrl, &tab, s) {
+        return;
+    }
+    if handle_share_grant_prompt_key(&key_event, is_ctrl, s) {
+        return;
+    }
+    if handle_share_grant_selection_key(&key_event, is_ctrl, &tab, s) {
         return;
     }
     if handle_global_navigation(&key_event, is_ctrl, on_direct, s).await {
@@ -1453,6 +1592,7 @@ async fn handle_key_dispatch(
             if !is_ctrl
                 && !s.is_modal_editor()
                 && (on_peer_info
+                    || on_shares
                     || matches!(
                         &tab,
                         p2p_app::tui_tabs::TabContent::Settings
@@ -1697,6 +1837,8 @@ async fn handle_enter_dispatch(
         confirm_edit_message(s);
     } else if s.is_adding_reaction() {
         confirm_reaction(s, swarm_cmd_tx).await;
+    } else if s.is_editing_share_grant() {
+        confirm_share_grant(s);
     } else if s.is_creating_group() {
         let name = s.chat_input.lines().join("\n");
         create_or_join_group(s, swarm_cmd_tx, &name).await;
@@ -1733,6 +1875,18 @@ fn handle_tab_specific_shortcut(
                 && matches!(tab, p2p_app::tui_tabs::TabContent::Settings) =>
         {
             handle_settings_shortcut(c, s);
+            true
+        }
+        crossterm::event::KeyCode::Char('a')
+            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
+        {
+            arm_add_share_grant(s);
+            true
+        }
+        crossterm::event::KeyCode::Char('x')
+            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
+        {
+            arm_revoke_share_grant(s);
             true
         }
         crossterm::event::KeyCode::Char(c)
@@ -1775,7 +1929,9 @@ fn handle_default_input(
     dm_peer_id: Option<&str>,
     input_enabled: bool,
 ) {
-    if input_enabled || s.is_modal_editor() {
+    // A revoke confirmation shows the highlighted grant's id but never edits
+    // it: Enter commits the stored target, so stray keys cannot retarget it.
+    if input_enabled || (s.is_modal_editor() && !s.is_revoking_share_grant()) {
         s.chat_input.input(key_event);
         if input_enabled
             && s.input_mode == p2p_app::InputMode::Chat

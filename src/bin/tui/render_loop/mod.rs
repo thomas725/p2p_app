@@ -1,7 +1,7 @@
 mod layout;
 
 use super::main_loop::RenderEvent;
-use super::state::{AppState, SharedState};
+use super::state::{AppState, ShareGrantAction, SharedState};
 use p2p_app::get_tui_logs;
 use p2p_app::tui_render;
 use p2p_app::tui_render::render_popup;
@@ -137,6 +137,19 @@ fn cloned_log<V: Clone>(log: &HashMap<String, V>) -> BTreeMap<String, V> {
     log.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
 }
 
+/// Project the grant editor into the title metadata the render layer shows.
+fn share_grant_render_meta(
+    state: &AppState,
+) -> (Option<&'static str>, Option<p2p_app::shares::ShareMode>) {
+    state
+        .share_grant_prompt
+        .as_ref()
+        .map_or((None, None), |prompt| match &prompt.action {
+            ShareGrantAction::Add { mode } => (Some("Add share grant"), Some(*mode)),
+            ShareGrantAction::Revoke { .. } => (Some("Revoke share grant"), None),
+        })
+}
+
 /// Convert `AppState` to `TuiRenderState` for library rendering.
 ///
 /// `pub(super)` so the Settings mouse handler can hit-test the exact same
@@ -154,6 +167,7 @@ pub(super) fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderS
     let network_size = p2p_app::network::network_size_label(
         i64::try_from(connected_peer_count).unwrap_or(i64::MAX),
     );
+    let (share_grant_action, share_grant_mode) = share_grant_render_meta(state);
 
     p2p_app::TuiRenderState {
         tab_titles,
@@ -208,6 +222,9 @@ pub(super) fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderS
         shares: state.shares.clone(),
         share_grants: state.share_grants.clone(),
         share_selection: state.share_selection,
+        share_grant_selection: state.share_grant_selection,
+        share_grant_action,
+        share_grant_mode,
         share_event_notice: state.share_event_notice.clone(),
 
         peer_selection: state.peer_selection,

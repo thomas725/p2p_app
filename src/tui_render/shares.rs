@@ -1,6 +1,6 @@
-//! Read-only Shares tab: known shares on the left, the highlighted share's
-//! manifest on the right. Mirrors Flutter's list → detail flow without any
-//! mutable actions; creation/binding/snapshots stay native operations.
+//! Shares tab: known shares on the left, the highlighted share's grants and
+//! manifest on the right. Mirrors Flutter's list → detail flow; grant editing
+//! uses the shared modal input, while creation/binding/snapshots stay native.
 
 use crate::shares::{Share, ShareGrant, ShareKind, kind_label};
 use crate::tui_helpers::peer_table_visible_range;
@@ -23,7 +23,12 @@ fn share_row(share: &Share) -> String {
 }
 
 /// Detail pane lines for the selected share, plus the latest share-lane event.
-fn detail_lines(share: Option<&Share>, grants: &[ShareGrant], notice: Option<&str>) -> Vec<String> {
+fn detail_lines(
+    share: Option<&Share>,
+    grants: &[ShareGrant],
+    grant_selection: usize,
+    notice: Option<&str>,
+) -> Vec<String> {
     let mut lines = Vec::new();
     if let Some(notice) = notice {
         lines.push(format!("Last event: {notice}"));
@@ -53,13 +58,15 @@ fn detail_lines(share: Option<&Share>, grants: &[ShareGrant], notice: Option<&st
         if grants.is_empty() {
             lines.push("  none".to_string());
         }
-        for grant in grants {
+        for (index, grant) in grants.iter().enumerate() {
+            let marker = if index == grant_selection { ">" } else { " " };
             lines.push(format!(
-                "  {} ({})",
+                " {marker} {} ({})",
                 grant.user_id,
                 crate::shares::mode_label(grant.mode)
             ));
         }
+        lines.push("  a: add grant | x: revoke highlighted grant".to_string());
     }
     match share.manifest.as_ref() {
         Some(manifest) => {
@@ -114,7 +121,12 @@ pub fn render_shares_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRend
     let grants: &[ShareGrant] = chosen
         .and_then(|share| state.share_grants.get(&share.share_id))
         .map_or(&[], Vec::as_slice);
-    let lines = detail_lines(chosen, grants, state.share_event_notice.as_deref());
+    let lines = detail_lines(
+        chosen,
+        grants,
+        state.share_grant_selection,
+        state.share_event_notice.as_deref(),
+    );
     let para = Paragraph::new(lines.join("\n"))
         .block(bordered_block("Share details".to_string()))
         .wrap(Wrap { trim: false });

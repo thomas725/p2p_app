@@ -218,6 +218,10 @@ pub struct AppState {
     pub share_grants: HashMap<String, Vec<p2p_app::shares::ShareGrant>>,
     /// Highlighted share in the Shares list.
     pub share_selection: usize,
+    /// Highlighted grant in the selected share's detail pane.
+    pub share_grant_selection: usize,
+    /// Grant being added/revoked in the shared editor (`None` outside it).
+    pub share_grant_prompt: Option<ShareGrantPrompt>,
     /// Latest share-lane event text, shown on the Shares tab.
     pub share_event_notice: Option<String>,
 
@@ -393,6 +397,24 @@ pub struct ReactionPrompt {
     pub msg_id: String,
 }
 
+/// What the share-grant editor is doing. The mode belongs to the add action
+/// only; a revoke prompt carries the user id it will remove so the typed text
+/// is only a confirmation, never the authority for the target.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ShareGrantAction {
+    /// Add or upgrade one user's access with the selected canonical mode.
+    Add { mode: p2p_app::shares::ShareMode },
+    /// Revoke an existing grant for this verified user id.
+    Revoke { user_id: String },
+}
+
+/// The share whose grant the shared editor is changing (Flutter parity).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ShareGrantPrompt {
+    pub share_id: String,
+    pub action: ShareGrantAction,
+}
+
 /// Index + DB id of the newest outgoing row in an aligned id queue.
 fn last_sent_db_id(ids: &VecDeque<Option<i32>>) -> Option<(usize, i32)> {
     ids.iter()
@@ -485,6 +507,7 @@ impl AppState {
     /// text follow the user to the destination tab.
     pub fn finalize_tab_input(&mut self) {
         self.cancel_nickname_edit();
+        self.cancel_share_grant();
         self.end_contact_search(true);
     }
 
@@ -572,6 +595,30 @@ impl AppState {
             .min(self.network_peers.len().saturating_sub(1));
     }
 
+    /// Highlight a share and reset the grant cursor when the share changes.
+    /// A grant index is only meaningful for the share it came from, so carrying
+    /// it across rows could make `x` revoke the wrong user after a wheel/click.
+    pub fn select_share(&mut self, index: usize) {
+        let index = index.min(self.shares.len().saturating_sub(1));
+        if index != self.share_selection {
+            self.share_grant_selection = 0;
+        }
+        self.share_selection = index;
+    }
+
+    /// Clamp the grant cursor after a store reload changes the selected share's
+    /// grants (for example, after the highlighted grant is revoked).
+    fn clamp_share_grant_selection(&mut self) {
+        let grant_count = self
+            .shares
+            .get(self.share_selection)
+            .and_then(|share| self.share_grants.get(&share.share_id))
+            .map_or(0, Vec::len);
+        self.share_grant_selection = self
+            .share_grant_selection
+            .min(grant_count.saturating_sub(1));
+    }
+
     /// Re-read the shares table. A DB failure keeps the last good snapshot and
     /// is logged, so a broken DB never blanks the tab (fail-open, like the
     /// other best-effort UI reloads).
@@ -584,9 +631,8 @@ impl AppState {
             Ok(grants) => self.share_grants = grants,
             Err(error) => p2p_app::p2plog_debug(format!("Failed to reload share grants: {error}")),
         }
-        self.share_selection = self
-            .share_selection
-            .min(self.shares.len().saturating_sub(1));
+        self.select_share(self.share_selection);
+        self.clamp_share_grant_selection();
     }
 
     /// Move the network-peers highlight with the Settings Up/Down/Home/End keys.
@@ -703,6 +749,94 @@ impl AppState {
             self.chat_input = TextArea::default();
         }
         was_adding
+    }
+
+    /// True while the shared input captures a private-share grant user id.
+    #[must_use]
+    pub const fn is_editing_share_grant(&self) -> bool {
+        matches!(self.input_mode, p2p_app::InputMode::EditingShareGrant)
+    }
+
+    /// True while the grant editor is a revoke confirmation. Its prefilled id
+    /// is display-only: the stored action owns the target of the DB write.
+    #[must_use]
+    pub const fn is_revoking_share_grant(&self) -> bool {
+        match self.share_grant_prompt.as_ref() {
+            Some(prompt) => matches!(prompt.action, ShareGrantAction::Revoke { .. }),
+            None => false,
+        }
+    }
+
+    /// Grants on the currently highlighted share, empty when none is selected.
+    #[must_use]
+    pub fn selected_share_grants(&self) -> &[p2p_app::shares::ShareGrant] {
+        self.shares
+            .get(self.share_selection)
+            .and_then(|share| self.share_grants.get(&share.share_id))
+            .map_or(&[], Vec::as_slice)
+    }
+
+    /// Open the shared editor to add a grant on `share_id`, defaulting to the
+    /// same `readonly` mode Flutter's add dialog starts with.
+    pub fn begin_add_share_grant(&mut self, share_id: String) {
+        self.input_mode = p2p_app::InputMode::EditingShareGrant;
+        self.share_grant_prompt = Some(ShareGrantPrompt {
+            share_id,
+            action: ShareGrantAction::Add {
+                mode: p2p_app::shares::ShareMode::ReadOnly,
+            },
+        });
+        self.chat_input = TextArea::default();
+    }
+
+    /// Open the shared editor to revoke `user_id` from `share_id`. The id is
+    /// pre-filled as a read-only confirmation; `Enter` commits the stored
+    /// target and `Esc` cancels without changing the grant.
+    pub fn begin_revoke_share_grant(&mut self, share_id: String, user_id: String) {
+        self.input_mode = p2p_app::InputMode::EditingShareGrant;
+        self.share_grant_prompt = Some(ShareGrantPrompt {
+            share_id,
+            action: ShareGrantAction::Revoke {
+                user_id: user_id.clone(),
+            },
+        });
+        self.chat_input = TextArea::new(vec![user_id]);
+    }
+
+    /// Switch the add prompt between the two canonical grant modes. Revoke
+    /// prompts have no mode and are left untouched.
+    pub const fn toggle_share_grant_mode(&mut self) {
+        let Some(prompt) = self.share_grant_prompt.as_mut() else {
+            return;
+        };
+        if let ShareGrantAction::Add { mode } = &mut prompt.action {
+            *mode = match *mode {
+                p2p_app::shares::ShareMode::ReadOnly => p2p_app::shares::ShareMode::ReadWrite,
+                p2p_app::shares::ShareMode::ReadWrite => p2p_app::shares::ShareMode::ReadOnly,
+            };
+        }
+    }
+
+    /// Cancel an in-progress grant edit, leaving the persisted grants untouched.
+    pub fn cancel_share_grant(&mut self) -> bool {
+        let was_editing = self.share_grant_prompt.take().is_some();
+        if was_editing {
+            self.input_mode = p2p_app::InputMode::Chat;
+            self.chat_input = TextArea::default();
+        }
+        was_editing
+    }
+
+    /// Move the highlighted grant in the selected share's detail pane. Bare
+    /// arrows keep owning the share list; the modifier targets the grant.
+    pub fn move_share_grant_selection(&mut self, delta: isize) {
+        let last = self.selected_share_grants().len().saturating_sub(1);
+        let current = self.share_grant_selection.min(last);
+        self.share_grant_selection = if delta < 0 {
+            current.saturating_sub(1)
+        } else {
+            current.saturating_add(1).min(last)
+        };
     }
 
     /// Wire-id deque aligned with the transcript of `tab`, when it has one.
@@ -1706,6 +1840,8 @@ impl AppState {
             shares: Vec::new(),
             share_grants: HashMap::new(),
             share_selection: 0,
+            share_grant_selection: 0,
+            share_grant_prompt: None,
             share_event_notice: None,
             input_mode: p2p_app::InputMode::Chat,
             dynamic_tabs: DynamicTabs::new(),
