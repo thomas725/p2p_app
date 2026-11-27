@@ -174,13 +174,19 @@ the TUI; see
 Replies (US-006) carry a canonical `ReplyRef { msg_id, sender, preview }` in the
 message payload rather than a foreign key. `src/reply.rs` owns the bounded
 single-line display strings and the `↳ {sender}: {preview}` header used by all
-three frontends. Serde ingress (wire, web, DB) canonicalizes both strings; FRB's
-generated decoder writes the public fields directly, so persistence, outbound
-wire builders and the TUI header canonicalize again at those non-serde
-boundaries. The snapshot survives local tombstones and is persisted in
-`reply_to_json` so reloaded rows still render their quote. Incoming wire ids are
-stored in `msg_id` so those rows can be replied to later; see
-[`archive/2026-11-27_reply_ref_boundary_canonicalization.md`](archive/2026-11-27_reply_ref_boundary_canonicalization.md).
+three frontends. Flutter no longer builds the snapshot itself:
+`mobile_api::reply_draft` resolves the sender label, appends the canonical
+attachment chip through `files::render_message_body` and calls `ReplyRef::new`;
+both FRB and the web `replyDraft` method reach that same pure Rust helper.
+Serde ingress (wire, web, DB) canonicalizes both strings; FRB's generated
+decoder writes the public fields directly, so persistence, outbound wire
+builders and the TUI header canonicalize again at those non-serde boundaries.
+The snapshot survives local tombstones and is persisted in `reply_to_json` so
+reloaded rows still render their quote. Incoming wire ids are stored in `msg_id`
+so those rows can be replied to later; see
+[`archive/2026-11-27_reply_ref_boundary_canonicalization.md`](archive/2026-11-27_reply_ref_boundary_canonicalization.md)
+and
+[`archive/2026-11-27_rust_owned_reply_drafts.md`](archive/2026-11-27_rust_owned_reply_drafts.md).
 
 ### Notifications (US-027 / US-028)
 

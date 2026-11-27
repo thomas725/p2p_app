@@ -601,7 +601,7 @@ void main() {
     expect(find.text('12ms'), findsOneWidget);
   });
 
-  test('an attachment-only reply quotes the canonical Rust chip', () {
+  test('an attachment-only reply quotes the canonical Rust chip', () async {
     const attachment = MobileAttachment(
       fileId: 'abc123',
       name: 'notes.txt',
@@ -609,7 +609,18 @@ void main() {
       sizeLabel: '2 KiB',
       chip: '[file] notes.txt (2 KiB)',
     );
-    final fileOnly = replyDraftFor(
+    // The fake mirrors `mobile_api::reply_draft` so these assertions cover the
+    // ChatMessage → NodeApi field mapping; the rule itself has Rust unit tests.
+    final fake = FakeNodeApi()
+      ..replyDraftOverride = (msgId, nickname, peerId, content, att) => ReplyRef(
+        msgId: msgId ?? '',
+        sender: nickname ?? 'Me',
+        preview: att == null
+            ? content
+            : '${content.trim()} ${att.chip}'.trim(),
+      );
+    nodeApi = fake;
+    final fileOnly = await replyDraftFor(
       chatMessage(
         id: 1,
         content: '',
@@ -628,7 +639,7 @@ void main() {
         preview: '[file] notes.txt (2 KiB)',
       ),
     );
-    final mixed = replyDraftFor(
+    final mixed = await replyDraftFor(
       chatMessage(
         id: 2,
         content: 'see attached',
@@ -640,13 +651,21 @@ void main() {
       ),
     );
     expect(mixed?.preview, 'see attached [file] notes.txt (2 KiB)');
+    expect(
+      fake.calls.where((call) => call.method == 'replyDraft'),
+      hasLength(2),
+    );
   });
 
-  test('a reply to our own message freezes the self nickname as sender', () {
+  test('a reply to our own message freezes the self nickname as sender', () async {
     // Rust resolves our outgoing rows' senderNickname to the installed self
     // nickname, and the TUI captures that same `[nickname]` tag in its reply
     // snapshot. Flutter must not freeze the generic "Me" label instead.
-    final draft = replyDraftFor(
+    final fake = FakeNodeApi()
+      ..replyDraftOverride = (msgId, nickname, peerId, content, att) =>
+          ReplyRef(msgId: msgId ?? '', sender: nickname ?? 'Me', preview: content);
+    nodeApi = fake;
+    final draft = await replyDraftFor(
       chatMessage(
         id: 1,
         content: 'my earlier note',
@@ -657,7 +676,10 @@ void main() {
     );
     expect(draft?.sender, 'Alice (abc)');
     // Rows without a resolved nickname still fall back to "Me".
-    expect(replyDraftFor(chatMessage(id: 2, msgId: 'own-2'))?.sender, 'Me');
+    expect(
+      (await replyDraftFor(chatMessage(id: 2, msgId: 'own-2')))?.sender,
+      'Me',
+    );
   });
 
   testWidgets('a reply bubble renders the canonical quoted header', (
@@ -904,6 +926,8 @@ void main() {
       ];
     fake.saveOutgoingDmOverride = (peerId, content, replyTo) =>
         chatMessage(id: 2, content: content, msgId: 'dm-2', replyTo: replyTo);
+    fake.replyDraftOverride = (msgId, nickname, peerId, content, attachment) =>
+        ReplyRef(msgId: msgId ?? '', sender: nickname ?? 'Me', preview: content);
     nodeApi = fake;
     startEventPolling();
 
@@ -966,6 +990,8 @@ void main() {
       ..loadDmMessagesOverride = (_, _) => [
         chatMessage(id: 1, msgId: 'dm-1', senderNickname: 'Alice'),
       ];
+    fake.replyDraftOverride = (msgId, nickname, peerId, content, attachment) =>
+        ReplyRef(msgId: msgId ?? '', sender: nickname ?? 'Me', preview: content);
     nodeApi = fake;
     startEventPolling();
 

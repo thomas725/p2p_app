@@ -4,9 +4,11 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import 'frb_generated.dart';
+import 'mobile_node.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'reply.dart';
 
-// These functions are ignored because they are not marked as `pub`: `contact_device_from`, `contact_info_from`, `contact_row_from`, `device_info_from`
+// These functions are ignored because they are not marked as `pub`: `contact_device_from`, `contact_info_from`, `contact_row_from`, `device_info_from`, `reply_sender_label`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `add_contact`, `add_device`, `get_contacts_with_stats`, `get_contacts`, `get_mobile_peer_status`, `get_my_user_id`, `get_network_details`, `get_peer_quality`, `get_user_devices`, `init_mobile_database`, `provision_my_user`, `remove_contact`, `verify_device_binding_claim`
 
@@ -37,6 +39,26 @@ bool isAtBottom({
 /// Delegates to the canonical [`crate::fmt::parse_last_seen_ms`].
 int parseLastSeenMs({required String lastSeen}) =>
     RustLib.instance.api.crateMobileApiParseLastSeenMs(lastSeen: lastSeen);
+
+/// Freeze a Flutter chat row into the immutable reply snapshot sent on the wire.
+///
+/// Dart used to assemble this itself, duplicating the sender-label, attachment
+/// body and bounded-preview rules. This pure helper is the single source for
+/// both FRB and the web client, so a quote captured in any chat surface follows
+/// the same canonical rules as the TUI's `reply::from_display_line`.
+ReplyRef? replyDraft({
+  String? msgId,
+  String? senderNickname,
+  String? peerId,
+  required String content,
+  MobileAttachment? attachment,
+}) => RustLib.instance.api.crateMobileApiReplyDraft(
+  msgId: msgId,
+  senderNickname: senderNickname,
+  peerId: peerId,
+  content: content,
+  attachment: attachment,
+);
 
 /// Load all known peers and their message statistics in a single round trip.
 ///

@@ -223,6 +223,18 @@ class HttpNodeApi implements NodeApi {
     );
   }
 
+  /// The inverse projection, used when a pure Rust helper needs the descriptor
+  /// the browser already holds. `size` crosses the wire as a JSON number on
+  /// both platforms (Dart's `int` on IO, `BigInt` on web).
+  static Map<String, dynamic> attachmentToJson(MobileAttachment attachment) => {
+    'fileId': attachment.fileId,
+    'name': attachment.name,
+    'size': attachment.size.toInt(),
+    'sizeLabel': attachment.sizeLabel,
+    'chip': attachment.chip,
+    'mime': attachment.mime,
+  };
+
   static ChatMessage chatMessageFromJson(dynamic raw) {
     final m = raw as Map<String, dynamic>;
     return ChatMessage(
@@ -1088,6 +1100,24 @@ class HttpNodeApi implements NodeApi {
     final value = await _call('formatTimeHhmm', {'dt': dt}) as String;
     _timeFormatCache[dt] = value;
     return value;
+  }
+
+  @override
+  Future<ReplyRef?> replyDraft({
+    String? msgId,
+    String? senderNickname,
+    String? peerId,
+    required String content,
+    MobileAttachment? attachment,
+  }) async {
+    final raw = await _call('replyDraft', {
+      'msgId': ?msgId,
+      'senderNickname': ?senderNickname,
+      'peerId': ?peerId,
+      'content': content,
+      'attachment': ?(attachment == null ? null : attachmentToJson(attachment)),
+    });
+    return replyFromJson(raw);
   }
 
   @override

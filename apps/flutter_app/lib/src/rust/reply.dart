@@ -11,6 +11,12 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 /// `msg_id` is the stable wire id of the source message. `sender` and `preview`
 /// are display strings frozen when the reply is composed; they are never looked
 /// up again, so a local tombstone cannot blank the quote.
+///
+/// The fields stay public because FRB's generated SSE codec constructs the
+/// struct directly. Every ingress that can bypass serde (FRB decoding) and every
+/// egress (persistence, outbound wire, rendering) therefore runs both display
+/// strings through [`preview_line`], so a hostile peer or client cannot smuggle
+/// a multi-line label or preview into a TUI transcript line.
 class ReplyRef {
   /// Stable wire id of the message being replied to.
   final String msgId;

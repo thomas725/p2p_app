@@ -501,6 +501,21 @@ class FrbNodeApi implements NodeApi {
       mobile.formatTimeHhmm(dt: dt);
 
   @override
+  Future<ReplyRef?> replyDraft({
+    String? msgId,
+    String? senderNickname,
+    String? peerId,
+    required String content,
+    MobileAttachment? attachment,
+  }) async => mobile.replyDraft(
+        msgId: msgId,
+        senderNickname: senderNickname,
+        peerId: peerId,
+        content: content,
+        attachment: attachment,
+      );
+
+  @override
   Future<bool> isAtBottom({
     required int scrollOffset,
     required int total,

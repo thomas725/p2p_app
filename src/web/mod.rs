@@ -727,6 +727,21 @@ mod tests {
         let response =
             frame(r#"{"id": 8, "method": "validateNickname", "params": {"name": ""}}"#).await;
         assert_eq!(response, json!({"id": 8, "ok": false}));
+
+        // Reply drafts use the same canonical rules on the web transport.
+        let response = frame(
+            r#"{"id": 12, "method": "replyDraft", "params": {"msgId": "m1", "senderNickname": "Alice", "content": "  see\t attached  ", "attachment": {"fileId": "abc", "name": "notes.txt", "size": 2048, "sizeLabel": "2 KiB", "chip": "[file] notes.txt (2 KiB)", "mime": null}}}"#,
+        )
+        .await;
+        assert_eq!(
+            response,
+            json!({"id": 12, "ok": {"msgId": "m1", "sender": "Alice", "preview": "see attached [file] notes.txt (2 KiB)"}})
+        );
+        let response = frame(
+            r#"{"id": 13, "method": "replyDraft", "params": {"msgId": "", "content": "hello"}}"#,
+        )
+        .await;
+        assert_eq!(response, json!({"id": 13, "ok": null}));
     }
 
     #[test]
@@ -797,6 +812,7 @@ mod tests {
             "formatTimeHhmm",
             "isAtBottom",
             "parseLastSeenMs",
+            "replyDraft",
         ] {
             let err = methods::dispatch(method, Value::Null)
                 .expect_err("params-less call is a parse error");

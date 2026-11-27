@@ -1,23 +1,20 @@
 // Hand-written helpers for the US-006 reply/quote UI.
 //
-// The Rust core owns the wire snapshot (`ReplyRef`) and the canonical quoted
-// header; Dart only builds the snapshot when a user picks Reply and renders the
-// frozen strings later. Keeping both rules here guarantees the three chat
-// surfaces (broadcast, DM, group) capture and display the same thing.
+// Rust owns the wire snapshot (`ReplyRef`), the canonical quoted header and all
+// the rules that freeze a draft (sender label, attachment body and bounded
+// preview). Dart asks the node for a draft via [replyDraftFor] when the user
+// picks Reply and renders the frozen strings later. The two remaining helpers
+// here are display-only mirrors used by live bubbles and the copy transcript.
 
+import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
-
-/// Maximum number of characters kept in a quoted preview (same as Rust's
-/// `reply::PREVIEW_CHARS`).
-const int replyPreviewChars = 80;
 
 /// Canonical sender label for a message row: the Rust-resolved nickname (our
 /// own rows carry the installed self nickname; others the announced/petname
 /// label) or the short peer id, with `Me` only as a last-resort own-row label.
-/// Shared by the bubble header, the copy-to-clipboard transcript, and reply
-/// drafts so all three agree — and so a quote of our own message freezes the
-/// same sender tag the TUI captures from its `[nickname]` header.
+/// Shared by the bubble header and the copy-to-clipboard transcript, and
+/// mirrored by `mobile_api::reply_sender_label` for the frozen quote.
 ///
 /// [isOwn] defaults to the wire rule (`peerId == null`) but can be supplied by
 /// widgets that track ownership separately (e.g. `MessageBubble`).
@@ -31,43 +28,17 @@ String messageSenderLabel(ChatMessage message, {bool? isOwn}) {
   return peerId.length >= 12 ? peerId.substring(0, 12) : peerId;
 }
 
-/// Collapse whitespace to single spaces and bound a preview to
-/// [replyPreviewChars] code points plus an ellipsis. Mirrors Rust's
-/// `reply::preview_line` (it uses `char`s, hence `runes` here, not `length`).
-String replyPreviewLine(String value) {
-  final flat = value
-      .split(RegExp(r'\s+'))
-      .where((part) => part.isNotEmpty)
-      .join(' ');
-  final runes = flat.runes.toList();
-  if (runes.length <= replyPreviewChars) return flat;
-  return '${String.fromCharCodes(runes.take(replyPreviewChars))}…';
-}
-
 /// The canonical quoted header Rust prepends to a transcript line.
 String quotedHeader(ReplyRef reply) => '↳ ${reply.sender}: ${reply.preview}';
 
-/// Text a quoted preview is built from, mirroring Rust's
-/// `files::render_message_body`: an attachment-only row shows the canonical
-/// Rust chip (`MobileAttachment.chip`), and a mixed row appends it after the
-/// body. No frontend assembles the chip or formats bytes itself.
-String replyPreviewBody(ChatMessage message) {
-  final attachment = message.attachment;
-  if (attachment == null) return message.content;
-  final text = message.content.trim();
-  if (text.isEmpty) return attachment.chip;
-  return '$text ${attachment.chip}';
-}
-
-/// Freeze [message] into an immutable reply draft. Returns null when the row
-/// has no stable wire id, so it can never be answered (the Reply action is
-/// disabled for those rows in every chat surface).
-ReplyRef? replyDraftFor(ChatMessage message) {
-  final msgId = message.msgId;
-  if (msgId == null || msgId.isEmpty) return null;
-  return ReplyRef(
-    msgId: msgId,
-    sender: messageSenderLabel(message),
-    preview: replyPreviewLine(replyPreviewBody(message)),
-  );
-}
+/// Freeze [message] into an immutable reply draft. The construction rules live
+/// in Rust and run through [NodeApi] on both transports, so no frontend can
+/// drift from the TUI's quote capture. Returns null when the row has no stable
+/// wire id (the Reply action is disabled for those rows in every chat surface).
+Future<ReplyRef?> replyDraftFor(ChatMessage message) => nodeApi.replyDraft(
+      msgId: message.msgId,
+      senderNickname: message.senderNickname,
+      peerId: message.peerId,
+      content: message.content,
+      attachment: message.attachment,
+    );

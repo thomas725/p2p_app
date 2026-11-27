@@ -423,7 +423,7 @@ Future<bool> validateNickname({required String nickname}) =>
 /// Single source of truth shared with the TUI/TUI reaction editor
 /// ([`crate::reactions::validate_emoji`]). Exposed so the Flutter "Custom…"
 /// reaction dialog can reject empty or overlong tokens without re-implementing
-/// the rules in Dart. [`crate::toggle_reaction`] re-validates on write, so this
+/// the rules in Dart. [`toggle_reaction`] re-validates on write, so this
 /// is purely an early, user-facing check.
 Future<bool> validateEmoji({required String emoji}) =>
     RustLib.instance.api.crateApiValidateEmoji(emoji: emoji);

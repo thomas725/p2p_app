@@ -40,6 +40,15 @@ class FakeNodeApi implements NodeApi {
   /// When set, [isAtBottom] returns this instead of the default `false`.
   bool Function(int scrollOffset, int total, int visible)? isAtBottomOverride;
 
+  /// Mirrors the Rust-owned draft rule for tests that exercise reply wiring.
+  ReplyRef? Function(
+    String? msgId,
+    String? senderNickname,
+    String? peerId,
+    String content,
+    MobileAttachment? attachment,
+  )? replyDraftOverride;
+
   /// Recorded calls (method name + arguments), for assertions.
   final List<({String method, Object? argument})> calls = [];
 
@@ -80,6 +89,22 @@ class FakeNodeApi implements NodeApi {
       throw UnimplementedError('set formatTimeHhmmOverride in this test');
     }
     return override(dt);
+  }
+
+  @override
+  Future<ReplyRef?> replyDraft({
+    String? msgId,
+    String? senderNickname,
+    String? peerId,
+    required String content,
+    MobileAttachment? attachment,
+  }) async {
+    _record('replyDraft', msgId);
+    final override = replyDraftOverride;
+    if (override == null) {
+      throw UnimplementedError('set replyDraftOverride in this test');
+    }
+    return override(msgId, senderNickname, peerId, content, attachment);
   }
 
   @override

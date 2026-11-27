@@ -78,9 +78,9 @@ class _DmChatScreenState extends State<DmChatScreen>
   /// Frozen quote for the next DM we send; independent of selection mode.
   ReplyRef? _replyTo;
 
-  void _onReply(int index) {
+  void _onReply(int index) async {
     if (index < 0 || index >= _messages.length) return;
-    final draft = replyDraftFor(_messages[index]);
+    final draft = await replyDraftFor(_messages[index]);
     if (draft != null) setState(() => _replyTo = draft);
   }
 

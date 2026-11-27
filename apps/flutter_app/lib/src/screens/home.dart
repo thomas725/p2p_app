@@ -289,9 +289,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Capture a single selected row as the next broadcast's quote. The draft is
   /// independent of selection mode, so clearing that mode keeps it visible.
-  void _onReply(int index) {
+  void _onReply(int index) async {
     if (index < 0 || index >= _messages.length) return;
-    final draft = replyDraftFor(_messages[index]);
+    final draft = await replyDraftFor(_messages[index]);
     if (draft == null) return;
     setState(() => _replyTo = draft);
   }

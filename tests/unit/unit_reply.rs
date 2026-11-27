@@ -190,25 +190,26 @@ fn undecodable_storage_json_is_ignored() {
 }
 
 #[test]
-fn flutter_reply_preview_chars_match_rust() {
-    // Flutter's hand-written `replyPreviewLine` bounds a quote to the same
-    // number of characters as Rust's `preview_line`, so a snapshot frozen on
-    // either frontend renders identically. Guard the Dart constant against the
-    // canonical Rust bound (the unit tests are a child module of `reply`, so
-    // the private const is in scope).
+fn flutter_delegates_reply_drafts_to_rust() {
+    // The Dart helper must ask the node (and therefore Rust) to freeze a draft
+    // instead of duplicating the sender, attachment and 80-character preview
+    // rules. Guarding the boundary keeps both frontends on one canonical rule.
     let source = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("apps/flutter_app/lib/src/util/reply.dart"),
     )
     .expect("reply.dart is readable");
-    let line = source
-        .lines()
-        .find(|line| line.contains("replyPreviewChars"))
-        .expect("replyPreviewChars declaration is present");
-    let dart_value: usize = line
-        .split_once("= ")
-        .and_then(|(_, rest)| rest.split(';').next())
-        .and_then(|value| value.trim().parse().ok())
-        .expect("replyPreviewChars is a usize literal");
-    assert_eq!(dart_value, crate::reply::PREVIEW_CHARS);
+    assert!(
+        source.contains("nodeApi.replyDraft("),
+        "reply.dart delegates draft construction to Rust"
+    );
+    for duplicated in ["replyPreviewChars", "replyPreviewLine", "replyPreviewBody"] {
+        assert!(
+            !source.contains(duplicated),
+            "{duplicated} must not be reimplemented in Dart"
+        );
+    }
+    // The canonical bound still exists in Rust (the unit tests are a child
+    // module of `reply`, so the private const is in scope).
+    assert_eq!(crate::reply::PREVIEW_CHARS, 80);
 }

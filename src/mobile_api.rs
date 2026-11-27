@@ -41,6 +41,47 @@ pub fn parse_last_seen_ms(last_seen: &str) -> u64 {
     crate::fmt::parse_last_seen_ms(last_seen)
 }
 
+/// Freeze a Flutter chat row into the immutable reply snapshot sent on the wire.
+///
+/// Dart used to assemble this itself, duplicating the sender-label, attachment
+/// body and bounded-preview rules. This pure helper is the single source for
+/// both FRB and the web client, so a quote captured in any chat surface follows
+/// the same canonical rules as the TUI's `reply::from_display_line`.
+#[must_use]
+#[flutter_rust_bridge::frb(sync)]
+pub fn reply_draft(
+    msg_id: Option<String>,
+    sender_nickname: Option<String>,
+    peer_id: Option<String>,
+    content: String,
+    attachment: Option<crate::mobile_node::MobileAttachment>,
+) -> Option<crate::ReplyRef> {
+    let msg_id = msg_id.filter(|id| !id.trim().is_empty())?;
+    let sender = reply_sender_label(sender_nickname.as_deref(), peer_id.as_deref());
+    let attachment = attachment.map(|att| crate::files::MessageAttachment {
+        file_id: att.file_id,
+        name: att.name,
+        size: u64::try_from(att.size).unwrap_or(u64::MAX),
+        mime: att.mime,
+    });
+    let body = crate::files::render_message_body(&content, attachment.as_ref());
+    Some(crate::ReplyRef::new(msg_id, sender, &body))
+}
+
+/// Sender tag frozen into a draft: the resolved nickname first, then the short
+/// peer ID, with `Me` only as a last resort for rows we sent ourselves.
+fn reply_sender_label(sender_nickname: Option<&str>, peer_id: Option<&str>) -> String {
+    sender_nickname.map_or_else(
+        || {
+            peer_id.map_or_else(
+                || "Me".to_string(),
+                |peer_id| peer_id.chars().take(12).collect(),
+            )
+        },
+        str::to_string,
+    )
+}
+
 /// One row of the peers table, as fed to [`sort_peers`].
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -581,6 +622,86 @@ pub fn get_peer_quality(peer_id: &str) -> crate::net_diag::PeerQuality {
 mod tests {
     use super::*;
     use serial_test::serial;
+
+    fn attachment() -> crate::mobile_node::MobileAttachment {
+        crate::mobile_node::MobileAttachment {
+            file_id: "abc123".to_string(),
+            name: "notes.txt".to_string(),
+            size: 2048,
+            size_label: "2 KiB".to_string(),
+            chip: "[file] notes.txt (2 KiB)".to_string(),
+            mime: None,
+        }
+    }
+
+    #[test]
+    fn reply_draft_quotes_the_canonical_chip() {
+        let file_only = reply_draft(
+            Some("file-1".to_string()),
+            Some("Alice".to_string()),
+            Some("peer-abc".to_string()),
+            String::new(),
+            Some(attachment()),
+        )
+        .expect("file-only draft");
+        assert_eq!(file_only.msg_id, "file-1");
+        assert_eq!(file_only.sender, "Alice");
+        assert_eq!(file_only.preview, "[file] notes.txt (2 KiB)");
+
+        let mixed = reply_draft(
+            Some("file-2".to_string()),
+            Some("Alice".to_string()),
+            Some("peer-abc".to_string()),
+            "see attached".to_string(),
+            Some(attachment()),
+        )
+        .expect("mixed draft");
+        assert_eq!(mixed.preview, "see attached [file] notes.txt (2 KiB)");
+    }
+
+    #[test]
+    fn reply_draft_resolves_sender_and_bounds_preview() {
+        let own = reply_draft(
+            Some("own-1".to_string()),
+            Some("Alice (abc)".to_string()),
+            None,
+            "my earlier note".to_string(),
+            None,
+        )
+        .expect("own draft");
+        assert_eq!(own.sender, "Alice (abc)");
+
+        let fallback = reply_draft(
+            Some("own-2".to_string()),
+            None,
+            None,
+            "hello".to_string(),
+            None,
+        )
+        .expect("fallback draft");
+        assert_eq!(fallback.sender, "Me");
+
+        let peer = reply_draft(
+            Some("peer-1".to_string()),
+            None,
+            Some("abcdefghijklmn".to_string()),
+            "  many\t words   here ".to_string(),
+            None,
+        )
+        .expect("peer draft");
+        assert_eq!(peer.sender, "abcdefghijkl");
+        assert_eq!(peer.preview, "many words here");
+
+        let long = reply_draft(Some("long-1".to_string()), None, None, "x".repeat(81), None)
+            .expect("long draft");
+        assert_eq!(long.preview, format!("{}…", "x".repeat(80)));
+    }
+
+    #[test]
+    fn reply_draft_requires_a_stable_wire_id() {
+        assert!(reply_draft(None, None, None, "hello".to_string(), None).is_none());
+        assert!(reply_draft(Some(String::new()), None, None, "hello".to_string(), None,).is_none());
+    }
 
     #[test]
     #[serial(db)]

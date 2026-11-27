@@ -102,6 +102,7 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         m @ ("formatTimeHhmm"
         | "isAtBottom"
         | "parseLastSeenMs"
+        | "replyDraft"
         | "setTheme"
         | "setNotificationSettings") => ui_helpers(m, params),
         other => Err(format!("unknown method: {other}")),
@@ -522,6 +523,16 @@ fn ui_helpers(method: &str, params: Value) -> Result<Value, String> {
             let p: ParseLastSeenParams = parse(params)?;
             ok(mobile_api::parse_last_seen_ms(&p.last_seen))
         }
+        "replyDraft" => {
+            let p: ReplyDraftParams = parse(params)?;
+            ok(mobile_api::reply_draft(
+                p.msg_id,
+                p.sender_nickname,
+                p.peer_id,
+                p.content,
+                p.attachment,
+            ))
+        }
         "setTheme" => {
             let p: ThemeParams = parse(params)?;
             json(api::set_theme(p.dark, &p.accent_name))
@@ -851,6 +862,18 @@ struct IsAtBottomParams {
 #[serde(rename_all = "camelCase")]
 struct ParseLastSeenParams {
     last_seen: String,
+}
+
+/// The Flutter chat-row fields the canonical reply-draft rule reads.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ReplyDraftParams {
+    msg_id: Option<String>,
+    sender_nickname: Option<String>,
+    peer_id: Option<String>,
+    content: String,
+    #[serde(default)]
+    attachment: Option<crate::mobile_node::MobileAttachment>,
 }
 
 /// Sort request for the peers table.

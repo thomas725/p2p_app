@@ -14,7 +14,7 @@ use crate::{
 use chrono::TimeZone;
 use libp2p::gossipsub;
 use num_traits::ToPrimitive;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::sync::{LazyLock, Mutex, MutexGuard, OnceLock};
 use tokio::sync::mpsc;
@@ -609,7 +609,10 @@ pub fn disconnect_peer(peer_id: &str) {
 }
 
 /// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12).
-#[derive(Debug, Clone, Serialize)]
+///
+/// `Deserialize` lets pure Rust helpers accept the same projection back from
+/// the web client (FRB hands structs directly, web crosses JSON).
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MobileAttachment {
     /// SHA-256 hex of the file bytes (content address)

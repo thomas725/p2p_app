@@ -387,6 +387,19 @@ abstract class NodeApi {
   /// memo hit can never diverge from Rust).
   String? formatTimeHhmmSync({required String dt});
 
+  /// Freeze a chat row into the immutable reply snapshot sent on the wire.
+  ///
+  /// Rust owns the sender-label, attachment-chip and bounded-preview rules, so
+  /// both transports call the same helper and a quote captured in the browser
+  /// matches one captured in process.
+  Future<ReplyRef?> replyDraft({
+    String? msgId,
+    String? senderNickname,
+    String? peerId,
+    required String content,
+    MobileAttachment? attachment,
+  });
+
   Future<bool> isAtBottom({
     required int scrollOffset,
     required int total,
