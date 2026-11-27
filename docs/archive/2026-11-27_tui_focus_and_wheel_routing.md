@@ -53,6 +53,7 @@ grant editing remain deferred (see [`../backlog.md`](../backlog.md)).
 
 ## Related records
 
+- [`2026-11-27_tui_mouse_ownership.md`](2026-11-27_tui_mouse_ownership.md)
 - [`2026-11-27_tui_modal_editor_boundary.md`](2026-11-27_tui_modal_editor_boundary.md)
 - [`2026-11-27_tui_key_driven_sessions.md`](2026-11-27_tui_key_driven_sessions.md)
 - [`2026-11-26_tui_readonly_shares_tab.md`](2026-11-26_tui_readonly_shares_tab.md)

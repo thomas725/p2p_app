@@ -60,6 +60,13 @@ Settings and Shares, `↑`/`↓`, `PgUp`/`PgDn`, `Home`/`End` and the wheel move
 highlighted row; Settings moves the persisted network-peer row, and the Shares
 detail pane wraps to show the selected share's manifest.
 
+Mouse input follows the same ownership order as the keyboard. A device-binding,
+group-leave or delete-message prompt and a live call swallow every click and
+wheel, so nothing behind the overlay changes. A plain popup is dismissed by one
+click even while a prompt box is open; with no popup left, the prompt box owns
+the pointer. Contacts search is inline: the wheel still moves the highlighted
+row and a click still leaves the search box while keeping the applied filter.
+
 ### Unread banners
 
 When messages arrive while you are scrolled up, a cyan

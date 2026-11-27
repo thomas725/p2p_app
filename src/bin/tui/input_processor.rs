@@ -1908,29 +1908,47 @@ async fn process_mouse_event(
 
     s.last_mouse_row = mouse_event.row;
 
-    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-    let is_peers_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Contacts);
-    let peer_id = if let p2p_app::tui_tabs::TabContent::Direct(pid) = &tab_content {
-        Some(pid.as_str())
-    } else {
-        None
-    };
+    // Mouse ownership mirrors the keyboard precedence: confirmation prompts and
+    // a live call swallow every click/wheel so they cannot move tabs, open DMs
+    // or scroll a conversation behind the visible overlay.
+    if s.has_prompt_or_call_overlay() {
+        return;
+    }
 
-    // List tabs move their selection on wheel events through the same handler
-    // as arrow keys; message tabs scroll their transcript. `handle_mouse_scroll`
-    // decides which applies and returns false for tabs with no wheel behavior
-    // (notably Peer Info), so no extra tab-type gate is needed here.
-    match mouse_event.kind {
-        crossterm::event::MouseEventKind::ScrollUp => {
-            should_render = handle_mouse_scroll(&mut s, "up", peer_id);
-        }
-        crossterm::event::MouseEventKind::ScrollDown => {
-            should_render = handle_mouse_scroll(&mut s, "down", peer_id);
-        }
-        crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
-            if dismiss_popup(&mut s) {
-                should_render = true;
-            } else {
+    // A validation popup is click-to-dismiss even while a modal editor is
+    // active; once it is gone the editor owns the pointer just like it owns the
+    // keyboard. Contacts search is deliberately not a modal editor, so its
+    // click-to-finalize path below stays available.
+    let popup_dismissed = matches!(
+        mouse_event.kind,
+        crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left)
+    ) && dismiss_popup(&mut s);
+    if popup_dismissed {
+        should_render = true;
+    } else if s.is_modal_editor() {
+        return;
+    } else {
+        let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+        let is_peers_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Contacts);
+        let peer_id = if let p2p_app::tui_tabs::TabContent::Direct(pid) = &tab_content {
+            Some(pid.as_str())
+        } else {
+            None
+        };
+
+        // List tabs move their selection on wheel events through the same
+        // handler as arrow keys; message tabs scroll their transcript.
+        // `handle_mouse_scroll` decides which applies and returns false for
+        // tabs with no wheel behavior (notably Peer Info), so no extra
+        // tab-type gate is needed here.
+        match mouse_event.kind {
+            crossterm::event::MouseEventKind::ScrollUp => {
+                should_render = handle_mouse_scroll(&mut s, "up", peer_id);
+            }
+            crossterm::event::MouseEventKind::ScrollDown => {
+                should_render = handle_mouse_scroll(&mut s, "down", peer_id);
+            }
+            crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
                 should_render = handle_mouse_left_click(
                     &mut s,
                     mouse_event.row,
@@ -1938,8 +1956,8 @@ async fn process_mouse_event(
                     is_peers_tab,
                 );
             }
+            _ => {}
         }
-        _ => {}
     }
     drop(s);
     if should_render {

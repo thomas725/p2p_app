@@ -396,6 +396,23 @@ impl AppState {
         self.input_mode.is_modal_editor()
     }
 
+    /// True while a confirmation prompt or a live call covers the screen.
+    ///
+    /// These surfaces render above the ordinary popup and own both keyboard and
+    /// mouse. `AppState::popup` and modal editors are deliberately excluded:
+    /// a click still dismisses the visible popup, while an editor with no popup
+    /// swallows navigation without being a full-screen confirmation.
+    #[must_use]
+    pub fn has_prompt_or_call_overlay(&self) -> bool {
+        self.device_binding_prompt.is_some()
+            || self.group_leave_prompt.is_some()
+            || self.delete_message_prompt.is_some()
+            || self
+                .call_session
+                .as_ref()
+                .is_some_and(p2p_app::CallSession::is_active)
+    }
+
     /// True while the shared text input is capturing a nickname edit (either
     /// this install's own nickname, a per-peer announced nickname, or a peer's
     /// local display name).

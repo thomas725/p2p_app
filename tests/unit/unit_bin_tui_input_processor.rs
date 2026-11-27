@@ -33,6 +33,45 @@ fn wheel_event(kind: MouseEventKind) -> MouseEvent {
     }
 }
 
+fn left_click_event(row: u16, column: u16) -> MouseEvent {
+    MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Left),
+        column,
+        row,
+        modifiers: KeyModifiers::NONE,
+    }
+}
+
+/// Drive a wheel scroll plus a tab-title click through the real mouse path.
+/// A modal surface must reject both without changing state or queuing commands,
+/// and the rendered frame must still show the owning surface.
+async fn assert_mouse_is_inert<F>(state: AppState, marker: &str, click_column: u16, check: F)
+where
+    F: Fn(&AppState),
+{
+    let mut session = KeySession::new(state);
+    assert!(
+        !session
+            .press_mouse(wheel_event(MouseEventKind::ScrollDown))
+            .await
+    );
+    assert!(!session.press_mouse(left_click_event(0, click_column)).await);
+
+    let frame = session.frame_text().await;
+    assert!(
+        frame.contains(marker),
+        "missing {marker:?} in rendered frame"
+    );
+    {
+        let s = session.state.lock().await;
+        check(&s);
+    }
+    assert!(
+        session.drain_commands().is_empty(),
+        "an inert mouse event must not queue a swarm command"
+    );
+}
+
 // ── update_dm_transcript_labels ──────────────────────────────────────────
 
 #[test]
@@ -359,6 +398,186 @@ async fn test_mouse_wheel_on_peer_info_is_noop_without_redraw() {
     let s = state.lock().await;
     assert_eq!(s.peer_selection, 0);
     assert_eq!(s.chat_scroll_offset, 0);
+}
+
+// ── mouse ownership matches the modal/keyboard precedence ─────────────
+
+/// A Contacts-backed state whose wheel would move the highlighted row and whose
+/// row-0 click at column 1 would leave for the Chat tab without the mouse guard.
+fn overlay_contacts_state() -> AppState {
+    let mut s = app_state_with_peers(3);
+    s.active_tab = 1;
+    s.peer_selection = 0;
+    s
+}
+
+#[tokio::test]
+async fn test_device_binding_prompt_swallows_wheel_and_tab_click() {
+    let mut s = overlay_contacts_state();
+    s.device_binding_prompt = Some(crate::tui::state::DeviceBindingPrompt {
+        peer_id: "target-device".to_string(),
+        device_pubkey: vec![0xAB, 0xCD],
+    });
+    assert_mouse_is_inert(s, "Device-binding intro", 1, |s| {
+        let prompt = s
+            .device_binding_prompt
+            .as_ref()
+            .expect("prompt still owns the screen");
+        assert_eq!(prompt.peer_id, "target-device");
+        assert_eq!(prompt.device_pubkey, vec![0xAB, 0xCD]);
+        assert_eq!(s.active_tab, 1);
+        assert_eq!(s.peer_selection, 0);
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn test_group_leave_prompt_swallows_wheel_and_tab_click() {
+    let mut s = groups_tab_state("g-mouse-1", "First");
+    s.group_summaries.push(group_summary("g-mouse-2", "Second"));
+    s.group_selection = 0;
+    s.begin_group_leave("g-mouse-1".to_string(), "First".to_string());
+    assert_mouse_is_inert(s, "Leave group", 1, |s| {
+        let prompt = s
+            .group_leave_prompt
+            .as_ref()
+            .expect("prompt still owns the screen");
+        assert_eq!(prompt.group_id, "g-mouse-1");
+        assert_eq!(s.active_tab, 2);
+        assert_eq!(s.group_selection, 0);
+        assert_eq!(s.group_summaries.len(), 2);
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn test_delete_prompt_swallows_wheel_and_tab_click() {
+    let mut s = app_state_with_chat_messages(12);
+    s.chat_area_height = 2;
+    s.chat_scroll_offset = 0;
+    s.begin_delete_message(5, false, "delete me".to_string(), TabContent::Chat);
+    assert_mouse_is_inert(s, "Delete this sent message", 12, |s| {
+        let prompt = s
+            .delete_message_prompt
+            .as_ref()
+            .expect("prompt still owns the screen");
+        assert_eq!(prompt.message_id, 5);
+        assert_eq!(s.active_tab, 0);
+        assert_eq!(s.chat_scroll_offset, 0);
+        assert!(s.auto_scroll.chat);
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn test_call_overlay_swallows_wheel_and_tab_click() {
+    let mut s = overlay_contacts_state();
+    s.call_session = Some(p2p_app::CallSession {
+        call_id: "call-mouse".to_string(),
+        peer_id: "bob-d1".to_string(),
+        state: p2p_app::CallState::InCall,
+    });
+    assert_mouse_is_inert(s, "In call with", 1, |s| {
+        let call = s.call_session.as_ref().expect("call still owns the screen");
+        assert_eq!(call.call_id, "call-mouse");
+        assert_eq!(call.state, p2p_app::CallState::InCall);
+        assert_eq!(s.active_tab, 1);
+        assert_eq!(s.peer_selection, 0);
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn test_modal_editor_swallows_wheel_and_tab_click() {
+    let mut s = overlay_contacts_state();
+    s.begin_self_nickname_edit();
+    s.chat_input.insert_str("draft");
+    assert_mouse_is_inert(s, "Edit Nickname", 1, |s| {
+        assert!(s.is_editing_nickname());
+        assert_eq!(s.chat_input.lines().join(""), "draft");
+        assert_eq!(s.active_tab, 1);
+        assert_eq!(s.peer_selection, 0);
+    })
+    .await;
+}
+
+/// A visible validation popup is dismissed by a click even while an editor
+/// owns the keyboard; with no popup left, the editor keeps ownership of the
+/// pointer. The wheel never dismisses the popup and never edits the table.
+#[tokio::test]
+async fn test_click_dismisses_popup_before_modal_editor_keeps_pointer() {
+    let mut state = overlay_contacts_state();
+    state.begin_dial_peer();
+    state.chat_input.insert_str("/ip4/1.2.3.4/tcp/4001");
+    state.popup = Some("validation hint for click test".to_string());
+    let mut session = KeySession::new(state);
+
+    assert!(
+        session
+            .frame_text()
+            .await
+            .contains("validation hint for click test")
+    );
+    assert!(
+        !session
+            .press_mouse(wheel_event(MouseEventKind::ScrollDown))
+            .await
+    );
+    assert!(!session.press_mouse(left_click_event(0, 1)).await);
+
+    let frame = session.frame_text().await;
+    assert!(
+        frame.contains("Dial peer address"),
+        "editor hint missing: {frame}"
+    );
+    assert!(!frame.contains("validation hint for click test"));
+    {
+        let s = session.state.lock().await;
+        assert_eq!(s.popup, None);
+        assert!(s.is_dialing_peer());
+        assert_eq!(s.chat_input.lines().join(""), "/ip4/1.2.3.4/tcp/4001");
+        assert_eq!(s.active_tab, 1);
+        assert_eq!(s.peer_selection, 0);
+    }
+    assert!(session.drain_commands().is_empty());
+}
+
+/// Contacts search is an inline filter, not a modal editor: the wheel still
+/// navigates the roster and a tab click still commits the query through the
+/// normal focus-finalization path.
+#[tokio::test]
+async fn test_contacts_search_keeps_click_to_finalize_and_wheel_selection() {
+    let mut state = overlay_contacts_state();
+    state.begin_contact_search();
+    state.set_contact_search("peer");
+    let mut session = KeySession::new(state);
+
+    assert!(session.frame_text().await.contains("Search Contacts"));
+    assert!(
+        !session
+            .press_mouse(wheel_event(MouseEventKind::ScrollDown))
+            .await
+    );
+    {
+        let s = session.state.lock().await;
+        assert_eq!(s.peer_selection, 1);
+        assert!(s.is_searching_contacts());
+        assert_eq!(s.contact_search, "peer");
+    }
+
+    // Column 1 is the Chat tab title; the click must switch focus and finalize
+    // the inline search while keeping its applied filter.
+    assert!(!session.press_mouse(left_click_event(0, 1)).await);
+    let frame = session.frame_text().await;
+    assert!(frame.contains("Chat"), "Chat tab missing: {frame}");
+    {
+        let s = session.state.lock().await;
+        assert_eq!(s.active_tab, 0);
+        assert_eq!(s.input_mode, p2p_app::InputMode::Chat);
+        assert_eq!(s.contact_search, "peer");
+        assert_eq!(s.chat_input.lines().join(""), "");
+    }
+    assert!(session.drain_commands().is_empty());
 }
 
 // ── process_key_event ─────────────────────────────────────────────────
