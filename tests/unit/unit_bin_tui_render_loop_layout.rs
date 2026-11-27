@@ -10,7 +10,7 @@
 )]
 
 use super::render_input_section;
-use crate::tui::test_helpers::test_app_state;
+use crate::tui::test_helpers::{app_state_with_dm_messages, test_app_state};
 use p2p_app::tui_tabs::TabContent;
 use ratatui::{Terminal, backend::TestBackend, layout::Rect};
 
@@ -50,6 +50,34 @@ fn test_live_input_section_shows_contacts_search_title_and_query() {
         "missing search title in: {text}"
     );
     assert!(text.contains("ali"), "missing live query in: {text}");
+}
+
+/// An armed reply must be visible before it is sent. The library renderer showed
+/// the quote, but the live binary renderer used to print a plain `Input` title,
+/// leaving the user with no confirmation of what `Ctrl+R` captured.
+#[test]
+fn test_live_input_section_shows_armed_reply_preview() {
+    let mut state = app_state_with_dm_messages("reply-peer", 1);
+    state.dm_messages.insert(
+        "reply-peer".to_string(),
+        std::collections::VecDeque::from(vec!["12:00 [Alice] hello from Alice".to_string()]),
+    );
+    state.dm_message_ids.insert(
+        "reply-peer".to_string(),
+        std::collections::VecDeque::from(vec![Some("dm-original".to_string())]),
+    );
+    let tab = TabContent::Direct("reply-peer".to_string());
+    assert!(state.begin_reply(&tab).is_some(), "reply captured");
+
+    let mut terminal = Terminal::new(TestBackend::new(80, 5)).unwrap();
+    terminal
+        .draw(|f| render_input_section(f, Rect::new(0, 0, 80, 5), &state, &tab))
+        .unwrap();
+    let text = buffer_text(&terminal);
+    assert!(
+        text.contains("Reply: ↳ Alice: hello from Alice"),
+        "missing reply quote in: {text}"
+    );
 }
 
 /// Outside search mode the Contacts tab keeps the plain input-block chrome —

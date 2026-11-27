@@ -34,6 +34,32 @@ fn dismiss_popup(state: &mut super::state::AppState) -> bool {
     }
 }
 
+/// True when a dismissed validation popup should let the key reach its editor.
+///
+/// A validation hint describes the *previous* commit attempt; typing (or
+/// erasing) is the correction, so the first correction key must still edit the
+/// text instead of being consumed by the popup. Enter stays popup-owned: with
+/// an unchanged invalid editor it only acknowledges the hint, avoiding a
+/// redundant failed commit.
+const fn popup_dismissal_feeds_editor(
+    key_event: &crossterm::event::KeyEvent,
+    state: &super::state::AppState,
+) -> bool {
+    use crossterm::event::KeyCode;
+
+    let editor_active = state.is_editing_nickname()
+        || state.is_editing_message()
+        || state.is_adding_reaction()
+        || state.is_creating_group()
+        || state.is_dialing_peer()
+        || state.is_adding_network_peer();
+    editor_active
+        && matches!(
+            key_event.code,
+            KeyCode::Char(_) | KeyCode::Backspace | KeyCode::Delete
+        )
+}
+
 /// True for a bare `?`; Shift is expected (most layouts type `?` as
 /// `Shift+/`) but Ctrl/Alt variants must never steal input.
 fn is_shortcuts_help_key(key_event: &crossterm::event::KeyEvent) -> bool {
@@ -123,6 +149,7 @@ fn handle_local_nickname_submission(state: &mut super::state::AppState, peer_id:
                 .local_nicknames
                 .insert(peer_id.to_string(), trimmed.to_string());
             state.resort_peers();
+            state.popup = None;
             p2plog_debug(format!("Set local nickname for {peer_id}: {trimmed}"));
         }
         Err(e) => p2plog_debug(format!("Failed to set local nickname: {e}")),
@@ -212,6 +239,7 @@ async fn handle_nickname_submission(
         }
         p2plog_debug(format!("Updated broadcast nickname to: {new_nickname}"));
     }
+    state.popup = None;
     state.cancel_nickname_edit();
 }
 
@@ -240,6 +268,7 @@ async fn create_or_join_group(
             super::click_handlers::open_group_chat(state, &group_id, &display_name);
             state.input_mode = p2p_app::InputMode::Chat;
             state.chat_input = super::TextArea::default();
+            state.popup = None;
             p2plog_debug(format!("Created/joined group: {display_name} ({group_id})"));
         }
         // Rust is the single validation choke point for group names. Keep the
@@ -432,6 +461,7 @@ fn confirm_edit_message(s: &mut super::state::AppState) {
             s.editing_message = None;
             s.input_mode = p2p_app::InputMode::Chat;
             s.chat_input = super::TextArea::default();
+            s.popup = None;
             if !applied {
                 s.popup = Some("Message edited, but its line is no longer loaded".to_string());
             }
@@ -481,6 +511,7 @@ async fn commit_reaction(
         return;
     }
     let action = if remove { "Removed" } else { "Added" };
+    s.popup = None;
     if !recipients.is_empty() {
         let _ = swarm_cmd_tx
             .send(SwarmCommand::SendReaction {
@@ -1260,8 +1291,10 @@ async fn process_key_event(
         ));
     }
 
-    // If a popup is open, any key dismisses it (except we still honor exit keys above).
-    if dismiss_popup(&mut s) {
+    // If a popup is open, any key dismisses it (except we still honor exit keys
+    // above). Correction keys inside an editor belong to the editor, so they
+    // dismiss the validation hint and keep going instead of being swallowed.
+    if dismiss_popup(&mut s) && !popup_dismissal_feeds_editor(&key_event, &s) {
         drop(s);
         let _ = render_tx.send(RenderEvent).await;
         return false;

@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        71 |
-| Total Rust Lines      |    41,117 |
-| Total Rust Chars      | 1,558,427 |
+| Total Rust Lines      |    41,162 |
+| Total Rust Chars      | 1,560,298 |
 | Avg Lines/Rust File   |       579 |
-| Avg Chars/Rust File   |    21,949 |
+| Avg Chars/Rust File   |    21,976 |
 | Total Dart Files      |        50 |
 | Total Dart Lines      |    22,610 |
 | Total Dart Chars      |   726,445 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       153 |
 | Avg Chars/Kotlin File |     5,524 |
 
-**Grand Total:** 125 files, 64,339 lines, 2,306,971 characters
+**Grand Total:** 125 files, 64,384 lines, 2,308,842 characters
 
 ## Rust Source Files
 
@@ -84,21 +84,21 @@
 | src/bin/tui             | click_handlers.rs    |     7 | 25366 |   604 |        - |       - | Click handlers & index mapping                     |
 | src/bin/tui             | command_processor.rs |     6 | 31877 |   867 |        - |       - | Event routing & state updates                      |
 | src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)                    |
-| src/bin/tui             | input_processor.rs   |     7 | 75157 |  1931 |        - |       - | Input event routing & processing                   |
+| src/bin/tui             | input_processor.rs   |     7 | 76468 |  1964 |        - |       - | Input event routing & processing                   |
 | src/bin/tui             | key_probe.rs         |     6 |  6272 |   172 |        - |       - | Keyboard enhancement probe                         |
 | src/bin/tui             | main_loop.rs         |     6 | 15979 |   400 |        - |       - | Task orchestration & async                         |
 | src/bin/tui             | message_handlers.rs  |     4 | 17117 |   522 |        - |       - | Message sending logic                              |
 | src/bin/tui             | scroll_handlers.rs   |     6 | 18157 |   482 |        - |       - | Scroll & hover-aware navigation                    |
 | src/bin/tui             | state.rs             |     8 | 66192 |  1560 |        - |       - | Shared application state                           |
-| src/bin/tui/render_loop | layout.rs            |     5 |  3247 |    92 |        - |       - | UI layout component rendering                      |
-| src/bin/tui/render_loop | mod.rs               |     6 | 15298 |   390 |        - |       - | Render loop orchestration (60 FPS)                 |
+| src/bin/tui/render_loop | layout.rs            |     5 |  3379 |    94 |        - |       - | UI layout component rendering                      |
+| src/bin/tui/render_loop | mod.rs               |     6 | 15726 |   400 |        - |       - | Render loop orchestration (60 FPS)                 |
 | src/generated           | columns.rs           |     1 |  4561 |   108 |        - |       - | Auto-generated column definitions                  |
 | src/generated           | mod.rs               |     0 |   488 |    11 |        - |       - | Module declarations                                |
 | src/generated           | models_insertable.rs |     1 | 11215 |   317 |        - |       - | Insertable data models                             |
 | src/generated           | models_queryable.rs  |     1 | 14539 |   397 |        - |       - | Queryable data models                              |
 | src/generated           | schema.rs            |     2 |  9786 |   330 |        - |       - | Database schema (Diesel)                           |
 
-**Total:** 71 files, 41,117 lines, 1,558,427 characters
+**Total:** 71 files, 41,162 lines, 1,560,298 characters
 
 ## Rust Test Files
 
@@ -131,16 +131,16 @@
 | tests  | types.rs                           |   662 | 20583 |     3 | types module tests                    |
 | unit   | unit_behavior.rs                   |   122 |  3894 |     3 | Unit tests for behavior module        |
 | unit   | unit_bin_tui_click_handlers.rs     |   866 | 32143 |     4 | Unit tests for TUI click handlers     |
-| unit   | unit_bin_tui_command_processor.rs  |  1442 | 48963 |     4 | Unit tests for TUI command processor  |
+| unit   | unit_bin_tui_command_processor.rs  |  1559 | 53296 |     5 | Unit tests for TUI command processor  |
 | unit   | unit_bin_tui_event_source.rs       |    44 |  1352 |     2 | Unit tests for TUI event source       |
-| unit   | unit_bin_tui_input_processor.rs    |  3829 | 132484 |     5 | Unit tests for TUI input processor    |
+| unit   | unit_bin_tui_input_processor.rs    |  4200 | 146750 |     5 | Unit tests for TUI input processor    |
 | unit   | unit_bin_tui_main_loop.rs          |   233 |  7007 |     3 | Unit tests for TUI main loop          |
 | unit   | unit_bin_tui_message_handlers.rs   |   467 | 15073 |     5 | Unit tests for TUI message handlers   |
-| unit   | unit_bin_tui_render_loop_layout.rs |    70 |  2251 |     2 | Test file                             |
+| unit   | unit_bin_tui_render_loop_layout.rs |    98 |  3437 |     2 | Test file                             |
 | unit   | unit_bin_tui_render_loop_mod.rs    |   440 | 15559 |     3 | Unit tests for TUI render loop        |
 | unit   | unit_bin_tui_scroll_handlers.rs    |   787 | 25481 |     3 | Unit tests for TUI scroll handlers    |
 | unit   | unit_bin_tui_state.rs              |  1120 | 37039 |     3 | Unit tests for TUI state              |
-| unit   | unit_bin_tui_test_helpers.rs       |    66 |  2330 |     3 | Unit tests for TUI test helpers       |
+| unit   | unit_bin_tui_test_helpers.rs       |   197 |  6747 |     5 | Unit tests for TUI test helpers       |
 | unit   | unit_blocklist.rs                  |   112 |  3932 |     3 | Test file                             |
 | unit   | unit_call_media.rs                 |   148 |  4734 |     3 | Test file                             |
 | unit   | unit_calls.rs                      |    90 |  2797 |     1 | calls module tests                    |
@@ -172,7 +172,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   400 | 12098 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 30,044 lines, 1,010,328 characters
+**Total:** 67 test files, 30,691 lines, 1,034,530 characters
 
 ## Dart Source Files
 

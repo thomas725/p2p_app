@@ -11,8 +11,10 @@
 #![allow(clippy::used_underscore_binding, clippy::significant_drop_tightening)]
 
 use super::*;
-use crate::tui::test_helpers::test_app_state;
+use crate::tui::test_helpers::{KeySession, test_app_state};
+use crossterm::event::KeyCode;
 use p2p_app::{MessageEvent, PeerRecord, SwarmEvent};
+use serial_test::serial;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -1439,4 +1441,119 @@ fn test_share_event_notice_fallback_never_panics() {
         notice.starts_with("unexpected share event:"),
         "got: {notice}"
     );
+}
+
+/// Tab to the Shares pane, reload it with `r`, then receive a live share
+/// event. The key path, event processor, canonical DB rows and rendered frame
+/// must all agree about the same share; the event only notifies and re-reads.
+#[test]
+#[serial]
+fn test_shares_tab_refresh_and_event_session() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init database");
+
+    let share = p2p_app::shares::create_share(
+        "Session docs",
+        "owner-user",
+        p2p_app::shares::ShareKind::Private,
+        false,
+        None,
+    )
+    .expect("create share");
+    p2p_app::shares::set_grant(
+        &share.share_id,
+        "reader-user",
+        p2p_app::shares::ShareMode::ReadOnly,
+    )
+    .expect("set grant");
+    let manifest = p2p_app::shares::ShareManifest {
+        share_id: share.share_id.clone(),
+        name: share.name.clone(),
+        revision: 4,
+        entries: vec![p2p_app::shares::ShareEntry {
+            path: "notes/session.md".to_string(),
+            file_id: p2p_app::files::hash_bytes(b"shared notes"),
+            size: 12,
+            mime: Some("text/markdown".to_string()),
+        }],
+    };
+    p2p_app::shares::save_manifest(&share.share_id, &manifest).expect("save manifest");
+
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let mut session = KeySession::new(test_app_state());
+        for _ in 0..5 {
+            assert!(!session.press_code(KeyCode::Tab).await);
+        }
+        assert!(matches!(
+            session
+                .state
+                .lock()
+                .await
+                .dynamic_tabs
+                .tab_index_to_content(5),
+            p2p_app::tui_tabs::TabContent::Shares
+        ));
+
+        assert!(!session.press_char('r').await);
+        {
+            let s = session.state.lock().await;
+            assert_eq!(s.shares.len(), 1, "manual refresh loaded the share");
+            assert_eq!(s.shares[0].share_id, share.share_id);
+            assert_eq!(s.shares[0].revision, 4);
+            assert_eq!(s.share_grants[&share.share_id].len(), 1);
+        }
+        let refreshed = session.frame_text().await;
+        assert!(refreshed.contains("Session docs"), "{refreshed}");
+        assert!(refreshed.contains("rev 4"), "{refreshed}");
+        assert!(refreshed.contains("reader-user (readonly)"), "{refreshed}");
+        assert!(refreshed.contains("notes/session.md"), "{refreshed}");
+        assert!(!refreshed.contains("Last event:"), "{refreshed}");
+
+        let tx = session.command_tx();
+        process_swarm_event(
+            SwarmEvent::ShareUpdated {
+                peer_id: "peer-serve".to_string(),
+                share_id: share.share_id.clone(),
+                revision: 4,
+                written: 1,
+                removed: 0,
+            },
+            &session.state,
+            &tx,
+        )
+        .await;
+
+        {
+            let s = session.state.lock().await;
+            let notice = s.share_event_notice.as_deref().expect("share notice");
+            assert_eq!(
+                notice,
+                format!(
+                    "{} updated to rev 4 by peer-serve (1 written, 0 removed)",
+                    share.share_id
+                )
+            );
+            assert_eq!(s.shares.len(), 1, "event re-read the same canonical row");
+        }
+        let frame = session.frame_text().await;
+        assert!(frame.contains("Last event:"), "{frame}");
+        assert!(frame.contains("1 written, 0 removed"), "{frame}");
+        assert!(session.drain_commands().is_empty(), "shares are read-only");
+    });
+
+    let stored = p2p_app::shares::get_share(&share.share_id)
+        .expect("load share")
+        .expect("share still stored");
+    assert_eq!(stored.revision, 4);
+    let stored_manifest =
+        p2p_app::shares::load_manifest(&share.share_id).expect("load stored manifest");
+    assert_eq!(stored_manifest, manifest);
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
 }

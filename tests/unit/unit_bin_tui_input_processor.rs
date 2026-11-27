@@ -12,6 +12,7 @@
 
 use super::*;
 use crate::tui::state::AppState;
+use crate::tui::test_helpers::KeySession;
 use crate::tui::test_helpers::app_state_with_peers;
 use crate::tui::test_helpers::{
     app_state_with_chat_messages, app_state_with_dm_messages, test_app_state,
@@ -3823,6 +3824,376 @@ fn test_enter_rejects_invalid_reaction_and_keeps_editor() {
                 .expect("has_reaction"),
             "invalid token never reached the database"
         );
+    });
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
+
+// ── Realistic interactive sessions ──────────────────────────────────────
+//
+// Each test below drives one continuous arc through `KeySession`, which feeds
+// `process_input_event` (the event loop's real entry point) and renders the
+// resulting frame through the same renderer the terminal uses. These complement
+// the focused key tests above by asserting that commands, DB rows, in-memory
+// state and visible text still agree after a *sequence* of user actions.
+
+const DM_SESSION_PEER: &str = "session-peer";
+const DM_SESSION_ORIGINAL_ID: &str = "dm-original";
+
+fn seed_dm_session_db() -> (TempDir, String) {
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+    p2p_app::identity::provision_my_user(None, None).expect("provision");
+    let local_peer = p2p_app::peers::local_peer_id_string().expect("local peer id");
+    p2p_app::messages::save_message_with_meta(
+        "hello from Alice",
+        Some(DM_SESSION_PEER),
+        "test-net",
+        true,
+        Some(&local_peer),
+        p2p_app::messages::MessageMeta {
+            msg_id: Some(DM_SESSION_ORIGINAL_ID.to_string()),
+            ..Default::default()
+        },
+    )
+    .expect("seed incoming DM");
+    (dir, local_peer)
+}
+
+fn dm_session_state() -> AppState {
+    let mut state = app_state_with_dm_messages(DM_SESSION_PEER, 0);
+    state.dm_messages.insert(
+        DM_SESSION_PEER.to_string(),
+        std::collections::VecDeque::from(vec!["12:00 [Alice] hello from Alice".to_string()]),
+    );
+    state.dm_message_ids.insert(
+        DM_SESSION_PEER.to_string(),
+        std::collections::VecDeque::from(vec![Some(DM_SESSION_ORIGINAL_ID.to_string())]),
+    );
+    state.dm_message_db_ids.insert(
+        DM_SESSION_PEER.to_string(),
+        std::collections::VecDeque::from(vec![None]),
+    );
+    focus_dm_tab(&mut state);
+    state
+}
+
+/// Ctrl+R → type → Enter: assert the captured quote, the outbound command, the
+/// persisted row and the rendered transcript before later actions build on it.
+async fn session_reply_and_send(session: &mut KeySession) -> (i32, String) {
+    assert!(!session.press_ctrl_char('r').await);
+    let tab = TabContent::Direct(DM_SESSION_PEER.to_string());
+    let reply = {
+        let s = session.state.lock().await;
+        s.reply_draft(&tab).cloned().expect("reply draft")
+    };
+    assert_eq!(reply.msg_id, DM_SESSION_ORIGINAL_ID);
+    assert_eq!(reply.sender, "Alice");
+    assert_eq!(reply.preview, "hello from Alice");
+    let reply_frame = session.frame_text().await;
+    assert!(
+        reply_frame.contains("Alice: hello from Alice"),
+        "reply preview missing: {reply_frame}"
+    );
+
+    assert!(!session.type_text("reply body").await);
+    assert!(!session.press_code(KeyCode::Enter).await);
+    let commands = session.drain_commands();
+    let (content, sent_reply, peer_id) = commands
+        .iter()
+        .find_map(|cmd| {
+            if let SwarmCommand::SendDm {
+                content,
+                reply_to: Some(reply),
+                peer_id,
+                ..
+            } = cmd
+            {
+                Some((content.clone(), reply.clone(), peer_id.clone()))
+            } else {
+                None
+            }
+        })
+        .expect("SendDm carrying the reply snapshot");
+    assert_eq!(content, "reply body");
+    assert_eq!(peer_id, DM_SESSION_PEER);
+    assert_eq!(sent_reply.msg_id, DM_SESSION_ORIGINAL_ID);
+    assert_eq!(sent_reply.sender, "Alice");
+    assert!(commands.iter().any(|cmd| matches!(
+        cmd,
+        SwarmCommand::SendTyping {
+            is_typing: false,
+            ..
+        }
+    )));
+
+    let (db_id, sent_msg_id, line) = {
+        let s = session.state.lock().await;
+        let msgs = s.dm_messages.get(DM_SESSION_PEER).expect("dm transcript");
+        let db_id = s
+            .dm_message_db_ids
+            .get(DM_SESSION_PEER)
+            .and_then(std::collections::VecDeque::back)
+            .and_then(|slot| *slot)
+            .expect("sent row id");
+        let sent_msg_id = s
+            .dm_message_ids
+            .get(DM_SESSION_PEER)
+            .and_then(std::collections::VecDeque::back)
+            .and_then(std::clone::Clone::clone)
+            .expect("sent wire id");
+        (db_id, sent_msg_id, msgs.back().cloned().expect("sent line"))
+    };
+    assert!(line.contains("↳ Alice: hello from Alice"));
+    assert!(line.contains("reply body"));
+    let reply_consumed = {
+        let s = session.state.lock().await;
+        s.reply_draft(&tab).is_none()
+    };
+    assert!(reply_consumed, "sending consumes the reply draft");
+
+    let rows = p2p_app::messages::load_direct_messages(DM_SESSION_PEER, 20).expect("load DMs");
+    let row = rows.iter().find(|row| row.id == db_id).expect("sent row");
+    assert_eq!(row.content, "reply body");
+    let stored = row
+        .reply_to_json
+        .as_deref()
+        .and_then(p2p_app::reply::decode)
+        .expect("stored reply snapshot");
+    assert_eq!(stored.msg_id, DM_SESSION_ORIGINAL_ID);
+    (db_id, sent_msg_id)
+}
+
+/// Ctrl+Y → stale popup → quick `1`: the digit must dismiss the old hint *and*
+/// commit the canonical palette token, exactly as a correcting keystroke does.
+async fn session_quick_reaction(session: &mut KeySession, msg_id: &str, local_peer: &str) {
+    assert!(!session.press_ctrl_char('y').await);
+    {
+        let mut s = session.state.lock().await;
+        s.popup = Some("stale validation hint".to_string());
+    }
+    assert!(!session.press_char('1').await);
+
+    let token = *p2p_app::reactions::QUICK_REACTIONS
+        .first()
+        .expect("quick palette is not empty");
+    let (peer_ids, signal) = session
+        .drain_commands()
+        .into_iter()
+        .find_map(|cmd| match cmd {
+            SwarmCommand::SendReaction { peer_ids, signal } => Some((peer_ids, *signal)),
+            _ => None,
+        })
+        .expect("SendReaction");
+    assert_eq!(peer_ids, vec![DM_SESSION_PEER.to_string()]);
+    assert_eq!(signal.msg_id, msg_id);
+    assert_eq!(signal.emoji, token);
+    assert_eq!(signal.actor, local_peer);
+    assert!(!signal.remove, "first reaction is an add");
+
+    let s = session.state.lock().await;
+    assert!(s.popup.is_none(), "successful commit clears stale hints");
+    assert!(!s.is_adding_reaction());
+    assert!(
+        p2p_app::reactions::has_reaction(msg_id, local_peer, token).expect("has_reaction"),
+        "palette token persisted"
+    );
+    let chips = s.reactions.get(msg_id).expect("chips refreshed");
+    assert_eq!(chips.len(), 1);
+    assert_eq!(chips[0].emoji, token);
+    assert!(chips[0].mine);
+    drop(s);
+    let frame = session.frame_text().await;
+    assert!(
+        frame.contains(token),
+        "frame did not show reaction: {frame}"
+    );
+}
+
+/// Ctrl+E → clear → invalid empty commit → corrected text → Enter → Delete → y.
+/// The correction key crosses the popup boundary; the successful edit clears it.
+async fn session_edit_then_delete(session: &mut KeySession, db_id: i32) {
+    assert!(!session.press_ctrl_char('e').await);
+    assert!(!session.press_ctrl_char('k').await);
+    assert!(!session.press_code(KeyCode::Enter).await);
+    {
+        let s = session.state.lock().await;
+        assert!(s.is_editing_message());
+        assert_eq!(s.popup.as_deref(), Some("Message body cannot be empty"));
+    }
+    assert!(!session.type_text("edited reply body").await);
+    assert!(!session.press_code(KeyCode::Enter).await);
+    {
+        let s = session.state.lock().await;
+        assert!(!s.is_editing_message());
+        assert!(
+            s.popup.is_none(),
+            "successful edit clears the validation hint"
+        );
+        let line = s
+            .dm_messages
+            .get(DM_SESSION_PEER)
+            .and_then(std::collections::VecDeque::back)
+            .expect("edited line");
+        assert!(line.contains("edited reply body"));
+        assert!(line.contains("(edited)"));
+    }
+    assert_eq!(
+        p2p_app::messages::message_body(db_id).expect("read edited body"),
+        Some("edited reply body".to_string())
+    );
+    assert!(session.frame_text().await.contains("edited reply body"));
+
+    assert!(!session.press_code(KeyCode::Delete).await);
+    {
+        let s = session.state.lock().await;
+        assert!(s.delete_message_prompt.is_some(), "delete prompt armed");
+    }
+    assert!(!session.press_char('y').await);
+    {
+        let s = session.state.lock().await;
+        assert!(s.delete_message_prompt.is_none());
+        assert_eq!(
+            p2p_app::messages::message_body(db_id).expect("read tombstone"),
+            None,
+            "local deletion is a tombstone"
+        );
+        let msgs = s
+            .dm_messages
+            .get(DM_SESSION_PEER)
+            .expect("transcript after deletion");
+        assert_eq!(msgs.len(), 1, "only the incoming row remains");
+        assert!(!msgs.iter().any(|line| line.contains("edited reply body")));
+    }
+    assert!(!session.frame_text().await.contains("edited reply body"));
+}
+
+#[test]
+#[serial]
+fn test_dm_session_reply_reaction_edit_delete_through_real_keys() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let (_dir, local_peer) = seed_dm_session_db();
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let mut session = KeySession::new(dm_session_state());
+        let (db_id, sent_msg_id) = session_reply_and_send(&mut session).await;
+        session_quick_reaction(&mut session, &sent_msg_id, &local_peer).await;
+        session_edit_then_delete(&mut session, db_id).await;
+        assert!(session.drain_commands().is_empty());
+    });
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
+
+fn seed_contacts_db() -> TempDir {
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+    p2p_app::identity::provision_my_user(None, None).expect("provision");
+    let no_addrs: [String; 0] = [];
+    p2p_app::peers::save_peer("peer0", &no_addrs).expect("save peer0");
+    p2p_app::peers::save_peer("peer1", &no_addrs).expect("save peer1");
+    dir
+}
+
+/// `/` → type `peer1` → Enter → `i` → `n` → invalid nickname → Backspace × 9 →
+/// valid nickname → Enter. The filter survives navigation and editing; only the
+/// name changes in state, the database and the rendered Peer Info pane.
+#[test]
+#[serial]
+fn test_contacts_search_peer_info_local_nickname_session() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = seed_contacts_db();
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let mut state = app_state_with_peers(2);
+        state.active_tab = 1; // Contacts
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('/').await);
+        assert!(!session.type_text("peer1").await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+        let s = session.state.lock().await;
+        assert_eq!(s.contact_search, "peer1");
+        assert_eq!(s.contacts.len(), 1);
+        assert_eq!(s.contacts_all.len(), 2);
+        assert_eq!(s.contacts[0].contact_id, "peer1");
+        drop(s);
+        let peer1_label = p2p_app::get_peer_display_name_or_short("peer1");
+        let filtered_frame = session.frame_text().await;
+        assert!(
+            filtered_frame.contains(&peer1_label),
+            "filtered frame missing {peer1_label}: {filtered_frame}"
+        );
+
+        assert!(!session.press_char('i').await);
+        let peer_info_tab = {
+            let s = session.state.lock().await;
+            s.dynamic_tabs.tab_index_to_content(s.active_tab)
+        };
+        assert!(
+            matches!(&peer_info_tab, TabContent::PeerInfo(id) if id == "peer1"),
+            "unexpected tab: {peer_info_tab:?}"
+        );
+        assert!(!session.press_char('n').await);
+        assert!(!session.type_text("bad name!").await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.is_editing_local_nickname());
+            assert_eq!(
+                s.popup.as_deref(),
+                Some("Local nickname: letters, numbers or dashes (max 20 characters)")
+            );
+        }
+
+        // The first Backspace dismisses the validation hint and still erases a
+        // character; the remaining eight clear the editor for the correction.
+        for _ in 0.."bad name!".chars().count() {
+            assert!(!session.press_code(KeyCode::Backspace).await);
+        }
+        assert!(!session.type_text("Alice-1").await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+
+        let s = session.state.lock().await;
+        assert!(
+            s.popup.is_none(),
+            "successful commit clears the validation hint"
+        );
+        assert!(!s.is_editing_nickname());
+        assert_eq!(
+            s.local_nicknames.get("peer1").map(String::as_str),
+            Some("Alice-1")
+        );
+        assert_eq!(
+            s.contact_search, "peer1",
+            "filter survives Peer Info editing"
+        );
+        assert_eq!(s.contacts.len(), 1);
+        assert!(
+            matches!(
+                s.dynamic_tabs.tab_index_to_content(s.active_tab),
+                TabContent::PeerInfo(ref id) if id == "peer1"
+            ),
+            "still on the same Peer Info tab"
+        );
+        drop(s);
+
+        let peers = p2p_app::peers::load_peers().expect("load peers");
+        let peer = peers
+            .iter()
+            .find(|peer| peer.peer_id == "peer1")
+            .expect("peer1 row");
+        assert_eq!(peer.peer_local_nickname.as_deref(), Some("Alice-1"));
+        assert!(session.frame_text().await.contains("Alice-1"));
+        assert!(session.drain_commands().is_empty());
     });
     p2p_app::db::release_db_lock();
     p2p_app::db::reset_db_url();

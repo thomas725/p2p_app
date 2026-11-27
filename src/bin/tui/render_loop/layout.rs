@@ -51,6 +51,8 @@ pub fn render_input_section(
             "{label} ({}) - Enter to save, Esc to cancel",
             p2p_app::short_peer_id(&target)
         )
+    } else if let Some(reply) = state.reply_draft(tab_content) {
+        format!("Reply: {}", p2p_app::reply::quoted_header(reply))
     } else {
         "Input".to_string()
     };

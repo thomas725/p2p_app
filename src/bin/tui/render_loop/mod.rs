@@ -326,6 +326,16 @@ fn render_frame(f: &mut Frame, state: &AppState) {
     }
 }
 
+/// Render one frame with the real binary renderer for key-session tests.
+///
+/// The library renderer resolves tabs from legacy titles; production uses the
+/// typed `DynamicTabs` lookup. Sessions must observe exactly what a terminal
+/// user sees, so tests go through this wrapper rather than the library path.
+#[cfg(test)]
+pub(super) fn render_frame_for_test(f: &mut Frame, state: &AppState) {
+    render_frame(f, state);
+}
+
 /// Spawns the render loop task that renders only when requested
 pub fn spawn_render_loop(
     state: SharedState,

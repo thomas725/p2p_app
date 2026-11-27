@@ -1,6 +1,137 @@
-use crate::tui::state::AppState;
-use p2p_app::{DisplayMessage, PeerRecord};
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unreachable,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::significant_drop_tightening
+)]
+
+use crate::tui::event_source::InputEvent;
+use crate::tui::main_loop::RenderEvent;
+use crate::tui::state::{AppState, SharedState};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use p2p_app::{DisplayMessage, PeerRecord, SwarmCommand};
+use ratatui::{Terminal, backend::TestBackend, buffer::Cell};
 use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
+use tokio::sync::{Mutex, mpsc};
+
+/// A real key-dispatch session with drained channels and a render probe.
+///
+/// The helpers drive `process_input_event`, the same public entry point the TUI
+/// event loop uses; no production visibility is widened for tests. Render
+/// notifications are drained after every key so bounded channels never block a
+/// multi-key session.
+pub struct KeySession {
+    pub state: SharedState,
+    pub commands: mpsc::Receiver<SwarmCommand>,
+    command_tx: mpsc::Sender<SwarmCommand>,
+    render_tx: mpsc::Sender<RenderEvent>,
+    render_rx: mpsc::Receiver<RenderEvent>,
+}
+
+impl KeySession {
+    pub fn new(state: AppState) -> Self {
+        let (command_tx, commands) = mpsc::channel(64);
+        let (render_tx, render_rx) = mpsc::channel(64);
+        Self {
+            state: Arc::new(Mutex::new(state)),
+            commands,
+            command_tx,
+            render_tx,
+            render_rx,
+        }
+    }
+
+    /// Press one key through the real input event processor. Returns whether
+    /// the app asked to exit.
+    pub async fn press_key(&mut self, key: KeyEvent) -> bool {
+        let exited = crate::tui::input_processor::process_input_event(
+            InputEvent::Key(key),
+            &self.state,
+            &self.command_tx,
+            &self.render_tx,
+        )
+        .await;
+        self.drain_renders();
+        exited
+    }
+
+    pub async fn press_char(&mut self, c: char) -> bool {
+        self.press_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE))
+            .await
+    }
+
+    pub async fn press_ctrl_char(&mut self, c: char) -> bool {
+        self.press_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::CONTROL))
+            .await
+    }
+
+    pub async fn press_code(&mut self, code: KeyCode) -> bool {
+        self.press_key(KeyEvent::new(code, KeyModifiers::NONE))
+            .await
+    }
+
+    /// Type a string as individual key events. Any exit request is returned so
+    /// a session never silently ignores Ctrl+Q embedded in input.
+    pub async fn type_text(&mut self, text: &str) -> bool {
+        let mut exited = false;
+        for c in text.chars() {
+            exited |= self.press_char(c).await;
+        }
+        exited
+    }
+
+    /// Clone of the session's swarm sender, so a test can inject a production
+    /// swarm event through the same channel the real event loop uses.
+    pub fn command_tx(&self) -> mpsc::Sender<SwarmCommand> {
+        self.command_tx.clone()
+    }
+
+    /// Collect the commands queued by the session so a test can assert on the
+    /// full sequence without racing a background task.
+    pub fn drain_commands(&mut self) -> Vec<SwarmCommand> {
+        let mut commands = Vec::new();
+        while let Ok(command) = self.commands.try_recv() {
+            commands.push(command);
+        }
+        commands
+    }
+
+    /// Project the current `AppState` through the same conversion and renderer
+    /// the live frame loop uses, then return the visible buffer as text.
+    pub async fn frame_text(&self) -> String {
+        let state = self.state.lock().await;
+        let backend = TestBackend::new(160, 40);
+        let mut terminal = Terminal::new(backend).expect("test terminal");
+        terminal
+            .draw(|frame| crate::tui::render_loop::render_frame_for_test(frame, &state))
+            .expect("render frame");
+        drop(state);
+        let buffer = terminal.backend().buffer();
+        let width = usize::from(buffer.area.width);
+        let lines = buffer
+            .content
+            .chunks(width)
+            .map(|row| {
+                row.iter()
+                    .map(Cell::symbol)
+                    .collect::<String>()
+                    .trim_end()
+                    .to_owned()
+            })
+            .collect::<Vec<_>>();
+        lines.join("\n")
+    }
+
+    fn drain_renders(&mut self) {
+        while self.render_rx.try_recv().is_ok() {}
+    }
+}
 
 pub fn test_app_state() -> AppState {
     AppState::new(
