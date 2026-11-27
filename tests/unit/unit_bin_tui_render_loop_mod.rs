@@ -151,6 +151,35 @@ fn test_app_state_to_render_state_peers() {
 }
 
 #[test]
+fn test_app_state_to_render_state_carries_unfiltered_contacts() {
+    let mut state = app_state();
+    let devices = [p2p_app::contacts::ContactDeviceInput {
+        peer_id: "p1".to_string(),
+        first_seen: "2024-01-01 12:00:00".to_string(),
+        last_seen: "2024-01-02 12:00:00".to_string(),
+        received_nickname: Some("Peer One".to_string()),
+        local_nickname: None,
+    }];
+    state.contacts_all = p2p_app::contacts::build_contact_rows(
+        &devices,
+        &HashMap::new(),
+        &HashMap::new(),
+        &HashMap::new(),
+        &HashMap::new(),
+        &HashMap::new(),
+    );
+    // A Contacts search only narrows `contacts`; Peer Info reads `contacts_all`.
+    state.contacts.clear();
+    state.contact_search = "no-match".to_string();
+
+    let rs = app_state_to_render_state(&state);
+    assert_eq!(rs.contacts_all.len(), 1);
+    assert_eq!(rs.contacts_all[0].contact_id, "p1");
+    assert!(rs.contacts.is_empty());
+    assert_eq!(rs.contact_search_total, Some(1));
+}
+
+#[test]
 fn test_app_state_to_render_state_dm_messages() {
     let mut state = app_state();
     state

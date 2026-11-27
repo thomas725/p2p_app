@@ -33,8 +33,10 @@ the smallest footprint (reads stdin, prints to stderr).
 * **Notifications** — Rust-built notification payloads with a sound channel and
   an optional system/bell channel; frontends only deliver them. See
   [`docs/architecture.md`](docs/architecture.md#notifications-us-027--us-028).
-* **Call signaling** — ring / accept / decline / hang up. Media transport is
-  not implemented yet.
+* **Voice calls** — ring / accept / decline / hang up with Rust-owned call IDs,
+  plus μ-law media transport, framing, jitter buffering and mute. Browser,
+  Android and opt-in TUI builds have device audio adapters; other Flutter
+  targets get transport only.
 * **Identity and device binding** — an account key per user, signed claims
   binding devices, and a Contacts roster that collapses one user's devices
   into a single row.
@@ -152,8 +154,9 @@ checklist is in [`AGENTS.md`](AGENTS.md) ("FRB regeneration protocol").
 
 ## Architecture
 
-* **`libp2p`** — networking (gossipsub, four request-response protocols, mDNS,
-  Kademlia, relay/AutoNAT/DCUtR, TCP/QUIC, ping).
+* **`libp2p`** — networking (gossipsub, eight request-response lanes: DM,
+  device binding, call signaling, call media, typing, reactions, files and
+  shares; mDNS, Kademlia, relay/AutoNAT/DCUtR, TCP/QUIC, ping).
 * **Diesel + SQLite** — persistent storage of messages, peers, identities,
   receipts, groups, and contacts.
 * **`ratatui`** — terminal UI (binaries under `src/bin/tui`).
@@ -173,7 +176,7 @@ src/
 ├── peers.rs / nickname.rs     # peer rows, sessions, display-name resolution
 ├── groups.rs                  # groups, members, group messages, backfill watermark
 ├── identity.rs / contacts.rs  # users, account keys, device bindings, contact roster
-├── calls.rs                   # call session model (signaling only)
+├── calls.rs / call_media.rs   # call state machine + μ-law media transport
 ├── files.rs                   # content-addressed attachment store
 ├── network.rs                 # adaptive NetworkSize classification
 ├── net_diag.rs                # live diagnostics (interfaces, NAT, relay, DHT)
