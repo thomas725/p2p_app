@@ -307,6 +307,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Notification focus lifecycle + connected-only share pickers | 2026-11-27 | [`archive/2026-11-27_notification_focus_lifecycle.md`](archive/2026-11-27_notification_focus_lifecycle.md) |
 | Device-centric location sharing (US-055) | 2026-11-27 | [`archive/2026-11-27_device_location_sharing.md`](archive/2026-11-27_device_location_sharing.md) |
 | Incoming attachment descriptors survive Flutter/web persistence | 2026-11-27 | [`archive/2026-11-27_incoming_attachment_descriptors.md`](archive/2026-11-27_incoming_attachment_descriptors.md) |
 | Rust-owned share re-advertising | 2026-11-27 | [`archive/2026-11-27_rust_owned_share_readvertise.md`](archive/2026-11-27_rust_owned_share_readvertise.md) |

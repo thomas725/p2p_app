@@ -5,6 +5,8 @@ import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/screens/dm_chat.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
+import 'package:p2p_app_flutter/src/util/notifications.dart'
+    show ConversationFocusGuard, pushFocusedConversation;
 
 /// Full-screen peer detail page (name origin, activity, message stats), with a
 /// shortcut to open the DM chat for the peer and — when [onEditLocalNickname]
@@ -95,13 +97,24 @@ class _PeerInfoScreenState extends State<PeerInfoScreen> {
   /// True while a block/unblock call is in flight (disables the action).
   bool _blocking = false;
 
+  /// Peer Info is not a chat: it pushes an explicit null focus so messages in
+  /// the chat underneath still notify (matching the TUI's focus key).
+  late final ConversationFocusGuard _focusGuard;
+
   bool get _isBlocked => _blocked ?? widget.isBlocked;
 
   @override
   void initState() {
     super.initState();
+    _focusGuard = pushFocusedConversation(null);
     _loadQuality();
     _loadBlocked();
+  }
+
+  @override
+  void dispose() {
+    _focusGuard.release();
+    super.dispose();
   }
 
   Future<void> _loadBlocked() async {

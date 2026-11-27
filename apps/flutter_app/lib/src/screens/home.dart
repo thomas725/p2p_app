@@ -22,7 +22,8 @@ import 'package:p2p_app_flutter/src/screens/messages.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/peer_info.dart';
 import 'package:p2p_app_flutter/src/screens/share_discovery.dart';
-import 'package:p2p_app_flutter/src/screens/share_list.dart';
+import 'package:p2p_app_flutter/src/screens/share_list.dart'
+    show ShareListScreen, ShareDetailScreen, connectedShareActionPeerIds;
 import 'package:p2p_app_flutter/src/screens/settings.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 import 'package:p2p_app_flutter/src/util/blocklist.dart';
@@ -1179,7 +1180,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => ShareDiscoveryScreen(
-          peerIds: List<String>.from(_connectedPeerIds),
+          peerIds: connectedShareActionPeerIds(_connectedPeerIds),
           offers: _discoveredShares,
           onDiscover: _discoverPeerShares,
           onAccept: _acceptDiscoveredShare,
@@ -1230,7 +1231,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           onRemoveGrant: (shareId, userId) =>
               nodeApi.removeShareGrant(shareId: shareId, userId: userId),
-          peerIds: _peers.map((p) => p.peerId).toList(),
+          peerIds: connectedShareActionPeerIds(_connectedPeerIds),
           onRequestManifest: (shareId, peerId) =>
               nodeApi.requestShareManifest(peerId: peerId, shareId: shareId),
           onReadvertise: (shareId, peerId) =>

@@ -9,6 +9,17 @@ import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/share_network.dart';
 import 'package:p2p_app_flutter/src/screens/share_publish.dart';
 
+/// Peer IDs offered by share network/publish pickers.
+///
+/// Home tracks connected peers in arrival order; the TUI sorts the same set by
+/// peer ID (`connected::sorted_connected_peer_ids`). Sorting here keeps both
+/// frontends deterministic and prevents a known-but-disconnected peer from
+/// being offered for an action that requires a live connection.
+List<String> connectedShareActionPeerIds(Iterable<String> connectedPeerIds) {
+  final ids = connectedPeerIds.toSet().toList()..sort();
+  return ids;
+}
+
 /// List of this install's file shares. The list itself is read-only; creating,
 /// binding and native folder snapshots stay in Rust (see `docs/backlog.md`).
 /// Both transports can inspect shares, discover and accept peer offers,

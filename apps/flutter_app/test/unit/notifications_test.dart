@@ -82,18 +82,39 @@ void main() {
     expect(delivered, ['system:Alice:hello']);
   });
 
-  test('pushFocusedConversation swaps focus and returns the previous key', () async {
+  test('focus guards nest and restore the screen underneath', () async {
     notifications.setFocusedConversation('broadcast');
 
-    final previous = notifications.pushFocusedConversation('dm:peer1');
-    expect(previous, 'broadcast');
-    // The pushed key is now the active suppression target.
+    final dm = notifications.pushFocusedConversation('dm:peer1');
     await notifications.deliverNotification(notification(key: 'dm:peer1'));
     expect(delivered, isEmpty);
 
-    // A screen restores the previous key in dispose.
-    notifications.setFocusedConversation(previous);
+    // A non-chat screen over a chat suppresses nothing (Peer Info).
+    final info = notifications.pushFocusedConversation(null);
     await notifications.deliverNotification(notification(key: 'dm:peer1'));
+    expect(delivered, ['sound', 'system:Alice:hello']);
+
+    delivered.clear();
+    info.release();
+    await notifications.deliverNotification(notification(key: 'dm:peer1'));
+    expect(delivered, isEmpty);
+
+    delivered.clear();
+    dm.release();
+    await notifications.deliverNotification(notification(key: 'dm:peer1'));
+    expect(delivered, ['sound', 'system:Alice:hello']);
+  });
+
+  test('a stale focus guard cannot overwrite the destination screen', () async {
+    notifications.setFocusedConversation('broadcast');
+    final dm = notifications.pushFocusedConversation('dm:peer1');
+
+    // Bottom-nav navigation publishes its focus before the popped screen's
+    // dispose runs. Releasing the old guard must leave the destination alone.
+    notifications.setFocusedConversation(null);
+    dm.release();
+
+    await notifications.deliverNotification(notification(key: 'broadcast'));
     expect(delivered, ['sound', 'system:Alice:hello']);
   });
 }

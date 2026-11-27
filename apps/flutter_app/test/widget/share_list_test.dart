@@ -56,6 +56,14 @@ Widget detailApp({
 );
 
 void main() {
+  test('share action peers are the connected set in deterministic ID order', () {
+    expect(
+      connectedShareActionPeerIds(const ['peer-b', 'peer-a', 'peer-b']),
+      ['peer-a', 'peer-b'],
+    );
+    expect(connectedShareActionPeerIds(const <String>[]), isEmpty);
+  });
+
   testWidgets('empty state explains where shares come from', (tester) async {
     await tester.pumpWidget(listApp(shares: const [], onOpen: (_) {}));
     await tester.pump();

@@ -40,24 +40,65 @@ typedef SystemDelivery = Future<void> Function({
 SoundDelivery soundDelivery = _deliverSound;
 SystemDelivery systemDelivery = _deliverSystem;
 
-/// The conversation currently visible (`broadcast`, `dm:<peer-id>`,
-/// `group:<group-id>`), or null when no chat is on screen. Set by the chat
-/// screens and reset on dispose.
-String? _focusedConversation;
+class _FocusEntry {
+  const _FocusEntry(this.token, this.key);
+
+  final int token;
+  final String? key;
+}
+
+/// Guard for one screen's contribution to the focus stack.
+///
+/// A screen releases its guard in `dispose`. Releasing is deliberately a no-op
+/// after the app has published a new focus (for example from a bottom-nav tap),
+/// so a closing screen can never overwrite the destination tab or chat.
+class ConversationFocusGuard {
+  const ConversationFocusGuard._(this._token);
+
+  final int _token;
+
+  /// Restore the focus that was visible before this guard was pushed, unless a
+  /// newer focus has already replaced it.
+  void release() => _releaseFocus(_token);
+}
+
+/// Base focus set by the shell: `broadcast`, `dm:<peer-id>`,
+/// `group:<group-id>`, or null when no chat is on screen.
+String? _baseFocus;
+
+/// Screens push an entry for as long as they are visible. The last entry (or
+/// the base focus) is the conversation whose notifications are suppressed.
+final List<_FocusEntry> _focusStack = <_FocusEntry>[];
+
+int _nextFocusToken = 0;
+
+String? get _focusedConversation =>
+    _focusStack.isEmpty ? _baseFocus : _focusStack.last.key;
 
 /// Whether the app is in the foreground. Background apps must notify even for
 /// the previously-focused conversation.
 bool _inForeground = true;
 
-/// Publish the conversation currently on screen. `null` clears the focus.
-void setFocusedConversation(String? key) => _focusedConversation = key;
+/// Publish the conversation currently on screen, discarding any screen-local
+/// focus entries. `null` clears the focus.
+void setFocusedConversation(String? key) {
+  _baseFocus = key;
+  _focusStack.clear();
+}
 
-/// Take over focus while a chat screen is open, returning the key it replaced.
-/// The screen must restore it in `dispose` (mirrors the event-sink push/pop).
-String? pushFocusedConversation(String key) {
-  final previous = _focusedConversation;
-  _focusedConversation = key;
-  return previous;
+/// Take over focus while a screen is open. `null` is a valid pushed focus: a
+/// Peer Info page over a chat must not suppress that chat's notifications.
+/// The screen must release the returned guard in `dispose`.
+ConversationFocusGuard pushFocusedConversation(String? key) {
+  final token = ++_nextFocusToken;
+  _focusStack.add(_FocusEntry(token, key));
+  return ConversationFocusGuard._(token);
+}
+
+void _releaseFocus(int token) {
+  final index = _focusStack.indexWhere((entry) => entry.token == token);
+  if (index < 0) return;
+  _focusStack.removeRange(index, _focusStack.length);
 }
 
 /// Track foreground state so background messages notify even for the last
