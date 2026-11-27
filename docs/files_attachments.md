@@ -219,8 +219,10 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   to the selected peer with `u`; the target share is captured when the binding
   prompt opens, and ACL and stale-revision checks stay in receiving Rust. Share
   creation, local share deletion and discovery are available too: the Flutter/web
-  detail page confirms `deleteShare` on both transports and Rust keeps the bound
-  folder and blobs. Adding files from an explicit picker remains the open TUI gap.
+  detail page confirms `deleteShare` on both transports and the TUI's `D` arms a
+  matching single-slot confirmation that captures the selected share id and
+  reloads the list on success. Rust keeps the bound folder and blobs in both
+  frontends. Adding files from an explicit picker remains the open TUI gap.
 
 ## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
 

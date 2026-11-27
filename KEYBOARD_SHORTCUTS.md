@@ -347,8 +347,10 @@ accepted peer shares. Grants are editable here too, and connected peers are
 ordered by peer ID. `c` creates a private, read-only share, `b` binds or clears
 its local folder, `s` snapshots that folder into the next revision, and `u`
 publishes the cached snapshot to the selected peer. Manifest files can be marked
-for deletion and the next revision submitted to a connected peer. Adding files
-from an explicit picker remains a Flutter/web action; the TUI snapshots a bound
+for deletion and the next revision submitted to a connected peer. `D` deletes
+the selected share locally after confirmation; the share row, entries and grants
+are removed while the bound folder and stored blobs are kept. Adding files from
+an explicit picker remains a Flutter/web action; the TUI snapshots a bound
 folder.
 
 | Key | Action |
@@ -359,6 +361,7 @@ folder.
 | `Ctrl+Left` / `Ctrl+Right` | Move the manifest-file cursor in the detail pane |
 | `d` | Mark / unmark the highlighted manifest file for deletion |
 | `Ctrl+D` | Publish the marked deletions to the selected connected peer |
+| `D` | Delete the selected share locally after confirmation (`y` / `Enter`) |
 | `PgUp` / `PgDn` | Page the share selection |
 | `Home` / `End` | Jump to the first / last share |
 | `Click` in the list pane | Select that share (the detail pane follows) |
@@ -381,6 +384,13 @@ folder.
 The creation prompt takes a share name. Rust validates it through
 `shares::validate_share_name`; invalid names keep the prompt open with an error
 popup, and a successful create selects the new row in the list.
+
+`D` opens a confirmation naming the selected share. `y`/`Enter` deletes it
+locally through Rust's canonical `deleteShare` path; any other key or `Esc`
+cancels. This is distinct from `d`/`Ctrl+D`, which publish a manifest revision to
+a peer. Confirming removes only this device's share row, entries and grants —
+the bound folder, stored blobs and peers' copies are untouched — and the share
+list reloads with a visible notice.
 
 The binding prompt is prefilled with the current folder and opens with the
 cursor at its end. `Enter` stores the canonical absolute path through Rust; an

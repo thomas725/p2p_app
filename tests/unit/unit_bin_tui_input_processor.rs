@@ -5857,6 +5857,157 @@ fn test_share_creation_requires_a_provisioned_owner() {
 
 #[test]
 #[serial]
+fn test_share_delete_key_arms_confirmation_and_captures_the_share() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, state, share_id) =
+            share_db_state("owner", p2p_app::shares::ShareKind::Private, false, &[]);
+        let mut session = KeySession::new(state);
+
+        assert!(
+            !session
+                .press_key(KeyEvent::new(KeyCode::Char('D'), KeyModifiers::SHIFT))
+                .await
+        );
+        let frame = session.frame_text().await;
+        assert!(frame.contains("Delete share \"Docs\"?"), "frame: {frame}");
+        assert!(
+            frame.contains("Files in the bound folder"),
+            "the confirmation must explain what deletion keeps: {frame}"
+        );
+        {
+            let s = session.state.lock().await;
+            let prompt = s.share_delete_prompt.as_ref().expect("prompt armed by D");
+            assert_eq!(prompt.share_id, share_id);
+            assert_eq!(prompt.name, "Docs");
+            assert_eq!(s.shares.len(), 1, "arming deletes nothing");
+        }
+        assert!(
+            p2p_app::shares::get_share(&share_id)
+                .expect("lookup")
+                .is_some(),
+            "the DB row must survive until confirmation"
+        );
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_delete_confirmation_removes_row_grants_and_reloads() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, state, share_id) = share_db_state(
+            "owner",
+            p2p_app::shares::ShareKind::Private,
+            false,
+            &[("alice", p2p_app::shares::ShareMode::ReadOnly)],
+        );
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('D').await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+
+        assert!(
+            p2p_app::shares::get_share(&share_id)
+                .expect("lookup")
+                .is_none(),
+            "confirmation must delete the share row"
+        );
+        assert!(
+            p2p_app::shares::list_grants(&share_id)
+                .expect("list grants")
+                .is_empty(),
+            "grants are removed with the share"
+        );
+        {
+            let s = session.state.lock().await;
+            assert!(s.share_delete_prompt.is_none(), "prompt consumed");
+            assert!(s.shares.is_empty(), "list reloaded from the store");
+            assert_eq!(s.share_selection, 0);
+            assert_eq!(s.share_event_notice.as_deref(), Some("Share deleted: Docs"));
+        }
+        let frame = session.frame_text().await;
+        assert!(frame.contains("Share deleted: Docs"), "frame: {frame}");
+        assert!(session.drain_commands().is_empty(), "deletion stays local");
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_delete_cancel_and_esc_leave_the_store_untouched() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, state, share_id) =
+            share_db_state("owner", p2p_app::shares::ShareKind::Private, false, &[]);
+        let shares_tab = shares_tab_index(&state);
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('D').await);
+        assert!(!session.press_char('n').await);
+        assert!(
+            p2p_app::shares::get_share(&share_id)
+                .expect("lookup")
+                .is_some(),
+            "an unrelated key cancels without deleting"
+        );
+        assert!(!session.press_char('D').await);
+        assert!(!session.press_code(KeyCode::Esc).await);
+        assert!(
+            p2p_app::shares::get_share(&share_id)
+                .expect("lookup")
+                .is_some(),
+            "Esc cancels without deleting"
+        );
+        {
+            let s = session.state.lock().await;
+            assert!(s.share_delete_prompt.is_none());
+            assert_eq!(s.shares.len(), 1);
+            assert_eq!(s.active_tab, shares_tab, "Esc only cancels the prompt");
+        }
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_delete_prompt_swallows_wheel_and_tab_click() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, mut state, share_id) =
+            share_db_state("owner", p2p_app::shares::ShareKind::Private, false, &[]);
+        state.begin_share_delete(share_id.clone(), "Docs".to_string());
+        assert_mouse_is_inert(state, "Delete share \"Docs\"?", 1, |s| {
+            let prompt = s
+                .share_delete_prompt
+                .as_ref()
+                .expect("prompt still owns the screen");
+            assert_eq!(prompt.share_id, share_id);
+            assert_eq!(prompt.name, "Docs");
+            assert_eq!(s.shares.len(), 1);
+        })
+        .await;
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
 fn test_share_visibility_keys_persist_and_reload() {
     let _guard = p2p_app::db::shared_db_test_lock()
         .lock()

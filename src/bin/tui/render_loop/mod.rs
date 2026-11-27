@@ -16,7 +16,8 @@ use std::io::{Stdout, Write};
 use tokio::sync::mpsc;
 
 /// The popup to render, highest precedence first: device-binding intro, group
-/// leave, message deletion, live call overlay, then ad-hoc `state.popup` text.
+/// leave, message deletion, share deletion, live call overlay, then ad-hoc
+/// `state.popup` text.
 fn render_popup_text(state: &AppState) -> Option<String> {
     state
         .device_binding_prompt
@@ -48,6 +49,18 @@ fn render_popup_text(state: &AppState) -> Option<String> {
                      \nOnly this device loses the message; other peers keep their copy.\n\
                      \nConfirm with 'y' or Enter \u{b7} cancel with Esc",
                     p.preview
+                )
+            })
+        })
+        .or_else(|| {
+            state.share_delete_prompt.as_ref().map(|p| {
+                format!(
+                    "Delete share \"{}\"?\n\
+                     \nThis removes the share, its entries and grants from this device. \
+                     Files in the bound folder and stored blobs are kept; peers that \
+                     already accepted the share keep their copy.\n\
+                     \nConfirm with 'y' or Enter \u{b7} cancel with Esc",
+                    p.name
                 )
             })
         })

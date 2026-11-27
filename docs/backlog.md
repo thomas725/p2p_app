@@ -276,12 +276,19 @@ Shipped after the core:
   keeping the bound folder and blobs; the detail route pops on success and a
   `ValueNotifier` refreshes the list route that is already open. Record:
   [`archive/2026-11-27_flutter_web_share_deletion.md`](archive/2026-11-27_flutter_web_share_deletion.md).
+- TUI local share deletion: `D` opens a confirmation that captures the selected
+  share id, and `y`/Enter calls the same canonical `delete_share` facade; any
+  other key cancels. The prompt owns keyboard and mouse, the list reloads with a
+  visible notice, and no swarm command is queued (peers keep their copies).
+  Record:
+  [`archive/2026-11-27_tui_local_share_deletion.md`](archive/2026-11-27_tui_local_share_deletion.md).
 
 Still open (UI/integration, not protocol work):
 
 - TUI Shares tab action for adding files (the list, detail, event notice,
-  creation, folder binding/snapshot/publish, grant/visibility editors, network
-  refresh/re-advertise, deletion publishing and discovery already ship);
+  creation, local deletion, folder binding/snapshot/publish, grant/visibility
+  editors, network refresh/re-advertise, deletion publishing and discovery
+  already ship);
 - Native share binding and folder snapshot UI. Creation, local share deletion,
   deletion publishing, discovery, manifest refresh and re-advertise already ship
   on both transports; the browser remains a display client — adding new files
@@ -356,6 +363,7 @@ here so they are not mistaken for unfinished work.
 | Item | When | Where |
 |---|---|---|
 | Flutter/web share deletion | 2026-11-27 | [`archive/2026-11-27_flutter_web_share_deletion.md`](archive/2026-11-27_flutter_web_share_deletion.md) |
+| TUI local share deletion | 2026-11-27 | [`archive/2026-11-27_tui_local_share_deletion.md`](archive/2026-11-27_tui_local_share_deletion.md) |
 | Canonical five-column sort comparator | 2026-11-27 | [`archive/2026-11-27_canonical_sort_comparator.md`](archive/2026-11-27_canonical_sort_comparator.md) |
 | Exhaustive FRB↔web dispatch drift guard | 2026-11-27 | [`archive/2026-11-27_frb_web_drift_guard.md`](archive/2026-11-27_frb_web_drift_guard.md) |
 | Untrusted share-owner claim hardening | 2026-11-27 | [`archive/2026-11-27_share_owner_claim_hardening.md`](archive/2026-11-27_share_owner_claim_hardening.md) |

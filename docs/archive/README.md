@@ -83,6 +83,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-27_tui_share_folder_binding.md](2026-11-27_tui_share_folder_binding.md) | TUI folder binding, snapshotting and snapshot publishing through the canonical share store | 2026-11-27 |
 | [2026-11-27_flutter_web_share_creation.md](2026-11-27_flutter_web_share_creation.md) | Rootless private-share creation in the shared Flutter/web share list | 2026-11-27 |
 | [2026-11-27_flutter_web_share_deletion.md](2026-11-27_flutter_web_share_deletion.md) | Confirmed local share deletion in the shared Flutter/web detail route | 2026-11-27 |
+| [2026-11-27_tui_local_share_deletion.md](2026-11-27_tui_local_share_deletion.md) | TUI confirmed local share deletion with a captured-target prompt and canonical reload | 2026-11-27 |
 | [2026-11-27_device_location_sharing.md](2026-11-27_device_location_sharing.md) | Device-centric location sharing: Rust-owned policy, sealed DMs, GPX tracks, TUI/Flutter/web/Android | 2026-11-27 |
 | [2026-11-27_frb_web_drift_guard.md](2026-11-27_frb_web_drift_guard.md) | Generated-source guard that every FRB wire has a web arm or a documented native-only reason | 2026-11-27 |
 | [2026-11-27_canonical_sort_comparator.md](2026-11-27_canonical_sort_comparator.md) | One canonical five-column comparator shared by the TUI and both Flutter transports | 2026-11-27 |

@@ -1167,10 +1167,13 @@ enum PromptAction {
     CancelGroupLeave,
     ConfirmDelete,
     CancelDelete,
+    ConfirmShareDelete,
+    CancelShareDelete,
     NoPrompt,
 }
 
-/// Resolve prompt precedence once: device binding > group leave > deletion.
+/// Resolve prompt precedence once: device binding > group leave > message
+/// deletion > share deletion.
 /// Every prompt owns its keys (including Esc), so nothing below sees them.
 const fn prompt_key_action(
     state: &super::state::AppState,
@@ -1200,7 +1203,64 @@ const fn prompt_key_action(
             PromptAction::CancelDelete
         };
     }
+    if state.share_delete_prompt.is_some() {
+        return if is_confirm {
+            PromptAction::ConfirmShareDelete
+        } else {
+            PromptAction::CancelShareDelete
+        };
+    }
     PromptAction::NoPrompt
+}
+
+/// Give an armed single-slot prompt the current key, returning whether it was
+/// consumed. Keeping the whole prompt match here leaves `process_key_event`
+/// below the strict line limit without weakening its precedence documentation.
+async fn handle_prompt_action(
+    action: PromptAction,
+    state: &SharedState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    render_tx: &mpsc::Sender<RenderEvent>,
+) -> bool {
+    match action {
+        PromptAction::AcceptDeviceBinding => {
+            accept_device_binding_prompt(state, swarm_cmd_tx).await;
+        }
+        PromptAction::DeclineDeviceBinding => {
+            let mut s = state.lock().await;
+            decline_device_binding_prompt(&mut s);
+        }
+        PromptAction::ConfirmGroupLeave => {
+            confirm_group_leave(state, swarm_cmd_tx).await;
+        }
+        PromptAction::CancelGroupLeave => {
+            let mut s = state.lock().await;
+            if s.cancel_group_leave() {
+                p2plog_debug("Cancelled group leave".to_string());
+            }
+        }
+        PromptAction::ConfirmDelete => {
+            confirm_delete_message(state).await;
+        }
+        PromptAction::CancelDelete => {
+            let mut s = state.lock().await;
+            if s.cancel_delete_message() {
+                p2plog_debug("Cancelled message deletion".to_string());
+            }
+        }
+        PromptAction::ConfirmShareDelete => {
+            confirm_share_delete(state).await;
+        }
+        PromptAction::CancelShareDelete => {
+            let mut s = state.lock().await;
+            if s.cancel_share_delete() {
+                p2plog_debug("Cancelled share deletion".to_string());
+            }
+        }
+        PromptAction::NoPrompt => return false,
+    }
+    let _ = render_tx.send(RenderEvent).await;
+    true
 }
 
 async fn process_key_event(
@@ -1219,53 +1279,13 @@ async fn process_key_event(
     }
 
     // Prompt precedence: device-binding > group leave > message deletion >
-    // live call overlay > plain popup/Esc handling.
+    // share deletion > live call overlay > plain popup/Esc handling.
     let prompt_action = {
         let s = state.lock().await;
         prompt_key_action(&s, &key_event)
     };
-    match prompt_action {
-        PromptAction::AcceptDeviceBinding => {
-            accept_device_binding_prompt(state, swarm_cmd_tx).await;
-            let _ = render_tx.send(RenderEvent).await;
-            return false;
-        }
-        PromptAction::DeclineDeviceBinding => {
-            let mut s = state.lock().await;
-            decline_device_binding_prompt(&mut s);
-            drop(s);
-            let _ = render_tx.send(RenderEvent).await;
-            return false;
-        }
-        PromptAction::ConfirmGroupLeave => {
-            confirm_group_leave(state, swarm_cmd_tx).await;
-            let _ = render_tx.send(RenderEvent).await;
-            return false;
-        }
-        PromptAction::CancelGroupLeave => {
-            let mut s = state.lock().await;
-            if s.cancel_group_leave() {
-                p2plog_debug("Cancelled group leave".to_string());
-            }
-            drop(s);
-            let _ = render_tx.send(RenderEvent).await;
-            return false;
-        }
-        PromptAction::ConfirmDelete => {
-            confirm_delete_message(state).await;
-            let _ = render_tx.send(RenderEvent).await;
-            return false;
-        }
-        PromptAction::CancelDelete => {
-            let mut s = state.lock().await;
-            if s.cancel_delete_message() {
-                p2plog_debug("Cancelled message deletion".to_string());
-            }
-            drop(s);
-            let _ = render_tx.send(RenderEvent).await;
-            return false;
-        }
-        PromptAction::NoPrompt => {}
+    if handle_prompt_action(prompt_action, state, swarm_cmd_tx, render_tx).await {
+        return false;
     }
 
     // A live call session owns the keys until it resolves: accept/decline a
@@ -1873,6 +1893,54 @@ fn confirm_create_share(s: &mut super::state::AppState) {
     }
 }
 
+/// `D` arms the local-delete confirmation for the highlighted share. Deleting
+/// an accepted peer share locally is valid — it removes this device's copy — so
+/// ownership is deliberately not checked here. The id and name are captured
+/// now; while the prompt is open no key can move the share selection.
+fn arm_share_delete(s: &mut super::state::AppState) {
+    let Some(share) = s.shares.get(s.share_selection).cloned() else {
+        s.popup = Some("No share selected".to_string());
+        return;
+    };
+    s.begin_share_delete(share.share_id.clone(), share.name);
+    p2plog_debug(format!("Share deletion armed for {}", share.share_id));
+}
+
+/// Apply a confirmed local share deletion through the canonical facade. Rust
+/// removes the share row, entries and grants in one transaction and leaves the
+/// bound folder plus content-addressed blobs untouched; no swarm command is
+/// queued, so peers that already accepted the share keep their copy.
+async fn confirm_share_delete(state: &SharedState) {
+    let prompt = {
+        let mut s = state.lock().await;
+        s.share_delete_prompt.take()
+    };
+    let Some(prompt) = prompt else {
+        return;
+    };
+    match p2p_app::api::delete_share(&prompt.share_id) {
+        Ok(()) => {
+            let mut s = state.lock().await;
+            s.reload_shares();
+            s.share_event_notice = Some(format!("Share deleted: {}", prompt.name));
+            drop(s);
+            p2plog_debug(format!(
+                "Deleted share locally: {} ({})",
+                prompt.name, prompt.share_id
+            ));
+        }
+        Err(error) => {
+            let mut s = state.lock().await;
+            s.popup = Some(format!("Could not delete share: {error}"));
+            drop(s);
+            p2plog_debug(format!(
+                "Failed to delete share {}: {error}",
+                prompt.share_id
+            ));
+        }
+    }
+}
+
 /// Arm the folder editor for the highlighted share. Binding a peer-owned share
 /// as a local mirror is valid, so ownership is deliberately not checked here;
 /// Rust validates and canonicalises the folder when the prompt is committed.
@@ -2438,6 +2506,10 @@ fn handle_shares_tab_shortcut(
         }
         crossterm::event::KeyCode::Char('u') => {
             publish_share_snapshot(s, swarm_cmd_tx);
+            true
+        }
+        crossterm::event::KeyCode::Char('D') => {
+            arm_share_delete(s);
             true
         }
         crossterm::event::KeyCode::Char('a') => {

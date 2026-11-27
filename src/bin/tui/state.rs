@@ -71,6 +71,14 @@ pub struct TerminalEnv {
     pub peer_names_warmed: bool,
 }
 
+/// Runtime defaults captured once so `AppState::new` stays under the strict
+/// per-function line limit while the initial terminal flags remain explicit.
+const INITIAL_TERMINAL_ENV: TerminalEnv = TerminalEnv {
+    kitty_keyboard_active: true,
+    mouse_capture: true,
+    peer_names_warmed: false,
+};
+
 /// On-disk data loaded before the UI starts (messages, peers, receipts, groups).
 ///
 /// [`AppState::new`] takes these as one struct so construction stays under the
@@ -336,6 +344,12 @@ pub struct AppState {
     /// other prompts: deletion is local-only, so no swarm command is queued.
     pub delete_message_prompt: Option<DeleteMessagePrompt>,
 
+    /// A share the user asked to delete locally, awaiting confirmation
+    /// ('y'/Enter confirms; any other key or Esc cancels). Single-slot like the
+    /// other prompts: the share id is captured when the prompt opens, and Rust
+    /// removes only the share metadata while keeping files and blobs.
+    pub share_delete_prompt: Option<ShareDeletePrompt>,
+
     /// A sent message being edited locally, pending text submission. The editor
     /// owns the shared `chat_input`, pre-filled with the original body; Enter
     /// applies the edit, Esc cancels. Device-only, like deletion (US-005).
@@ -407,6 +421,15 @@ pub struct DeleteMessagePrompt {
     pub is_group: bool,
     pub preview: String,
     pub tab_content: p2p_app::tui_tabs::TabContent,
+}
+
+/// A share the user asked to delete locally, pending confirmation. The id and
+/// display name are captured when the prompt opens so a later view change can
+/// never retarget the write.
+#[derive(Clone, Debug)]
+pub struct ShareDeletePrompt {
+    pub share_id: String,
+    pub name: String,
 }
 
 /// The sent message whose body the shared editor is replacing (US-005).
@@ -494,6 +517,7 @@ impl AppState {
         self.device_binding_prompt.is_some()
             || self.group_leave_prompt.is_some()
             || self.delete_message_prompt.is_some()
+            || self.share_delete_prompt.is_some()
             || self
                 .call_session
                 .as_ref()
@@ -938,6 +962,17 @@ impl AppState {
     /// Clear the local-delete confirmation; true when one was armed.
     pub fn cancel_delete_message(&mut self) -> bool {
         self.delete_message_prompt.take().is_some()
+    }
+
+    /// Arm the local share-delete confirmation (single slot: a previous prompt
+    /// is replaced). The displayed name is captured for the confirmation text.
+    pub fn begin_share_delete(&mut self, share_id: String, name: String) {
+        self.share_delete_prompt = Some(ShareDeletePrompt { share_id, name });
+    }
+
+    /// Clear the local share-delete confirmation; true when one was armed.
+    pub fn cancel_share_delete(&mut self) -> bool {
+        self.share_delete_prompt.take().is_some()
     }
 
     /// True while the shared text input is capturing a reaction emoji (US-008).
@@ -2156,11 +2191,7 @@ impl AppState {
             peer_sort_column: 3,
             peer_sort_ascending: false,
             peer_table_offset: 0,
-            env: TerminalEnv {
-                kitty_keyboard_active: true,
-                mouse_capture: true,
-                peer_names_warmed: false,
-            },
+            env: INITIAL_TERMINAL_ENV,
             concurrent_peers: 0,
             connected: p2p_app::connected::ConnectedTracker::new(),
             last_mouse_row: 0,
@@ -2191,6 +2222,7 @@ impl AppState {
             device_binding_prompt: None,
             group_leave_prompt: None,
             delete_message_prompt: None,
+            share_delete_prompt: None,
             editing_message: None,
             adding_reaction: None,
             call_session: None,
