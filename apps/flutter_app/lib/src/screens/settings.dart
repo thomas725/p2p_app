@@ -833,7 +833,11 @@ class _SettingsState extends State<Settings> {
 
   Widget _networkDetailsCard(NetworkDetails net) {
     final dhtState = net.dhtConnected ? 'connected' : 'not connected';
+    final nat = net.natPublicAddr == null
+        ? net.natStatus
+        : '${net.natStatus} (${net.natPublicAddr})';
     return Card(
+      key: const Key('network-details-card'),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -853,7 +857,7 @@ class _SettingsState extends State<Settings> {
             _statusRow(
               Icons.router,
               'AutoNAT',
-              '${net.natStatus} — probes '
+              '$nat — probes '
                   '${net.natProbeSuccesses} ok / ${net.natProbeFailures} failed',
               key: const Key('network-autonat'),
             ),
@@ -902,6 +906,23 @@ class _SettingsState extends State<Settings> {
                 ),
               const SizedBox(height: 8),
             ],
+            Text(
+              'Listen addresses',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+            const SizedBox(height: 4),
+            if (net.listenAddrs.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text('—', style: TextStyle(color: Colors.grey)),
+              )
+            else
+              for (final addr in net.listenAddrs)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: SelectableText(addr),
+                ),
+            const SizedBox(height: 8),
             Text('Interfaces', style: Theme.of(context).textTheme.labelSmall),
             if (net.interfaces.isEmpty)
               const Padding(

@@ -67,7 +67,7 @@ final _network = NetworkDetails(
   externalCandidates: const [],
   reachability: 'Public (directly reachable)',
   natStatus: 'Public',
-  natPublicAddr: '/ip4/203.0.113.7/tcp/4001',
+  natPublicAddr: '/ip4/198.51.100.9/tcp/4001',
   natProbeSuccesses: 2,
   natProbeFailures: 1,
   holePunchAttempts: 3,
@@ -84,6 +84,32 @@ final _network = NetworkDetails(
   dhtAnnounceAt: 1700000000,
 );
 
+NetworkDetails _networkWithListenAddrs(List<String> listenAddrs) {
+  return NetworkDetails(
+    interfaces: _network.interfaces,
+    listenAddrs: listenAddrs,
+    externalAddrs: _network.externalAddrs,
+    externalCandidates: _network.externalCandidates,
+    reachability: _network.reachability,
+    natStatus: _network.natStatus,
+    natPublicAddr: _network.natPublicAddr,
+    natProbeSuccesses: _network.natProbeSuccesses,
+    natProbeFailures: _network.natProbeFailures,
+    holePunchAttempts: _network.holePunchAttempts,
+    holePunchSuccesses: _network.holePunchSuccesses,
+    relayReservations: _network.relayReservations,
+    relayStatus: _network.relayStatus,
+    dhtMode: _network.dhtMode,
+    dhtConnected: _network.dhtConnected,
+    dhtRoutingPeers: _network.dhtRoutingPeers,
+    dhtBootstrapSuccesses: _network.dhtBootstrapSuccesses,
+    dhtBootstrapFailures: _network.dhtBootstrapFailures,
+    dhtAnnounced: _network.dhtAnnounced,
+    dhtAnnounceStatus: _network.dhtAnnounceStatus,
+    dhtAnnounceAt: _network.dhtAnnounceAt,
+  );
+}
+
 MobileDeviceInfo _device({
   String peerId = '12D3KooWpeer-1',
   String boundAt = '2026-09-25 10:00:00',
@@ -94,6 +120,13 @@ MobileDeviceInfo _device({
     peerId: peerId,
     devicePubkey: Uint8List.fromList([1, 2, 3]),
     boundAt: boundAt,
+  );
+}
+
+Finder _inNetworkDetails(String text) {
+  return find.descendant(
+    of: find.byKey(const Key('network-details-card')),
+    matching: find.text(text),
   );
 }
 
@@ -136,7 +169,12 @@ void main() {
 
     expect(find.text('Network details'), findsOneWidget);
     expect(find.text('Public (directly reachable)'), findsOneWidget);
-    expect(find.text('Public — probes 2 ok / 1 failed'), findsOneWidget);
+    expect(
+      find.text(
+        'Public (/ip4/198.51.100.9/tcp/4001) — probes 2 ok / 1 failed',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('1/3 succeeded'), findsOneWidget);
     expect(
       find.text('Reserved via 12D3KooWRelay (12D3KooWRelay)'),
@@ -150,6 +188,8 @@ void main() {
     );
     expect(find.text('Announced (Published to DHT)'), findsOneWidget);
     expect(find.text('/ip4/203.0.113.7/tcp/4001'), findsOneWidget);
+    expect(_inNetworkDetails('Listen addresses'), findsOneWidget);
+    expect(_inNetworkDetails('/ip4/192.168.1.2/tcp/4001'), findsOneWidget);
 
     // Interface rows carry the MAC and both address families.
     expect(find.text('eth0 — aa:bb:cc:dd:ee:ff'), findsOneWidget);
@@ -173,6 +213,25 @@ void main() {
     await tester.pump();
     expect(find.text('Network details'), findsOneWidget);
     expect(find.text('Public (directly reachable)'), findsOneWidget);
+  });
+
+  testWidgets('Network details mark an empty listen-address list', (
+    tester,
+  ) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(
+      _app(
+        userId: 'user-abc',
+        devices: const [],
+        networkDetails: ValueNotifier(
+          _networkWithListenAddrs(const []),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(_inNetworkDetails('Listen addresses'), findsOneWidget);
+    expect(_inNetworkDetails('—'), findsOneWidget);
   });
 
   testWidgets('Bound devices listed and open PeerInfo on tap', (tester) async {
