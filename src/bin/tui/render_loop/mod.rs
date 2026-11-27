@@ -223,6 +223,8 @@ pub(super) fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderS
         share_grants: state.share_grants.clone(),
         share_selection: state.share_selection,
         share_grant_selection: state.share_grant_selection,
+        share_manifest_selection: state.share_manifest_selection,
+        share_deleted_paths: state.share_deleted_paths.clone(),
         share_grant_action,
         share_grant_mode,
         share_event_notice: state.share_event_notice.clone(),

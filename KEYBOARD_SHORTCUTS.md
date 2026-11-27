@@ -343,14 +343,18 @@ network actions. The latest `share_offered` / `share_updated` /
 be toggled between private/public and can allow anonymous writes while public;
 the canonical store refuses changes to accepted peer shares. Grants are
 editable here too, and connected peers are ordered by peer ID. `c` creates a
-private, read-only share; binding, snapshots, discovery and publish actions
-remain Flutter/web actions.
+private, read-only share. Manifest files can be marked for deletion and the
+next revision submitted to a connected peer; binding, snapshots, discovery and
+adding files remain Flutter/web actions.
 
 | Key | Action |
 |-----|--------|
 | `↑` / `↓` | Move the share selection |
 | `←` / `→` | Move the connected-peer selection for network actions |
 | `Ctrl+Up` / `Ctrl+Down` | Move the grant cursor in the detail pane |
+| `Ctrl+Left` / `Ctrl+Right` | Move the manifest-file cursor in the detail pane |
+| `d` | Mark / unmark the highlighted manifest file for deletion |
+| `Ctrl+D` | Publish the marked deletions to the selected connected peer |
 | `PgUp` / `PgDn` | Page the share selection |
 | `Home` / `End` | Jump to the first / last share |
 | `Click` in the list pane | Select that share (the detail pane follows) |
@@ -374,6 +378,15 @@ cancels. The revoke prompt is a confirmation: its prefilled id cannot be
 edited, and `Enter` removes the highlighted user's grant. Both keep the
 prompt open with an error popup if the store rejects the change. Changing the
 share resets the grant cursor, so `x` cannot retarget after a wheel or click.
+
+Manifest files use a separate cursor: `Ctrl+Left`/`Ctrl+Right` moves it without
+changing the peer target, and `d` toggles a `[x]` deletion mark. `Ctrl+D`
+submits all marked paths to the selected peer as the next revision. Rust
+rebuilds that revision from the canonical store, using the displayed manifest's
+revision as the base; a stale snapshot, a vanished path, or a store that moved
+meanwhile blocks the submission with a popup. Changing shares, reloading,
+advancing the revision, or publishing clears the marks. These keys are inert
+while a modal prompt owns the input.
 
 `m` and `o` target the highlighted connected peer; both require a selected
 share and fail with a popup when no peer is connected. Re-advertising uses the

@@ -5,7 +5,7 @@
 
 use crate::PeerRecord;
 use crate::types::StringMap;
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 
 /// App-liveness flags for the renderer (Settings-tab node status + connection).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -109,6 +109,10 @@ pub struct TuiRenderState {
     pub share_selection: usize,
     /// Highlighted grant in the selected share's detail pane.
     pub share_grant_selection: usize,
+    /// Highlighted manifest file in the selected share's detail pane.
+    pub share_manifest_selection: usize,
+    /// Manifest paths marked for deletion on the Shares tab.
+    pub share_deleted_paths: BTreeSet<String>,
     /// Grants by share id, used by the Shares tab detail pane.
     pub share_grants: HashMap<String, Vec<crate::shares::ShareGrant>>,
     /// Action label of the active grant prompt, when one is open.
@@ -229,6 +233,8 @@ impl TuiRenderState {
             share_grants: HashMap::new(),
             share_selection: 0,
             share_grant_selection: 0,
+            share_manifest_selection: 0,
+            share_deleted_paths: BTreeSet::new(),
             share_grant_action: None,
             share_grant_mode: None,
             share_event_notice: None,

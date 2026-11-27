@@ -220,6 +220,17 @@ impl From<ShareRow> for Share {
     }
 }
 
+/// True when a share's cached manifest matches its current revision.
+///
+/// Frontends use this before offering a manifest-based action: a stale
+/// snapshot cannot be a safe base revision for a write.
+#[must_use]
+pub fn manifest_matches_share(share: &Share) -> bool {
+    share.manifest.as_ref().is_some_and(|manifest| {
+        manifest.share_id == share.share_id && manifest.revision == share.revision
+    })
+}
+
 /// One target user's grant on a share.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShareGrant {

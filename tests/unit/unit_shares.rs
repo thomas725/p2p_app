@@ -432,6 +432,46 @@ fn save_manifest_persists_entries_and_revision() {
 
 #[test]
 #[serial(db)]
+fn manifest_matches_share_accepts_only_a_current_snapshot() {
+    with_test_db(|| {
+        let share =
+            create_share("Docs", "owner", ShareKind::Private, false, None).expect("create share");
+        assert!(
+            !manifest_matches_share(&share),
+            "a share without a manifest has no valid write base"
+        );
+
+        let manifest = ShareManifest {
+            share_id: share.share_id.clone(),
+            name: share.name.clone(),
+            revision: 1,
+            entries: vec![entry("docs/a.md", crate::files::hash_bytes(b"a"))],
+        };
+        save_manifest(&share.share_id, &manifest).expect("save");
+        let stored = get_share(&share.share_id).expect("get").expect("present");
+        assert!(manifest_matches_share(&stored));
+
+        let stale = ShareManifest {
+            revision: 2,
+            ..manifest.clone()
+        };
+        assert!(!manifest_matches_share(&Share {
+            revision: 1,
+            manifest: Some(stale),
+            ..stored.clone()
+        }));
+        assert!(!manifest_matches_share(&Share {
+            manifest: Some(ShareManifest {
+                share_id: "other-share".to_string(),
+                ..manifest
+            }),
+            ..stored
+        }));
+    });
+}
+
+#[test]
+#[serial(db)]
 fn manifest_with_deletions_builds_a_validated_next_revision_from_the_store() {
     with_test_db(|| {
         let share =

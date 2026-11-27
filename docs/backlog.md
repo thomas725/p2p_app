@@ -130,7 +130,7 @@ Still open (device adapters, not protocol work):
   both un-gated. Do **not** gate either behind it; that happened once and was
   corrected.
 
-### File shares / folder sync UI — **Rust core, both frontends' list/detail/grant editor, Flutter/web discovery, network actions and deletion publishing shipped; TUI creation shipped; binding/native snapshots deferred**
+### File shares / folder sync UI — **Rust core, both frontends' list/detail/grant editor, discovery, network actions and deletion publishing shipped; TUI creation shipped; binding/native snapshots deferred**
 
 The Rust core landed in `7dfaefe` (domain, DB, ACLs) and the share-lane
 follow-up (`/p2p-chat/shares/1.0.0` wire protocol, swarm handlers, events, GC
@@ -243,12 +243,19 @@ Shipped after the core:
   captured, invalid names keep the text open, and the new row is selected after
   the store reload. Record:
   [`archive/2026-11-27_tui_share_creation.md`](archive/2026-11-27_tui_share_creation.md).
+- TUI manifest-deletion publishing: `Ctrl+Left`/`Ctrl+Right` moves a separate
+  manifest cursor, `d` toggles a deletion mark, and `Ctrl+D` submits the marked
+  paths as the next revision to a connected peer. The base revision comes from
+  the cached manifest, the candidate is rebuilt by `shares::manifest_with_deletions`,
+  and `shares::manifest_matches_share` plus a canonical-store revision check
+  block stale writes before a command is queued. Record:
+  [`archive/2026-11-27_tui_share_deletion_publishing.md`](archive/2026-11-27_tui_share_deletion_publishing.md).
 
 Still open (UI/integration, not protocol work):
 
-- TUI Shares tab actions: bind/snapshot and discovery/publish actions (the
-  list, detail, event notice, creation, grant/visibility editors and network
-  refresh/re-advertise already ship);
+- TUI Shares tab actions: bind/snapshot and discovery actions (the list, detail,
+  event notice, creation, grant/visibility editors, network refresh/re-advertise
+  and deletion publishing already ship);
 - Native share creation/binding and folder snapshot UI. Deletion publishing,
   discovery, manifest refresh and re-advertise already ship on both transports;
   the browser remains a display client — adding new files needs a real local
@@ -350,6 +357,7 @@ here so they are not mistaken for unfinished work.
 | Settings "Network size" follows live connected peers | 2026-11-27 | [`archive/2026-11-27_network_size_display_parity.md`](archive/2026-11-27_network_size_display_parity.md) |
 | Flutter Settings peer-row ordering matches the TUI | 2026-11-27 | [`archive/2026-11-27_flutter_settings_peer_order.md`](archive/2026-11-27_flutter_settings_peer_order.md) |
 | Settings peer rows open Peer Info + Settings `Ctrl+P` | 2026-11-26 | [`archive/2026-11-26_tui_settings_peer_rows.md`](archive/2026-11-26_tui_settings_peer_rows.md) |
+| TUI manifest-deletion publishing | 2026-11-27 | [`archive/2026-11-27_tui_share_deletion_publishing.md`](archive/2026-11-27_tui_share_deletion_publishing.md) |
 | Read-only TUI Shares tab + visible share events | 2026-11-26 | [`archive/2026-11-26_tui_readonly_shares_tab.md`](archive/2026-11-26_tui_readonly_shares_tab.md) |
 | Flutter/web manifest-deletion publishing | 2026-11-26 | [`archive/2026-11-26_flutter_share_publish.md`](archive/2026-11-26_flutter_share_publish.md) |
 | Flutter/web peer-share discovery + explicit acceptance | 2026-11-26 | [`archive/2026-11-26_flutter_share_discovery.md`](archive/2026-11-26_flutter_share_discovery.md) |

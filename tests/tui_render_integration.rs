@@ -1589,6 +1589,59 @@ mod render_tests {
         assert!(!text.contains("Grants ("), "got: {text:?}");
         assert!(!text.contains("bob"), "got: {text:?}");
     }
+
+    #[test]
+    fn test_render_shares_marks_manifest_deletion_cursor_and_stale_snapshot() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+        let manifest = p2p_app::shares::ShareManifest {
+            share_id: "share-1".to_string(),
+            name: "Docs".to_string(),
+            revision: 2,
+            entries: vec![
+                p2p_app::shares::ShareEntry {
+                    path: "docs/a.md".to_string(),
+                    file_id: p2p_app::files::hash_bytes(b"a"),
+                    size: 12,
+                    mime: Some("text/plain".to_string()),
+                },
+                p2p_app::shares::ShareEntry {
+                    path: "docs/b.md".to_string(),
+                    file_id: p2p_app::files::hash_bytes(b"b"),
+                    size: 12,
+                    mime: Some("text/plain".to_string()),
+                },
+            ],
+        };
+        state.shares = vec![p2p_app::shares::Share {
+            share_id: "share-1".to_string(),
+            owner_user_id: "owner".to_string(),
+            name: "Docs".to_string(),
+            kind: p2p_app::shares::ShareKind::Public,
+            public_write: false,
+            local_root: None,
+            revision: 3,
+            manifest: Some(manifest),
+        }];
+        state.share_selection = 0;
+        state.share_manifest_selection = 1;
+        state.share_deleted_paths.insert("docs/b.md".to_string());
+
+        terminal
+            .draw(|f| render_shares_content(f, f.area(), &state))
+            .unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("stale snapshot"), "got: {text:?}");
+        assert!(text.contains("> [x] docs/b.md"), "got: {text:?}");
+        assert!(text.contains("[ ] docs/a.md"), "got: {text:?}");
+        assert!(text.contains("Ctrl+D: publish"), "got: {text:?}");
+    }
 }
 
 // ── TuiRenderState builder methods + get_tab_content ─────────────────────────

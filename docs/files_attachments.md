@@ -208,8 +208,13 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   order: `Left`/`Right` selects one, `m` queues `RequestShareManifest`, and `o`
   rebuilds the offer through `shares::offer_for_share` before queueing
   `SendShareOffer`. Selection is clamped on connect/disconnect, and modal
-  editors keep ownership of all keys. Native creation/binding/folder snapshots
-  and TUI share discovery/publish actions remain deferred.
+  editors keep ownership of all keys. The TUI detail pane also marks manifest
+  files with `d` (`Ctrl+Left`/`Ctrl+Right` moves the file cursor) and submits the
+  marked deletions with `Ctrl+D`: Rust rebuilds the next revision from the
+  canonical store via `shares::manifest_with_deletions`, using the displayed
+  manifest revision as the base and rejecting stale or moved snapshots before a
+  command is queued. Native creation/binding/folder snapshots and share
+  discovery remain deferred in the TUI.
 
 ## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
 

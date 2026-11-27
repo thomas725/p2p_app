@@ -1435,6 +1435,58 @@ fn handle_share_grant_selection_key(
     true
 }
 
+/// `Ctrl+Left`/`Ctrl+Right` moves the manifest-file cursor. Bare Left/Right keep
+/// owning the network-peer cursor, matching the share/grant cursor split.
+fn handle_share_manifest_cursor_key(
+    key_event: &crossterm::event::KeyEvent,
+    is_ctrl: bool,
+    tab: &p2p_app::tui_tabs::TabContent,
+    s: &mut super::state::AppState,
+) -> bool {
+    use crossterm::event::KeyCode;
+    use p2p_app::tui_tabs::TabContent;
+
+    if !is_ctrl || s.is_modal_editor() || !matches!(tab, TabContent::Shares) {
+        return false;
+    }
+    let delta = match key_event.code {
+        KeyCode::Left => -1,
+        KeyCode::Right => 1,
+        _ => return false,
+    };
+    s.move_share_manifest_selection(delta);
+    true
+}
+
+/// `d` marks the highlighted manifest file for deletion; `Ctrl+D` publishes the
+/// marked set as a Rust-built revision. Both are inert while a modal editor owns
+/// the keyboard.
+fn handle_share_manifest_action_key(
+    key_event: &crossterm::event::KeyEvent,
+    is_ctrl: bool,
+    tab: &p2p_app::tui_tabs::TabContent,
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) -> bool {
+    use crossterm::event::KeyCode;
+    use p2p_app::tui_tabs::TabContent;
+
+    if s.is_modal_editor() || !matches!(tab, TabContent::Shares) {
+        return false;
+    }
+    match (key_event.code, is_ctrl) {
+        (KeyCode::Char('d'), false) => {
+            s.toggle_share_manifest_deletion();
+            true
+        }
+        (KeyCode::Char('d'), true) => {
+            publish_share_deletions(s, swarm_cmd_tx);
+            true
+        }
+        _ => false,
+    }
+}
+
 /// Left/Right move the Shares network-peer cursor. Modal editors own every key,
 /// so grant/nickname prompts never move the target underneath the user.
 fn handle_share_peer_selection_key(
@@ -1514,6 +1566,63 @@ fn readvertise_share(s: &mut super::state::AppState, swarm_cmd_tx: &mpsc::Sender
         }
         Err(error) => {
             s.popup = Some(format!("Could not build share offer: {error}"));
+        }
+    }
+}
+
+/// Publish the marked manifest deletions as the next revision. The new snapshot
+/// is built from the canonical store, while the base revision comes from the
+/// cached manifest validated by [`super::state::AppState::sync_share_manifest_draft`].
+fn publish_share_deletions(
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) {
+    s.sync_share_manifest_draft();
+    if s.share_deleted_paths.is_empty() {
+        s.popup = Some("Mark at least one file with d first".to_string());
+        return;
+    }
+    let Some(base_revision) = s
+        .selected_share_manifest()
+        .map(|manifest| manifest.revision)
+    else {
+        s.popup = Some("Manifest is stale: reload it with r before publishing".to_string());
+        return;
+    };
+    let Some((share_id, peer_id)) = share_action_target(s) else {
+        s.popup = Some("Select a share and a connected peer".to_string());
+        return;
+    };
+    let paths: Vec<String> = s.share_deleted_paths.iter().cloned().collect();
+    let manifest = match p2p_app::shares::manifest_with_deletions(&share_id, &paths) {
+        Ok(manifest) => manifest,
+        Err(error) => {
+            s.popup = Some(format!("Could not build deletion revision: {error}"));
+            return;
+        }
+    };
+    // The candidate is rebuilt from the canonical store. If the store moved
+    // after this view was loaded, its next revision cannot follow the base we
+    // would send: drop the command instead of guaranteeing a rejection.
+    if base_revision.checked_add(1) != Some(manifest.revision) {
+        s.popup = Some("Manifest changed in the store: reload it with r".to_string());
+        return;
+    }
+    match swarm_cmd_tx.try_send(SwarmCommand::PublishShareSnapshot {
+        peer_id: peer_id.clone(),
+        base_revision,
+        manifest: Box::new(manifest),
+    }) {
+        Ok(()) => {
+            let count = paths.len();
+            let noun = if count == 1 { "file" } else { "files" };
+            s.reset_share_manifest_draft();
+            s.sync_share_manifest_draft();
+            s.share_event_notice =
+                Some(format!("Deletion of {count} {noun} submitted to {peer_id}"));
+        }
+        Err(error) => {
+            s.popup = Some(format!("Could not publish share deletion: {error}"));
         }
     }
 }
@@ -1736,6 +1845,12 @@ async fn handle_key_dispatch(
         return;
     }
     if handle_share_grant_selection_key(&key_event, is_ctrl, &tab, s) {
+        return;
+    }
+    if handle_share_manifest_cursor_key(&key_event, is_ctrl, &tab, s) {
+        return;
+    }
+    if handle_share_manifest_action_key(&key_event, is_ctrl, &tab, s, swarm_cmd_tx) {
         return;
     }
     if handle_share_peer_selection_key(&key_event, s, &tab) {

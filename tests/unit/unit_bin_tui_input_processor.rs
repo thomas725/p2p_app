@@ -5334,6 +5334,35 @@ fn share_grant_db_state(
     share_db_state("owner", kind, false, grants)
 }
 
+/// One canonical manifest with two files, persisted through the share store and
+/// reloaded into the app state. The returned `TempDir` must outlive the DB use.
+fn share_manifest_db_state() -> (TempDir, AppState, String) {
+    let (dir, mut state, share_id) =
+        share_db_state("owner", p2p_app::shares::ShareKind::Public, false, &[]);
+    let manifest = p2p_app::shares::ShareManifest {
+        share_id: share_id.clone(),
+        name: "Docs".to_string(),
+        revision: 1,
+        entries: vec![
+            p2p_app::shares::ShareEntry {
+                path: "docs/a.md".to_string(),
+                file_id: p2p_app::files::hash_bytes(b"a"),
+                size: 1,
+                mime: Some("text/plain".to_string()),
+            },
+            p2p_app::shares::ShareEntry {
+                path: "docs/b.md".to_string(),
+                file_id: p2p_app::files::hash_bytes(b"b"),
+                size: 1,
+                mime: Some("text/plain".to_string()),
+            },
+        ],
+    };
+    p2p_app::shares::save_manifest(&share_id, &manifest).expect("seed manifest");
+    state.reload_shares();
+    (dir, state, share_id)
+}
+
 /// An isolated DB with a provisioned owner and no shares, landed on the Shares
 /// tab. The returned `TempDir` must outlive every DB call in the test.
 fn empty_share_db_state() -> (TempDir, AppState) {
@@ -6094,6 +6123,197 @@ fn test_share_network_keys_are_inert_while_grant_editor_is_open() {
             1,
             "modal keys must not touch the canonical store"
         );
+    });
+    close_share_grant_db();
+}
+
+// ── manifest deletion publishing (Flutter parity) ─────────────────────────
+
+#[test]
+#[serial]
+fn test_share_manifest_deletion_publishes_canonical_revision_through_real_keys() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, mut state, share_id) = share_manifest_db_state();
+        // Reverse insertion order proves the bare peer cursor still comes from
+        // the canonical sorted list and is independent of the manifest cursor.
+        state.connected.on_peer_connected("peer-b".to_string());
+        state.connected.on_peer_connected("peer-a".to_string());
+        let mut session = KeySession::new(state);
+
+        let frame = session.frame_text().await;
+        assert!(frame.contains("> [ ] docs/a.md"), "frame: {frame}");
+        assert!(frame.contains("  [ ] docs/b.md"), "frame: {frame}");
+
+        assert!(
+            !session
+                .press_key(KeyEvent::new(KeyCode::Right, KeyModifiers::CONTROL))
+                .await
+        );
+        {
+            let s = session.state.lock().await;
+            assert_eq!(s.share_manifest_selection, 1);
+            assert_eq!(s.share_peer_selection, 0);
+        }
+        assert!(!session.press_code(KeyCode::Right).await);
+        {
+            let s = session.state.lock().await;
+            assert_eq!(s.share_manifest_selection, 1);
+            assert_eq!(s.selected_share_peer_id().as_deref(), Some("peer-b"));
+        }
+
+        assert!(!session.press_char('d').await);
+        let frame = session.frame_text().await;
+        assert!(frame.contains("> [x] docs/b.md"), "frame: {frame}");
+        assert_eq!(
+            session.state.lock().await.share_deleted_paths.len(),
+            1,
+            "repeating d must toggle one path, not append it"
+        );
+
+        assert!(!session.press_ctrl_char('d').await);
+        let commands = session.drain_commands();
+        assert_eq!(commands.len(), 1, "commands: {commands:?}");
+        match &commands[0] {
+            SwarmCommand::PublishShareSnapshot {
+                peer_id,
+                base_revision,
+                manifest,
+            } => {
+                assert_eq!(peer_id, "peer-b");
+                assert_eq!(*base_revision, 1);
+                assert_eq!(manifest.share_id, share_id);
+                assert_eq!(manifest.name, "Docs");
+                assert_eq!(manifest.revision, 2);
+                assert_eq!(manifest.entries.len(), 1);
+                assert_eq!(manifest.entries[0].path, "docs/a.md");
+            }
+            other => panic!("unexpected command: {other:?}"),
+        }
+        {
+            let s = session.state.lock().await;
+            assert!(s.share_deleted_paths.is_empty());
+            assert_eq!(s.share_manifest_selection, 0);
+            assert_eq!(s.share_manifest_revision, Some(1));
+            assert_eq!(
+                s.share_event_notice.as_deref(),
+                Some("Deletion of 1 file submitted to peer-b")
+            );
+        }
+        // Publishing only queues a snapshot; the canonical row still advances
+        // when the owner accepts it over the share lane.
+        let stored = p2p_app::shares::get_share(&share_id)
+            .expect("get share")
+            .expect("present");
+        assert_eq!(stored.revision, 1);
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_manifest_deletion_draft_resets_when_a_new_revision_is_reloaded() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, mut state, share_id) = share_manifest_db_state();
+        state.connected.on_peer_connected("peer-a".to_string());
+        let mut session = KeySession::new(state);
+
+        assert!(
+            !session
+                .press_key(KeyEvent::new(KeyCode::Left, KeyModifiers::CONTROL))
+                .await
+        );
+        assert!(!session.press_char('d').await);
+        assert_eq!(session.state.lock().await.share_deleted_paths.len(), 1);
+
+        let mut newer = p2p_app::shares::load_manifest(&share_id).expect("manifest");
+        newer.revision = 2;
+        p2p_app::shares::save_manifest(&share_id, &newer).expect("new revision");
+
+        assert!(!session.press_char('r').await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.share_deleted_paths.is_empty());
+            assert_eq!(s.share_manifest_selection, 0);
+            assert_eq!(s.share_manifest_revision, Some(2));
+        }
+
+        assert!(!session.press_ctrl_char('d').await);
+        assert!(session.drain_commands().is_empty());
+        assert!(session.state.lock().await.popup.is_some());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_manifest_deletion_refuses_publish_when_the_store_moved_after_the_view_loaded() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, mut state, share_id) = share_manifest_db_state();
+        state.connected.on_peer_connected("peer-a".to_string());
+        let mut session = KeySession::new(state);
+
+        // The cached view is still on revision 1, but the canonical store has
+        // moved on. The rebuilt candidate would be revision 3, so base 1 can
+        // never be valid and no command may reach the owner.
+        assert!(!session.press_char('d').await);
+        let mut newer = p2p_app::shares::load_manifest(&share_id).expect("manifest");
+        newer.revision = 2;
+        p2p_app::shares::save_manifest(&share_id, &newer).expect("new revision");
+
+        assert!(!session.press_ctrl_char('d').await);
+        assert!(session.drain_commands().is_empty());
+        let s = session.state.lock().await;
+        assert_eq!(
+            s.popup.as_deref(),
+            Some("Manifest changed in the store: reload it with r")
+        );
+        assert_eq!(s.share_deleted_paths.len(), 1, "the draft stays editable");
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_manifest_deletion_keys_are_inert_while_a_modal_prompt_is_open() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, mut state, _share_id) = share_manifest_db_state();
+        state.connected.on_peer_connected("peer-a".to_string());
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('c').await);
+        assert!(session.state.lock().await.is_creating_share());
+        assert!(
+            !session
+                .press_key(KeyEvent::new(KeyCode::Right, KeyModifiers::CONTROL))
+                .await
+        );
+        assert!(!session.press_char('d').await);
+        assert!(!session.press_ctrl_char('d').await);
+
+        {
+            let s = session.state.lock().await;
+            assert!(s.is_creating_share());
+            assert_eq!(s.share_manifest_selection, 0);
+            assert!(s.share_deleted_paths.is_empty());
+            assert_eq!(s.selected_share_peer_id().as_deref(), Some("peer-a"));
+        }
+        assert!(session.drain_commands().is_empty());
     });
     close_share_grant_db();
 }

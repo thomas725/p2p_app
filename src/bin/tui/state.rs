@@ -4,7 +4,7 @@ use p2p_app::contacts::ContactDeviceInput;
 use p2p_app::messages::PeerMessageStats;
 use p2p_app::tui_helpers::PeerMessageMap;
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -224,6 +224,15 @@ pub struct AppState {
     pub share_selection: usize,
     /// Highlighted grant in the selected share's detail pane.
     pub share_grant_selection: usize,
+    /// Highlighted file in the selected share's cached manifest. Bare Left/Right
+    /// still move the peer cursor, so this has its own Ctrl+Left/Right chord.
+    pub share_manifest_selection: usize,
+    /// Files marked for deletion from the selected share's manifest. Kept as a
+    /// set so a repeated `d` toggles one path off instead of publishing it twice.
+    pub share_deleted_paths: BTreeSet<String>,
+    /// Manifest revision the deletion draft belongs to. A changed revision
+    /// invalidates the cursor and marks before they can build a stale write.
+    pub share_manifest_revision: Option<u64>,
     /// Grant being added/revoked in the shared editor (`None` outside it).
     pub share_grant_prompt: Option<ShareGrantPrompt>,
     /// Latest share-lane event text, shown on the Shares tab.
@@ -627,15 +636,102 @@ impl AppState {
             .min(self.network_peers.len().saturating_sub(1));
     }
 
-    /// Highlight a share and reset the grant cursor when the share changes.
-    /// A grant index is only meaningful for the share it came from, so carrying
-    /// it across rows could make `x` revoke the wrong user after a wheel/click.
+    /// Highlight a share and reset share-scoped cursors when the share changes.
+    /// A grant or manifest index is only meaningful for the share it came from,
+    /// so carrying it across rows could revoke the wrong user or publish paths
+    /// from another share after a wheel/click.
     pub fn select_share(&mut self, index: usize) {
         let index = index.min(self.shares.len().saturating_sub(1));
         if index != self.share_selection {
             self.share_grant_selection = 0;
+            self.reset_share_manifest_draft();
         }
         self.share_selection = index;
+        // Selecting a share (including re-selecting it after a reload) must
+        // leave the deletion token matching the manifest now on screen.
+        self.sync_share_manifest_draft();
+    }
+
+    /// Forget the in-progress manifest deletion draft.
+    pub fn reset_share_manifest_draft(&mut self) {
+        self.share_manifest_selection = 0;
+        self.share_deleted_paths.clear();
+        self.share_manifest_revision = None;
+    }
+
+    /// Revalidate the manifest draft against the selected share. A changed
+    /// revision or a path that no longer exists discards the whole draft, since
+    /// it was built against a snapshot the owner no longer considers current.
+    pub fn sync_share_manifest_draft(&mut self) {
+        let (revision, last, paths_still_exist) = {
+            let Some(share) = self.shares.get(self.share_selection) else {
+                self.reset_share_manifest_draft();
+                return;
+            };
+            if !p2p_app::shares::manifest_matches_share(share) {
+                self.reset_share_manifest_draft();
+                return;
+            }
+            let Some(manifest) = share.manifest.as_ref() else {
+                self.reset_share_manifest_draft();
+                return;
+            };
+            let paths_still_exist = self
+                .share_deleted_paths
+                .iter()
+                .all(|path| manifest.entries.iter().any(|entry| entry.path == *path));
+            (
+                manifest.revision,
+                manifest.entries.len().saturating_sub(1),
+                paths_still_exist,
+            )
+        };
+        if self.share_manifest_revision != Some(revision) || !paths_still_exist {
+            self.reset_share_manifest_draft();
+        }
+        self.share_manifest_revision = Some(revision);
+        self.share_manifest_selection = self.share_manifest_selection.min(last);
+    }
+
+    /// Cached manifest for the highlighted share when its revision matches the
+    /// canonical share row. Stale snapshots are not valid write bases.
+    #[must_use]
+    pub fn selected_share_manifest(&self) -> Option<&p2p_app::shares::ShareManifest> {
+        let share = self.shares.get(self.share_selection)?;
+        if !p2p_app::shares::manifest_matches_share(share) {
+            return None;
+        }
+        share.manifest.as_ref()
+    }
+
+    /// Move the highlighted manifest file with `Ctrl+Left`/`Ctrl+Right`.
+    pub fn move_share_manifest_selection(&mut self, delta: isize) {
+        self.sync_share_manifest_draft();
+        let Some(manifest) = self.selected_share_manifest() else {
+            return;
+        };
+        let last = manifest.entries.len().saturating_sub(1);
+        let current = self.share_manifest_selection.min(last);
+        self.share_manifest_selection = if delta < 0 {
+            current.saturating_sub(1)
+        } else {
+            current.saturating_add(1).min(last)
+        };
+    }
+
+    /// Mark or unmark the highlighted manifest file for deletion.
+    pub fn toggle_share_manifest_deletion(&mut self) {
+        self.sync_share_manifest_draft();
+        let Some(path) = self
+            .selected_share_manifest()
+            .and_then(|manifest| manifest.entries.get(self.share_manifest_selection))
+            .map(|entry| entry.path.clone())
+        else {
+            return;
+        };
+        if !self.share_deleted_paths.remove(&path) {
+            let _ = self.share_deleted_paths.insert(path);
+        }
     }
 
     /// Connected peers in the canonical order used by the Shares network pane.
@@ -686,6 +782,9 @@ impl AppState {
     /// is logged, so a broken DB never blanks the tab (fail-open, like the
     /// other best-effort UI reloads).
     pub fn reload_shares(&mut self) {
+        // A reload replaces every manifest snapshot and share revision, so no
+        // deletion mark or cursor from the old view can survive it.
+        self.reset_share_manifest_draft();
         match p2p_app::shares::list_shares() {
             Ok(shares) => self.shares = shares,
             Err(error) => p2p_app::p2plog_debug(format!("Failed to reload shares: {error}")),
@@ -1923,6 +2022,9 @@ impl AppState {
             share_grants: HashMap::new(),
             share_selection: 0,
             share_grant_selection: 0,
+            share_manifest_selection: 0,
+            share_deleted_paths: BTreeSet::new(),
+            share_manifest_revision: None,
             share_grant_prompt: None,
             share_event_notice: None,
             share_peer_selection: 0,
