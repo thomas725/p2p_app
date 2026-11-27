@@ -1283,8 +1283,8 @@ pub fn accept_group_invite(group_id: String) -> Result<MobileGroup, String> {
 ///
 /// # Errors
 ///
-/// Returns an error if the group name is empty, a group with this name already
-/// exists, or the group membership count cannot be resolved.
+/// Returns an error if the group name has no non-whitespace content (the
+/// canonical `create_public_group` rule) or the group cannot be inserted.
 #[flutter_rust_bridge::frb(ignore)]
 pub fn create_group(name: &str) -> Result<MobileGroup, String> {
     let group = crate::groups::create_public_group(name).map_err(|e| e.to_string())?;

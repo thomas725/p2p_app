@@ -162,6 +162,15 @@ See [`archive/2026-11-21_message_reactions.md`](archive/2026-11-21_message_react
 and [`archive/2026-11-27_quick_reaction_palette_parity.md`](archive/2026-11-27_quick_reaction_palette_parity.md)
 for the full slices.
 
+Public group identity is derived from the canonical group name in Rust.
+`groups::GroupName` canonicalizes (trim, collapse internal whitespace,
+lowercase) and rejects names with no canonical content, and
+`stable_group_id(&GroupName)` is the only canonical path to a group id — an
+empty name can no longer hash to a group. `create_public_group` validates there
+before touching the DB, so FRB/web `createGroup` callers get the same error as
+the TUI; see
+[`archive/2026-11-27_group_name_validation.md`](archive/2026-11-27_group_name_validation.md).
+
 Replies (US-006) carry a canonical `ReplyRef { msg_id, sender, preview }` in the
 message payload rather than a foreign key. `src/reply.rs` owns the bounded
 preview and the `↳ {sender}: {preview}` header used by all three frontends; the

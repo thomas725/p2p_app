@@ -55,6 +55,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-27_flutter_settings_peer_order.md](2026-11-27_flutter_settings_peer_order.md) | Flutter Settings connected/bound-device rows ordered by peer ID like the TUI | 2026-11-27 |
 | [2026-11-27_network_size_display_parity.md](2026-11-27_network_size_display_parity.md) | Settings "Network size" follows live connected peers in both frontends; gossipsub tuning untouched | 2026-11-27 |
 | [2026-11-27_quick_reaction_palette_parity.md](2026-11-27_quick_reaction_palette_parity.md) | Rust-owned quick-reaction palette in Flutter, web and TUI `1`–`6` shortcuts | 2026-11-27 |
+| [2026-11-27_group_name_validation.md](2026-11-27_group_name_validation.md) | Canonical `GroupName` newtype rejects empty names at the Rust creation seam | 2026-11-27 |
 | [2026-11-02_sibling_device_claims.md](2026-11-02_sibling_device_claims.md) | Sibling devices may sign device-binding claims for the same user (P0 decision) | 2026-11-02 |
 | [2026-11-12_public_bootstrap_discovery.md](2026-11-12_public_bootstrap_discovery.md) | Internet-wide discovery: Kademlia DHT, NAT traversal, network details, configurable bootstrap/relay peers (US-050) | 2026-11-12 |
 

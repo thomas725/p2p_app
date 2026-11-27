@@ -222,10 +222,6 @@ async fn create_or_join_group(
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
     name: &str,
 ) {
-    if name.trim().is_empty() {
-        state.cancel_group_create();
-        return;
-    }
     match p2p_app::groups::create_public_group(name.trim()) {
         Ok(group) => {
             let group_id = group.group_id.clone();
@@ -246,7 +242,10 @@ async fn create_or_join_group(
             state.chat_input = super::TextArea::default();
             p2plog_debug(format!("Created/joined group: {display_name} ({group_id})"));
         }
-        Err(e) => p2plog_debug(format!("Failed to create/join group: {e}")),
+        // Rust is the single validation choke point for group names. Keep the
+        // prompt open with a hint on bad input (same UX as nickname errors), so
+        // the caller can correct the name instead of losing it.
+        Err(e) => state.popup = Some(format!("Could not create/join group: {e}")),
     }
 }
 

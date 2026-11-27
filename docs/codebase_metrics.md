@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        71 |
-| Total Rust Lines      |    41,019 |
-| Total Rust Chars      | 1,554,392 |
-| Avg Lines/Rust File   |       577 |
-| Avg Chars/Rust File   |    21,892 |
+| Total Rust Lines      |    41,064 |
+| Total Rust Chars      | 1,556,034 |
+| Avg Lines/Rust File   |       578 |
+| Avg Chars/Rust File   |    21,915 |
 | Total Dart Files      |        50 |
 | Total Dart Lines      |    22,610 |
 | Total Dart Chars      |   726,445 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       153 |
 | Avg Chars/Kotlin File |     5,524 |
 
-**Grand Total:** 125 files, 64,241 lines, 2,302,936 characters
+**Grand Total:** 125 files, 64,286 lines, 2,304,578 characters
 
 ## Rust Source Files
 
@@ -42,7 +42,7 @@
 | src                     | files.rs             |     6 | 30295 |   791 |        - |       - | Content-addressed attachment store                 |
 | src                     | fmt.rs               |     4 |  6204 |   192 |        - |       - | Formatting & display utilities                     |
 | src                     | frb_generated.rs     |     6 | 252959 |  6099 |        - |       - | flutter_rust_bridge codegen                        |
-| src                     | groups.rs            |     3 | 23346 |   618 |        - |       - | Group management & persistence                     |
+| src                     | groups.rs            |     3 | 24841 |   664 |        - |       - | Group management & persistence                     |
 | src                     | groups.rs            |     5 |  4846 |   131 |        - |       - | TUI groups renderer                                |
 | src                     | identity.rs          |     4 | 28935 |   763 |        - |       - | Users, account keys & device bindings              |
 | src                     | lib.rs               |     1 |  7474 |   201 |        - |       - | Module declarations & re-exports                   |
@@ -51,7 +51,7 @@
 | src                     | messages.rs          |     5 | 22794 |   587 |        - |       - | Message persistence & retrieval                    |
 | src                     | methods.rs           |     4 | 34382 |  1071 |        - |       - | Web JSON method dispatch                           |
 | src                     | mobile_api.rs        |     4 | 36782 |  1049 |        - |       - | Mobile FRB API surface                             |
-| src                     | mobile_node.rs       |     5 | 96435 |  2565 |        - |       - | Mobile node lifecycle & swarm                      |
+| src                     | mobile_node.rs       |     5 | 96442 |  2565 |        - |       - | Mobile node lifecycle & swarm                      |
 | src                     | mod.rs               |     5 | 45231 |  1300 |        - |       - | FRB API surface                                    |
 | src                     | mod.rs               |     4 | 12881 |   330 |        - |       - | TUI render chrome & dispatch                       |
 | src                     | mod.rs               |     7 | 64724 |  1689 |        - |       - | Web server (axum HTTP+WS)                          |
@@ -84,7 +84,7 @@
 | src/bin/tui             | click_handlers.rs    |     7 | 25366 |   604 |        - |       - | Click handlers & index mapping                     |
 | src/bin/tui             | command_processor.rs |     6 | 31877 |   867 |        - |       - | Event routing & state updates                      |
 | src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)                    |
-| src/bin/tui             | input_processor.rs   |     7 | 75017 |  1932 |        - |       - | Input event routing & processing                   |
+| src/bin/tui             | input_processor.rs   |     7 | 75157 |  1931 |        - |       - | Input event routing & processing                   |
 | src/bin/tui             | key_probe.rs         |     6 |  6272 |   172 |        - |       - | Keyboard enhancement probe                         |
 | src/bin/tui             | main_loop.rs         |     6 | 15979 |   400 |        - |       - | Task orchestration & async                         |
 | src/bin/tui             | message_handlers.rs  |     4 | 17117 |   522 |        - |       - | Message sending logic                              |
@@ -98,7 +98,7 @@
 | src/generated           | models_queryable.rs  |     1 | 14539 |   397 |        - |       - | Queryable data models                              |
 | src/generated           | schema.rs            |     2 |  9786 |   330 |        - |       - | Database schema (Diesel)                           |
 
-**Total:** 71 files, 41,019 lines, 1,554,392 characters
+**Total:** 71 files, 41,064 lines, 1,556,034 characters
 
 ## Rust Test Files
 
@@ -151,7 +151,7 @@
 | unit   | unit_e2e.rs                        |   341 | 12479 |     3 | Test file                             |
 | unit   | unit_file_transfer.rs              |   276 |  9628 |     4 | Test file                             |
 | unit   | unit_files.rs                      |   538 | 20323 |     4 | files module tests                    |
-| unit   | unit_groups.rs                     |   624 | 22507 |     5 | Unit tests for groups module          |
+| unit   | unit_groups.rs                     |   649 | 23459 |     5 | Unit tests for groups module          |
 | unit   | unit_identity.rs                   |   747 | 29217 |     4 | identity module tests                 |
 | unit   | unit_lib.rs                        |   278 |  7955 |     3 | Unit tests for library re-exports/api |
 | unit   | unit_logging.rs                    |   205 |  5217 |     4 | Unit tests for logging module         |
@@ -172,7 +172,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   400 | 12098 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 29,900 lines, 1,005,423 characters
+**Total:** 67 test files, 29,925 lines, 1,006,375 characters
 
 ## Dart Source Files
 

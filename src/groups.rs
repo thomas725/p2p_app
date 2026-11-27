@@ -90,12 +90,55 @@ pub fn group_id_from_backfill_topic(topic: &str) -> Option<&str> {
 
 /// Canonical name of a public group: whitespace-trimmed, internal whitespace
 /// collapsed, lowercased. Same canonical name == same group everywhere.
+///
+/// This is a pure formatter; use [`GroupName::new`] when the result must be
+/// usable as a group identity.
 #[must_use]
 pub fn canonical_group_name(name: &str) -> String {
     name.split_whitespace()
         .map(str::to_lowercase)
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+/// A caller-supplied group name had no canonical content.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EmptyGroupName;
+
+impl std::fmt::Display for EmptyGroupName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("group name must not be empty")
+    }
+}
+
+impl std::error::Error for EmptyGroupName {}
+
+/// A validated, canonical public-group name.
+///
+/// This is the only input accepted by [`stable_group_id`], so a group whose
+/// identity is the hash of an empty string cannot be constructed through the
+/// canonical path.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GroupName(String);
+
+impl GroupName {
+    /// Canonicalize and validate a caller-supplied name.
+    ///
+    /// # Errors
+    /// Returns [`EmptyGroupName`] when `name` contains no non-whitespace text.
+    pub fn new(name: &str) -> Result<Self, EmptyGroupName> {
+        let canonical = canonical_group_name(name);
+        if canonical.is_empty() {
+            return Err(EmptyGroupName);
+        }
+        Ok(Self(canonical))
+    }
+
+    /// The canonical spelling used for group ids and topics.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }
 
 /// Deterministic 64-bit FNV-1-style hash of a string as a `%016x` hex id.
@@ -116,13 +159,14 @@ fn fnv1a_hex(input: &str) -> String {
     format!("{hash:016x}")
 }
 
-/// Deterministic 64-bit FNV-1-style hash of the canonical group name as hex.
+/// Deterministic 64-bit FNV-1-style hash of a validated canonical name.
 ///
 /// Stable across platforms and processes (unlike `std`'s random hashers) and
-/// hex-only, so the derived `group_id` is safe in a gossipsub topic name.
+/// hex-only, so the derived `group_id` is safe in a gossipsub topic name. Taking
+/// [`GroupName`] means an empty name can never produce a group identity.
 #[must_use]
-pub fn stable_group_id(name: &str) -> String {
-    fnv1a_hex(&canonical_group_name(name))
+pub fn stable_group_id(name: &GroupName) -> String {
+    fnv1a_hex(name.as_str())
 }
 
 // ── Group CRUD ─────────────────────────────────────────────────────────────
@@ -172,9 +216,11 @@ pub fn attachment_json_for_msg_id(msg_id: &str) -> Option<String> {
 /// identity (`group_id`) is derived from the canonical form.
 ///
 /// # Errors
-/// Returns an error if the group cannot be inserted.
+/// Returns [`EmptyGroupName`] when `name` has no canonical content, or an
+/// error if the group cannot be inserted.
 pub fn create_public_group(name: &str) -> color_eyre::Result<Group> {
-    let group_id = stable_group_id(name);
+    let validated = GroupName::new(name)?;
+    let group_id = stable_group_id(&validated);
     if let Some(existing) = find_group(&group_id)? {
         return Ok(existing);
     }

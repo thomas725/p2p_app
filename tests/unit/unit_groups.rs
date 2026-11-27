@@ -33,18 +33,30 @@ fn canonical_group_name_collapses_and_lowercases() {
 }
 
 #[test]
+fn group_name_rejects_input_without_canonical_content() {
+    assert_eq!(GroupName::new(""), Err(EmptyGroupName));
+    assert_eq!(GroupName::new("   \t \n "), Err(EmptyGroupName));
+    assert_eq!(
+        GroupName::new("  Rust  Enthusiasts "),
+        Ok(GroupName("rust enthusiasts".to_string()))
+    );
+}
+
+#[test]
 fn stable_group_id_is_deterministic_hex() {
-    let a = stable_group_id("Rust Enthusiasts");
-    let b = stable_group_id("rust   enthusiasts");
+    let a = stable_group_id(&GroupName::new("Rust Enthusiasts").expect("name"));
+    let b = stable_group_id(&GroupName::new("rust   enthusiasts").expect("name"));
     assert_eq!(a, b, "same canonical name must map to the same group id");
     assert_eq!(a.len(), 16, "64-bit hash rendered as 16 hex chars");
     assert!(a.chars().all(|c| c.is_ascii_hexdigit()));
-    assert_ne!(stable_group_id("one"), stable_group_id("two"));
+    let one = stable_group_id(&GroupName::new("one").expect("name"));
+    let two = stable_group_id(&GroupName::new("two").expect("name"));
+    assert_ne!(one, two);
 }
 
 #[test]
 fn group_topic_helpers_roundtrip() {
-    let id = stable_group_id("squiggles");
+    let id = stable_group_id(&GroupName::new("squiggles").expect("name"));
     let topic = group_topic(&id);
     assert!(is_group_topic(&topic));
     assert_eq!(group_id_from_topic(&topic), Some(id.as_str()));
@@ -65,6 +77,19 @@ fn create_public_group_is_idempotent_across_spelling() {
         assert_eq!(
             find_group(&first.group_id).expect("find").unwrap().id,
             first.id
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn create_public_group_rejects_whitespace_only_name() {
+    with_test_db(|| {
+        let err = create_public_group("   \t ").expect_err("empty canonical name");
+        assert_eq!(err.to_string(), "group name must not be empty");
+        assert!(
+            list_groups().expect("list").is_empty(),
+            "a rejected name must never create a group row"
         );
     });
 }
@@ -494,7 +519,7 @@ fn delete_group_removes_reactions_on_its_messages() {
 
 #[test]
 fn backfill_topic_helpers_roundtrip() {
-    let id = stable_group_id("raid-three");
+    let id = stable_group_id(&GroupName::new("raid-three").expect("name"));
     let topic = group_backfill_topic(&id);
     assert!(is_backfill_topic(&topic));
     assert!(topic.starts_with(&format!("{GROUP_TOPIC_PREFIX}{id}")));
