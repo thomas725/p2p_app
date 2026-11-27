@@ -460,6 +460,27 @@ fn edit_message_replaces_only_own_live_rows_and_marks_them_edited() {
 
 #[test]
 #[serial(db)]
+fn message_display_body_keeps_encrypted_marker_after_edit() {
+    with_test_db(|| {
+        let meta = MessageMeta {
+            encrypted: true,
+            ..MessageMeta::default()
+        };
+        let msg = save_message_with_meta("sealed", None, "e2e-edit", false, None, meta)
+            .expect("save encrypted message");
+        mark_message_sent(msg.id).expect("mark sent");
+        assert!(edit_message(msg.id, "edited sealed").expect("edit encrypted message"));
+
+        let rendered = message_display_body(msg.id)
+            .expect("rendered body")
+            .expect("row exists");
+        let expected = format!("{}edited sealed (edited)", crate::e2e::TUI_ENCRYPTED_MARKER);
+        assert_eq!(rendered, expected);
+    });
+}
+
+#[test]
+#[serial(db)]
 fn deleted_dms_leave_peer_stats_but_not_broadcast_recipients() {
     with_test_db(|| {
         let dm = save_message("dm", None, "stats-delete", true, Some("peer-x")).expect("save dm");

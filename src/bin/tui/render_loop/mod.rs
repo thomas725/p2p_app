@@ -166,6 +166,7 @@ pub(super) fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderS
         peers,
         broadcast_sent_to_peer: state.broadcast_sent_to_peer.clone(),
         contacts: state.contacts.clone(),
+        contacts_all: state.contacts_all.clone(),
         contact_search_total: (!state.contact_search.is_empty())
             .then_some(state.contacts_all.len()),
         expanded_contact_ids: state.expanded_contact_ids.clone(),

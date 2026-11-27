@@ -271,6 +271,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Display-parity details (e2e reload marker, DM reactions, Peer Info stats) | 2026-11-27 | [`archive/2026-11-27_display_parity_details.md`](archive/2026-11-27_display_parity_details.md) |
 | TUI mouse ownership matches prompt/call/editor precedence | 2026-11-27 | [`archive/2026-11-27_tui_mouse_ownership.md`](archive/2026-11-27_tui_mouse_ownership.md) |
 | TUI modal-editor boundary + renderer parity | 2026-11-27 | [`archive/2026-11-27_tui_modal_editor_boundary.md`](archive/2026-11-27_tui_modal_editor_boundary.md) |
 | Key-driven TUI sessions + input/reply-preview fixes | 2026-11-27 | [`archive/2026-11-27_tui_key_driven_sessions.md`](archive/2026-11-27_tui_key_driven_sessions.md) |

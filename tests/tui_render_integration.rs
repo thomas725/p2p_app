@@ -386,6 +386,42 @@ mod render_tests {
     }
 
     #[test]
+    fn test_render_dm_broadcast_context_shows_reaction_suffix() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+        state.messages.clear();
+        state.message_peer_ids.clear();
+        state.message_ids.clear();
+        state.messages.push_back("public hello".into());
+        state.message_peer_ids.push_back(Some("Alice".into()));
+        state.message_ids.push_back(Some("bc-1".into()));
+        state.reactions.insert(
+            "bc-1".to_string(),
+            vec![p2p_app::reactions::ReactionSummary {
+                emoji: "👍".to_string(),
+                count: 2,
+                mine: false,
+            }],
+        );
+
+        terminal
+            .draw(|f| render_dm_content(f, f.area(), "Alice", &mut state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("public hello"), "got: {text:?}");
+        // A wide emoji occupies two terminal cells, so the raw buffer has an
+        // extra padding space after it. Collapse whitespace before comparing
+        // against the canonical chip text.
+        let collapsed: String = text.split_whitespace().collect::<Vec<_>>().join(" ");
+        assert!(collapsed.contains("[👍 2]"), "got: {collapsed:?}");
+    }
+
+    #[test]
     fn test_render_dm_content_shows_typing_indicator() {
         let mut terminal = create_test_terminal();
         let mut state = TuiRenderState::with_sample_data();
@@ -1299,9 +1335,9 @@ mod render_tests {
         let mut state = TuiRenderState::with_sample_data();
         // The stats come from the contact row that owns the device, so they
         // always match the number the Contacts tab shows for that row.
-        let peer_id = state.contacts[0].device_rows[0].peer_id.clone();
-        state.contacts[0].dm_count = 3;
-        state.contacts[0].broadcast_sent_to_peer = 7;
+        let peer_id = state.contacts_all[0].device_rows[0].peer_id.clone();
+        state.contacts_all[0].dm_count = 3;
+        state.contacts_all[0].broadcast_sent_to_peer = 7;
 
         terminal
             .draw(|f| render_peer_info_content(f, f.area(), &peer_id, &state))
@@ -1314,6 +1350,30 @@ mod render_tests {
             .collect();
         assert!(text.contains("Direct messages: 3"), "got: {text:?}");
         assert!(text.contains("Broadcasts sent: 7"), "got: {text:?}");
+    }
+
+    #[test]
+    fn test_render_peer_info_stats_survive_a_contacts_search_filter() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+        let peer_id = state.contacts_all[0].device_rows[0].peer_id.clone();
+        state.contacts_all[0].dm_count = 5;
+        state.contacts_all[0].broadcast_sent_to_peer = 11;
+        // The Contacts tab shows only the filtered rows; Peer Info must keep
+        // showing the canonical stats for a peer hidden by that filter.
+        state.contacts.clear();
+
+        terminal
+            .draw(|f| render_peer_info_content(f, f.area(), &peer_id, &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("Direct messages: 5"), "got: {text:?}");
+        assert!(text.contains("Broadcasts sent: 11"), "got: {text:?}");
     }
 
     #[test]

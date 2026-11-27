@@ -60,6 +60,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-27_tui_modal_editor_boundary.md](2026-11-27_tui_modal_editor_boundary.md) | One `InputMode` predicate owns modal prompts across dispatch, navigation and both input renderers | 2026-11-27 |
 | [2026-11-27_tui_key_driven_sessions.md](2026-11-27_tui_key_driven_sessions.md) | Real-key TUI sessions for DM actions, Contacts nickname editing and Shares refresh/events through the production frame path | 2026-11-27 |
 | [2026-11-27_tui_focus_and_wheel_routing.md](2026-11-27_tui_focus_and_wheel_routing.md) | Central tab-focus finalization, one-level `Esc`, and wheel selection on list tabs | 2026-11-27 |
+| [2026-11-27_display_parity_details.md](2026-11-27_display_parity_details.md) | `[e2e]` marker on every TUI body render, DM-context reaction chips and unfiltered Peer Info stats | 2026-11-27 |
 | [2026-11-27_tui_mouse_ownership.md](2026-11-27_tui_mouse_ownership.md) | Prompt/call/editor pointer ownership in the TUI, with real key/mouse session coverage | 2026-11-27 |
 | [2026-11-02_sibling_device_claims.md](2026-11-02_sibling_device_claims.md) | Sibling devices may sign device-binding claims for the same user (P0 decision) | 2026-11-02 |
 | [2026-11-12_public_bootstrap_discovery.md](2026-11-12_public_bootstrap_discovery.md) | Internet-wide discovery: Kademlia DHT, NAT traversal, network details, configurable bootstrap/relay peers (US-050) | 2026-11-12 |

@@ -234,16 +234,20 @@ pub fn message_display_body(id: i32) -> Result<Option<String>, String> {
             messages_table::content,
             messages_table::attachment_json,
             messages_table::edited_at,
+            messages_table::encrypted,
         ))
-        .first::<(String, Option<String>, Option<f64>)>(conn)
+        .first::<(String, Option<String>, Option<f64>, i32)>(conn)
         .optional()
         .map_err(|e| format!("failed to read message {id}: {e}"))?;
-    Ok(row.map(|(content, attachment_json, edited_at)| {
-        crate::files::render_stored_display_body(
+    Ok(row.map(|(content, attachment_json, edited_at, encrypted)| {
+        let body = crate::files::render_stored_display_body(
             &content,
             attachment_json.as_deref(),
             edited_at.is_some(),
-        )
+        );
+        // Keep the live sealed-DM marker on an in-place edit too, so the row
+        // still matches the next DB reload.
+        crate::e2e::mark_encrypted(body, encrypted != 0)
     }))
 }
 

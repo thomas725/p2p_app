@@ -44,7 +44,7 @@ pub fn render_peer_info_content(
     // stats (the same numbers its Contacts-tab row shows), so the two views
     // can never disagree.
     let contact = state
-        .contacts
+        .contacts_all
         .iter()
         .find(|c| c.device_rows.iter().any(|d| d.peer_id == peer_id));
 

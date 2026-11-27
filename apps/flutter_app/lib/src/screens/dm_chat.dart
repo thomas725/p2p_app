@@ -327,7 +327,10 @@ class _DmChatScreenState extends State<DmChatScreen>
   /// Refresh the chips for a live reaction event (US-008) on any row with the
   /// matching wire id. No-op for ids this screen does not display.
   Future<void> _applyReaction(String msgId) async {
+    // The read-only broadcast pane can show the same wire id as the DM thread
+    // (a message replied to in both), so refresh both lists like the TUI does.
     await applyReactionEvent(_messages, msgId);
+    await applyReactionEvent(_broadcasts, msgId);
     if (mounted) setState(() {});
   }
 

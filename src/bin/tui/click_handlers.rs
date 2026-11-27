@@ -92,6 +92,9 @@ fn format_dm_messages_from_db(
         );
         let body = p2p_app::files::render_stored_body(&msg.content, msg.attachment_json.as_deref());
         let body = p2p_app::fmt::with_edited_marker_if(msg.edited_at.is_some(), &body);
+        // The live path marks a sealed DM at the body; the persisted flag must
+        // make a reload (or a restart) render the same line.
+        let body = p2p_app::e2e::mark_encrypted(body, msg.encrypted != 0);
         let reply = msg
             .reply_to_json
             .as_deref()

@@ -39,6 +39,9 @@ pub struct TuiRenderState {
     /// The Contacts tab renders these; `peers` stays only as the device input.
     /// While a search is active this is the filtered view.
     pub contacts: Vec<crate::contacts::ContactRow>,
+    /// Unfiltered canonical Contacts rows. Peer Info reads stats from here so
+    /// hiding a row in the Contacts search never blanks its stats.
+    pub contacts_all: Vec<crate::contacts::ContactRow>,
     /// Unfiltered Contacts count while a search query is applied, `None` when
     /// no filter is active. The renderer shows `Contacts (visible/total)` and a
     /// `No contacts match.` hint when this is `Some` (mirroring Flutter); using
@@ -191,6 +194,7 @@ impl TuiRenderState {
             reactions: HashMap::new(),
             peers: Vec::new(),
             contacts: Vec::new(),
+            contacts_all: Vec::new(),
             contact_search_total: None,
             expanded_contact_ids: std::collections::HashSet::new(),
             blocked_peers: std::collections::HashSet::new(),
@@ -357,6 +361,7 @@ impl TuiRenderState {
             ..Self::new()
         };
         state.contacts = contacts_for_peers(&state.peers);
+        state.contacts_all = state.contacts.clone();
         state
     }
 
@@ -379,6 +384,7 @@ impl TuiRenderState {
             last_seen: last_seen.into(),
         });
         self.contacts = contacts_for_peers(&self.peers);
+        self.contacts_all = self.contacts.clone();
     }
 
     /// Add a DM message for a peer

@@ -843,6 +843,46 @@ void main() {
     },
   );
 
+  testWidgets('a live reaction refreshes the DM broadcast-context chips', (
+    tester,
+  ) async {
+    final fake = FakeNodeApi();
+    fake.loadDmMessagesOverride = (_, _) => [];
+    fake.loadBroadcastMessagesOverride = (_) => [
+      broadcastMessage(
+        id: 10,
+        content: 'public from Alice',
+        peerId: 'peer-abc',
+        msgId: 'bc-rx',
+        senderNickname: 'Alice',
+      ),
+    ];
+    fake.getReactionsOverride = (msgId) async => const [
+      ReactionSummary(emoji: '🎉', count: 3, mine: false),
+    ];
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('🎉 3'), findsNothing);
+
+    fake.deliverEvent(
+      const SwarmEventJson(
+        eventType: 'reaction',
+        peerId: 'peer-abc',
+        encrypted: false,
+        msgId: 'bc-rx',
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('🎉 3'), findsOneWidget);
+  });
+
   testWidgets('the reply action builds a draft and a DM send forwards it', (
     tester,
   ) async {

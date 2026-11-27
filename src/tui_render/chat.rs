@@ -76,13 +76,21 @@ pub fn render_dm_content(
         format!("DM: {short_id}")
     };
 
-    let broadcast_messages: VecDeque<String> = state
+    // Keep the wire ids aligned with the visible broadcast rows so this pane
+    // shows the same reaction chips as the Chat tab and Flutter (US-008).
+    let mut broadcast_messages = VecDeque::new();
+    let mut broadcast_ids = VecDeque::new();
+    for (idx, (msg, sender_id)) in state
         .messages
         .iter()
         .zip(state.message_peer_ids.iter())
-        .filter(|(_, sender_id)| sender_id.as_ref().is_some_and(|id| id == peer_id))
-        .map(|(msg, _)| msg.clone())
-        .collect();
+        .enumerate()
+    {
+        if sender_id.as_ref().is_some_and(|id| id == peer_id) {
+            broadcast_messages.push_back(msg.clone());
+            broadcast_ids.push_back(state.message_ids.get(idx).and_then(Option::as_deref));
+        }
+    }
 
     if broadcast_messages.is_empty() {
         let broadcast_para = Paragraph::new("No broadcast messages")
@@ -106,9 +114,13 @@ pub fn render_dm_content(
 
         let visible_broadcast: Vec<ListItem> = broadcast_messages
             .iter()
+            .zip(broadcast_ids.iter())
             .skip(effective_offset)
             .take(visible)
-            .map(|m| ListItem::new(m.as_str()))
+            .map(|(m, id)| {
+                let reactions = reaction_suffix(*id, &state.reactions);
+                ListItem::new(format!("{m}{reactions}"))
+            })
             .collect();
 
         let broadcast_list = List::new(visible_broadcast)

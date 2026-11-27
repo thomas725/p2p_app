@@ -800,6 +800,24 @@ fn test_format_dm_messages_from_db_restores_edit_marker() {
 }
 
 #[test]
+fn test_format_dm_messages_from_db_restores_encrypted_marker() {
+    let mut sealed = dm_msg("ciphertext", Some("p2"), None, "2024-01-01 12:00:00");
+    sealed.encrypted = 1;
+    sealed.edited_at = Some(1_700_000_000.0);
+    let (messages, ids, _) =
+        super::format_dm_messages_from_db(&[sealed], "Me", &HashMap::new(), &HashMap::new());
+    assert!(
+        messages[0].contains(&format!(
+            "{}ciphertext (edited)",
+            p2p_app::e2e::TUI_ENCRYPTED_MARKER
+        )),
+        "reloaded sealed DM keeps its marker and wire id: {}",
+        messages[0]
+    );
+    assert_eq!(ids, VecDeque::from([None]));
+}
+
+#[test]
 fn test_format_group_messages_from_db_keeps_db_ids_aligned() {
     let newest_first = vec![
         group_msg(22, 0, "theirs", Some("p2"), "2024-01-01 12:00:01"),
