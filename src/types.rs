@@ -56,6 +56,10 @@ pub enum InputMode {
     /// Capturing a display name for a new private share (Shares tab). The
     /// share is created through the canonical Rust store with no local root.
     CreatingShare,
+    /// Capturing the real local directory bound to the selected share (Shares
+    /// tab). An empty prompt clears the binding; Rust canonicalises and
+    /// validates the folder before it is stored.
+    BindingShare,
     /// Capturing a `from;to` time filter for a device location-track GPX export
     /// (Direct/DM tab; the source device is held in `AppState::location_export_peer_id`).
     ExportingLocationTrack,
@@ -81,6 +85,7 @@ impl InputMode {
                 | Self::AddingNetworkPeer
                 | Self::EditingShareGrant
                 | Self::CreatingShare
+                | Self::BindingShare
                 | Self::ExportingLocationTrack
         )
     }

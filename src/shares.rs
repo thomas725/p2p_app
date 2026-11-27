@@ -347,6 +347,27 @@ pub fn validate_share_path(path: &str) -> Result<String, String> {
     Ok(parts.join("/"))
 }
 
+/// Validate a real local directory chosen as a share root.
+///
+/// A share root is the one place a remote manifest is allowed to write, so a
+/// missing path or a non-directory (including a symlink to a file) is rejected
+/// before it can reach the store. The canonical absolute path is returned so
+/// later resolves do not depend on the process working directory or follow a
+/// different symlink. A symlink to a directory resolves to that real directory
+/// and is accepted.
+///
+/// # Errors
+/// Returns an error if the path cannot be resolved or is not a directory.
+pub fn validate_share_root(root: &str) -> color_eyre::Result<String> {
+    let canonical = Path::new(root)
+        .canonicalize()
+        .wrap_err_with(|| format!("share root does not exist: {root}"))?;
+    if !canonical.is_dir() {
+        return Err(eyre!("share root is not a directory: {root}"));
+    }
+    Ok(canonical.to_string_lossy().into_owned())
+}
+
 /// Resolve a validated relative path under `root`, rejecting any symlink in
 /// the traversed components. The returned path is absolute because `root` is
 /// canonicalised first.
@@ -635,9 +656,10 @@ pub fn list_shares() -> color_eyre::Result<Vec<Share>> {
 /// # Errors
 /// Returns an error if the share is unknown or the DB update fails.
 pub fn set_local_root(share_id: &str, local_root: Option<&str>) -> color_eyre::Result<()> {
+    let local_root = local_root.map(validate_share_root).transpose()?;
     let conn = &mut crate::sqlite_connect()?;
     let changed = diesel::update(shares::table.filter(shares::share_id.eq(share_id)))
-        .set(shares::local_root.eq(local_root))
+        .set(shares::local_root.eq(local_root.as_deref()))
         .execute(conn)
         .wrap_err("failed to set share root")?;
     if changed == 0 {
@@ -1146,6 +1168,29 @@ pub fn snapshot_tree(root: &Path) -> color_eyre::Result<Vec<ShareEntry>> {
     }
     entries.sort_by(|a, b| a.path.cmp(&b.path));
     Ok(entries)
+}
+
+/// Snapshot a bound folder into the next revision of a share's manifest.
+///
+/// The folder walk and blob writes live in [`snapshot_tree`]; this helper owns
+/// the version bump and the canonical store write so every frontend produces
+/// the same manifest shape. A root that does not match the share's binding is
+/// still accepted here — the caller decides which folder to snapshot, while
+/// `snapshot_tree` enforces path and blob safety.
+///
+/// # Errors
+/// Returns an error for an unknown share, an unreadable tree, or a DB failure.
+pub fn snapshot_share(share_id: &str, root: &Path) -> color_eyre::Result<ShareManifest> {
+    let entries = snapshot_tree(root)?;
+    let share = get_share(share_id)?.ok_or_else(|| eyre!("unknown share: {share_id}"))?;
+    let manifest = ShareManifest {
+        share_id: share_id.to_string(),
+        name: share.name,
+        revision: share.revision.saturating_add(1),
+        entries,
+    };
+    save_manifest(share_id, &manifest)?;
+    Ok(manifest)
 }
 
 /// Install one blob at `target` through a staged temporary file, so an

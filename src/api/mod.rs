@@ -1194,20 +1194,8 @@ pub fn snapshot_share(
     share_id: String,
     root: &str,
 ) -> Result<crate::shares::ShareManifest, String> {
-    let entries = crate::shares::snapshot_tree(std::path::Path::new(root))
-        .map_err(|error| error.to_string())?;
-    let share = crate::shares::get_share(&share_id)
-        .map_err(|error| error.to_string())?
-        .ok_or_else(|| format!("unknown share: {share_id}"))?;
-    let manifest = crate::shares::ShareManifest {
-        share_id,
-        name: share.name,
-        revision: share.revision.saturating_add(1),
-        entries,
-    };
-    crate::shares::save_manifest(&manifest.share_id, &manifest)
-        .map_err(|error| error.to_string())?;
-    Ok(manifest)
+    crate::shares::snapshot_share(&share_id, std::path::Path::new(root))
+        .map_err(|error| error.to_string())
 }
 
 /// Ask a peer for every share we are allowed to read.

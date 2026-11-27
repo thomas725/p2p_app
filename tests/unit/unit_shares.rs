@@ -194,6 +194,102 @@ fn wire_requests_and_responses_decode_with_defaults() {
 }
 
 #[test]
+fn validate_share_root_accepts_directories_and_rejects_bad_paths() {
+    let dir = TempDir::new().expect("root dir");
+    let canonical = dir
+        .path()
+        .canonicalize()
+        .expect("canonical root")
+        .to_string_lossy()
+        .into_owned();
+    assert_eq!(
+        validate_share_root(dir.path().to_str().expect("root path")).expect("directory"),
+        canonical
+    );
+
+    let file = dir.path().join("file.txt");
+    std::fs::write(&file, b"not a directory").expect("write file");
+    assert!(
+        validate_share_root(file.to_str().expect("file path")).is_err(),
+        "a regular file must not be bound as a share root"
+    );
+    assert!(
+        validate_share_root(dir.path().join("missing").to_str().expect("missing path")).is_err(),
+        "a missing path must not be bound as a share root"
+    );
+
+    #[cfg(unix)]
+    {
+        let link = dir.path().join("linked-root");
+        std::os::unix::fs::symlink(dir.path(), &link).expect("symlink root");
+        assert_eq!(
+            validate_share_root(link.to_str().expect("link path")).expect("directory symlink"),
+            canonical
+        );
+    }
+}
+
+#[test]
+#[serial(db)]
+fn set_local_root_canonicalises_and_can_clear_a_binding() {
+    with_test_db(|| {
+        let share = create_share("Docs", "owner-user", ShareKind::Private, false, None)
+            .expect("create share");
+        let dir = TempDir::new().expect("root dir");
+        let canonical = dir
+            .path()
+            .canonicalize()
+            .expect("canonical root")
+            .to_string_lossy()
+            .into_owned();
+
+        set_local_root(
+            &share.share_id,
+            Some(dir.path().to_str().expect("root path")),
+        )
+        .expect("bind root");
+        let bound = get_share(&share.share_id).expect("get").expect("present");
+        assert_eq!(bound.local_root.as_deref(), Some(canonical.as_str()));
+
+        set_local_root(&share.share_id, None).expect("clear root");
+        let cleared = get_share(&share.share_id).expect("get").expect("present");
+        assert_eq!(cleared.local_root, None);
+    });
+}
+
+#[test]
+#[serial(db)]
+fn snapshot_share_bumps_revision_and_persists_the_manifest() {
+    with_test_db(|| {
+        let share = create_share("Docs", "owner-user", ShareKind::Private, false, None)
+            .expect("create share");
+        let dir = TempDir::new().expect("root dir");
+        std::fs::create_dir_all(dir.path().join("nested")).expect("nested dir");
+        std::fs::write(dir.path().join("a.txt"), b"alpha").expect("write a");
+        std::fs::write(dir.path().join("nested/b.txt"), b"beta").expect("write b");
+
+        let manifest = snapshot_share(&share.share_id, dir.path()).expect("snapshot");
+        assert_eq!(manifest.share_id, share.share_id);
+        assert_eq!(manifest.name, "Docs");
+        assert_eq!(manifest.revision, 1);
+        assert_eq!(manifest.entries.len(), 2);
+        assert_eq!(manifest.entries[0].path, "a.txt");
+        assert_eq!(manifest.entries[1].path, "nested/b.txt");
+
+        let stored = get_share(&share.share_id).expect("get").expect("present");
+        assert_eq!(stored.revision, 1);
+        assert_eq!(stored.manifest, Some(manifest));
+
+        let next = snapshot_share(&share.share_id, dir.path()).expect("second snapshot");
+        assert_eq!(next.revision, 2);
+        assert!(
+            snapshot_share("unknown", dir.path()).is_err(),
+            "an unknown share must not get a manifest"
+        );
+    });
+}
+
+#[test]
 #[serial(db)]
 fn create_list_and_delete_share() {
     with_test_db(|| {
@@ -209,15 +305,25 @@ fn create_list_and_delete_share() {
                 .any(|s| s.share_id == share.share_id)
         );
 
-        let root = "/tmp/not-used";
-        set_local_root(&share.share_id, Some(root)).expect("bind root");
+        let root_dir = TempDir::new().expect("root dir");
+        let canonical_root = root_dir
+            .path()
+            .canonicalize()
+            .expect("canonical root")
+            .to_string_lossy()
+            .into_owned();
+        set_local_root(
+            &share.share_id,
+            Some(root_dir.path().to_str().expect("root path")),
+        )
+        .expect("bind root");
         assert_eq!(
             get_share(&share.share_id)
                 .expect("get")
                 .expect("present")
                 .local_root
                 .as_deref(),
-            Some(root)
+            Some(canonical_root.as_str())
         );
 
         delete_share(&share.share_id).expect("delete");
