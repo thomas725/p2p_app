@@ -113,6 +113,30 @@ fn test_tab_click_same_tab_noop() {
 }
 
 #[test]
+fn test_tab_click_finalizes_contacts_search() {
+    let mut state = app_state_with_peers(3);
+    state.active_tab = 1;
+    state.contacts_all = state.contacts.clone();
+    state.begin_contact_search();
+    state.chat_input.insert_str("peer1");
+    state.set_contact_search("peer1");
+    assert!(state.is_searching_contacts());
+
+    let titles = state.dynamic_tabs.all_titles();
+    let (_, title_end, _) = tab_span(&titles, 2); // "Groups"
+    assert!(handle_tab_click(
+        &mut state,
+        u16::try_from(title_end - 1).unwrap(),
+        &titles
+    ));
+
+    assert_eq!(state.active_tab, 2);
+    assert!(!state.is_searching_contacts());
+    assert_eq!(state.contact_search, "peer1");
+    assert_eq!(state.chat_input.lines().join("\n"), "");
+}
+
+#[test]
 fn test_tab_click_divider_between_tabs_does_nothing() {
     let mut state = test_app_state();
     let titles = state.dynamic_tabs.all_titles();
@@ -205,6 +229,36 @@ fn test_peer_row_click_opens_dm_tab() {
     let dm_count_before = state.dynamic_tabs.dm_tab_count();
     handle_peer_row_click(&mut state, 3); // row 3 = first peer (data starts after the header at row 2)
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
+
+    p2p_app::db::reset_db_url();
+}
+
+#[test]
+fn test_peer_row_click_finalizes_contacts_search() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = TempDir::new().unwrap();
+    let db_path = _dir.path().join("click-search.db");
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+
+    let mut state = app_state_with_peers(3);
+    state.active_tab = 1;
+    state.contacts_all = state.contacts.clone();
+    state.begin_contact_search();
+    state.chat_input.insert_str("peer1");
+    state.set_contact_search("peer1");
+    assert_eq!(state.contacts.len(), 1);
+
+    assert!(handle_peer_row_click(&mut state, 3));
+    assert_eq!(
+        state.dynamic_tabs.tab_index_to_content(state.active_tab),
+        TabContent::Direct("peer1".to_string())
+    );
+    assert!(!state.is_searching_contacts());
+    assert_eq!(state.contact_search, "peer1");
+    assert_eq!(state.chat_input.lines().join("\n"), "");
 
     p2p_app::db::reset_db_url();
 }

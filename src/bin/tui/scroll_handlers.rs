@@ -6,37 +6,29 @@ use p2p_app::{
 
 /// Handles tab navigation (Tab and `BackTab` keys)
 pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &mut AppState) {
-    match key_code {
-        crossterm::event::KeyCode::Tab => {
-            let max_tabs = state.dynamic_tabs.total_tab_count();
-            state.active_tab = state
-                .active_tab
-                .saturating_add(1)
-                .checked_rem(max_tabs)
-                .unwrap_or(0);
-            state.chat_scroll_offset = 0;
-            state.cancel_nickname_edit();
-            if state.active_tab == 0 {
-                state.mark_broadcast_viewed();
-            }
-            p2plog_debug(format!("Switched to tab {}", state.active_tab));
-        }
+    let max_tabs = state.dynamic_tabs.total_tab_count();
+    let next_tab = match key_code {
+        crossterm::event::KeyCode::Tab => state
+            .active_tab
+            .saturating_add(1)
+            .checked_rem(max_tabs)
+            .unwrap_or(0),
         crossterm::event::KeyCode::BackTab => {
-            let max_tabs = state.dynamic_tabs.total_tab_count();
-            state.active_tab = if state.active_tab == 0 {
+            if state.active_tab == 0 {
                 max_tabs.saturating_sub(1)
             } else {
                 state.active_tab.saturating_sub(1)
-            };
-            state.chat_scroll_offset = 0;
-            state.cancel_nickname_edit();
-            if state.active_tab == 0 {
-                state.mark_broadcast_viewed();
             }
-            p2plog_debug(format!("Switched to tab {}", state.active_tab));
         }
-        _ => {}
+        _ => return,
+    };
+
+    state.switch_to_tab(next_tab);
+    state.chat_scroll_offset = 0;
+    if state.active_tab == 0 {
+        state.mark_broadcast_viewed();
     }
+    p2plog_debug(format!("Switched to tab {}", state.active_tab));
 }
 
 /// Clear a conversation's unread marker once scrolling re-engages auto-scroll
@@ -211,6 +203,15 @@ fn expected_group_page_size(state: &AppState) -> usize {
     state.chat_area_height.saturating_sub(1).max(1)
 }
 
+/// Map a wheel notch to the arrow key that drives list selection.
+fn wheel_selection_key(scroll_dir: &str) -> Option<crossterm::event::KeyCode> {
+    match scroll_dir {
+        "up" => Some(crossterm::event::KeyCode::Up),
+        "down" => Some(crossterm::event::KeyCode::Down),
+        _ => None,
+    }
+}
+
 fn compute_new_peer_selection(
     key_code: crossterm::event::KeyCode,
     current_selection: usize,
@@ -254,6 +255,21 @@ fn scroll_groups_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) 
         state.group_selection,
         state.group_summaries.len(),
         page_size,
+    );
+}
+
+/// Move the persisted network-peer row on the Settings tab.
+fn scroll_settings_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
+    state.move_network_peer_selection(key_code);
+}
+
+/// Move the Shares list selection; its detail pane follows the selected row.
+fn scroll_shares_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
+    state.share_selection = compute_new_peer_selection(
+        key_code,
+        state.share_selection,
+        state.shares.len(),
+        state.chat_area_height.max(1),
     );
 }
 
@@ -311,20 +327,8 @@ pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut 
         p2p_app::tui_tabs::TabContent::Chat => {
             scroll_chat_tab(key_code, state);
         }
-        p2p_app::tui_tabs::TabContent::Settings => {
-            state.move_network_peer_selection(key_code);
-        }
-        p2p_app::tui_tabs::TabContent::Shares => {
-            // The shares list is a bordered pane with no hint row, so its inner
-            // height is `chat_area_height` (the Groups list loses one more row
-            // to its hint).
-            state.share_selection = compute_new_peer_selection(
-                key_code,
-                state.share_selection,
-                state.shares.len(),
-                state.chat_area_height.max(1),
-            );
-        }
+        p2p_app::tui_tabs::TabContent::Settings => scroll_settings_tab(key_code, state),
+        p2p_app::tui_tabs::TabContent::Shares => scroll_shares_tab(key_code, state),
         p2p_app::tui_tabs::TabContent::PeerInfo(_) => {}
     }
 }
@@ -398,82 +402,130 @@ fn mouse_scroll_dm_section(
     apply_mouse_scroll(scroll_offset, auto_scroll, scroll_dir, max_offset)
 }
 
+/// Scroll the broadcast (top) pane of a Direct tab.
+fn mouse_scroll_direct_broadcast(state: &mut AppState, scroll_dir: &str, peer_id: &str) -> bool {
+    let line_counts = display_line_counts(
+        state
+            .messages
+            .iter()
+            .filter(|dm| dm.sender_peer_id.as_deref() == Some(peer_id)),
+    );
+    let max_offset =
+        p2p_app::max_list_scroll_offset(&line_counts, broadcast_pane_visible_lines(state));
+    let Some((scroll_offset, auto_scroll)) = state.dm_broadcast_scroll_state.get_mut(peer_id)
+    else {
+        return false;
+    };
+    mouse_scroll_dm_section(scroll_offset, auto_scroll, scroll_dir, max_offset)
+}
+
+/// Scroll the conversation (bottom) pane of a Direct tab.
+fn mouse_scroll_direct_conversation(state: &mut AppState, scroll_dir: &str, peer_id: &str) -> bool {
+    let max_offset = state.dm_messages.get(peer_id).map_or(0, |msgs| {
+        let line_counts = string_line_counts(msgs.iter());
+        p2p_app::max_list_scroll_offset(&line_counts, dm_pane_visible_lines(state))
+    });
+    let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id) else {
+        return false;
+    };
+    let was_auto_scroll = *auto_scroll;
+    let changed = mouse_scroll_dm_section(scroll_offset, auto_scroll, scroll_dir, max_offset);
+    clear_unread_on_bottom(
+        &mut state.dm_unread_count,
+        peer_id,
+        was_auto_scroll,
+        *auto_scroll,
+    );
+    changed
+}
+
+/// Route a wheel event to the hovered half of a split DM tab.
+fn mouse_scroll_direct_tab(state: &mut AppState, scroll_dir: &str, peer_id: &str) -> bool {
+    if usize::from(state.last_mouse_row) < dm_pane_first_row(state) {
+        mouse_scroll_direct_broadcast(state, scroll_dir, peer_id)
+    } else {
+        mouse_scroll_direct_conversation(state, scroll_dir, peer_id)
+    }
+}
+
+/// Scroll a group chat transcript, clearing its unread marker at the bottom.
+fn mouse_scroll_group_chat_tab(state: &mut AppState, scroll_dir: &str, group_id: &str) -> bool {
+    let Some(msgs) = state.group_messages.get(group_id) else {
+        return false;
+    };
+    let line_counts = string_line_counts(msgs.iter());
+    let max_offset = p2p_app::max_list_scroll_offset(&line_counts, state.chat_area_height);
+    let Some((scroll_offset, auto_scroll)) = state.group_scroll_state.get_mut(group_id) else {
+        return false;
+    };
+    let was_auto_scroll = *auto_scroll;
+    let changed = apply_mouse_scroll(scroll_offset, auto_scroll, scroll_dir, max_offset);
+    clear_unread_on_bottom(
+        &mut state.group_unread_count,
+        group_id,
+        was_auto_scroll,
+        *auto_scroll,
+    );
+    changed
+}
+
+/// Move a list-tab selection using the same arrow-key logic as the keyboard.
+fn mouse_scroll_list_selection(
+    state: &mut AppState,
+    scroll_dir: &str,
+    tab_content: &p2p_app::tui_tabs::TabContent,
+) -> bool {
+    let Some(key_code) = wheel_selection_key(scroll_dir) else {
+        return false;
+    };
+    match tab_content {
+        p2p_app::tui_tabs::TabContent::Contacts => {
+            let before = state.peer_selection;
+            scroll_peers_tab(key_code, state);
+            state.peer_selection != before
+        }
+        p2p_app::tui_tabs::TabContent::Groups => {
+            let before = state.group_selection;
+            scroll_groups_tab(key_code, state);
+            state.group_selection != before
+        }
+        p2p_app::tui_tabs::TabContent::Settings => {
+            let before = state.network_peer_selection;
+            scroll_settings_tab(key_code, state);
+            state.network_peer_selection != before
+        }
+        p2p_app::tui_tabs::TabContent::Shares => {
+            let before = state.share_selection;
+            scroll_shares_tab(key_code, state);
+            state.share_selection != before
+        }
+        p2p_app::tui_tabs::TabContent::Chat
+        | p2p_app::tui_tabs::TabContent::Direct(_)
+        | p2p_app::tui_tabs::TabContent::GroupChat(_)
+        | p2p_app::tui_tabs::TabContent::Log
+        | p2p_app::tui_tabs::TabContent::PeerInfo(_) => false,
+    }
+}
+
 /// Handles mouse wheel scrolling with hover-based section targeting for split DM tabs
 pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, peer_id: Option<&str>) -> bool {
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
-
     match &tab_content {
         p2p_app::tui_tabs::TabContent::Direct(pid) => {
-            let mid_row = dm_pane_first_row(state);
-            let mouse_row = usize::from(state.last_mouse_row);
-            let pid = peer_id.unwrap_or(pid);
-            if mouse_row < mid_row {
-                let broadcast_messages: Vec<DisplayMessage> = state
-                    .messages
-                    .iter()
-                    .filter(|dm| dm.sender_peer_id.as_ref().is_some_and(|id| id == pid))
-                    .cloned()
-                    .collect();
-                let line_counts = display_line_counts(broadcast_messages.iter());
-                let max_offset = p2p_app::max_list_scroll_offset(
-                    &line_counts,
-                    broadcast_pane_visible_lines(state),
-                );
-                if let Some((scroll_offset, auto_scroll)) =
-                    state.dm_broadcast_scroll_state.get_mut(pid)
-                {
-                    mouse_scroll_dm_section(scroll_offset, auto_scroll, scroll_dir, max_offset)
-                } else {
-                    false
-                }
-            } else {
-                let max_offset = state.dm_messages.get(pid).map_or(0, |msgs| {
-                    let line_counts = string_line_counts(msgs.iter());
-                    p2p_app::max_list_scroll_offset(&line_counts, dm_pane_visible_lines(state))
-                });
-                if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(pid) {
-                    let was_auto_scroll = *auto_scroll;
-                    let changed =
-                        mouse_scroll_dm_section(scroll_offset, auto_scroll, scroll_dir, max_offset);
-                    clear_unread_on_bottom(
-                        &mut state.dm_unread_count,
-                        pid,
-                        was_auto_scroll,
-                        *auto_scroll,
-                    );
-                    changed
-                } else {
-                    false
-                }
-            }
+            mouse_scroll_direct_tab(state, scroll_dir, peer_id.unwrap_or(pid))
         }
         p2p_app::tui_tabs::TabContent::Log => mouse_scroll_log_tab(state, scroll_dir),
         p2p_app::tui_tabs::TabContent::GroupChat(group_id) => {
-            let Some(msgs) = state.group_messages.get(group_id) else {
-                return false;
-            };
-            let line_counts = string_line_counts(msgs.iter());
-            let max_offset = p2p_app::max_list_scroll_offset(&line_counts, state.chat_area_height);
-            if let Some((scroll_offset, auto_scroll)) = state.group_scroll_state.get_mut(group_id) {
-                let was_auto_scroll = *auto_scroll;
-                let changed =
-                    apply_mouse_scroll(scroll_offset, auto_scroll, scroll_dir, max_offset);
-                clear_unread_on_bottom(
-                    &mut state.group_unread_count,
-                    group_id,
-                    was_auto_scroll,
-                    *auto_scroll,
-                );
-                changed
-            } else {
-                false
-            }
+            mouse_scroll_group_chat_tab(state, scroll_dir, group_id)
         }
-        p2p_app::tui_tabs::TabContent::PeerInfo(_)
+        p2p_app::tui_tabs::TabContent::Chat => mouse_scroll_chat_tab(state, scroll_dir),
+        p2p_app::tui_tabs::TabContent::Contacts
         | p2p_app::tui_tabs::TabContent::Groups
         | p2p_app::tui_tabs::TabContent::Settings
-        | p2p_app::tui_tabs::TabContent::Shares => false,
-        _ => mouse_scroll_chat_tab(state, scroll_dir),
+        | p2p_app::tui_tabs::TabContent::Shares => {
+            mouse_scroll_list_selection(state, scroll_dir, &tab_content)
+        }
+        p2p_app::tui_tabs::TabContent::PeerInfo(_) => false,
     }
 }
 

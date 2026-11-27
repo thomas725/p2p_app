@@ -579,11 +579,12 @@ fn handle_close_dm_tab(
         state.clear_typing(peer_id);
     }
     if let Some(closed_idx) = state.dynamic_tabs.remove_tab(tab_content) {
-        state.active_tab = if closed_idx > 0 {
+        let next_tab = if closed_idx > 0 {
             closed_idx.saturating_sub(1)
         } else {
             0
         };
+        state.switch_to_tab(next_tab);
         state.peer_selection = 0;
         p2plog_debug(format!("Closed tab: {tab_content:?}"));
     }
@@ -746,17 +747,20 @@ async fn handle_call_overlay_key(
     let _ = render_tx.send(RenderEvent).await;
 }
 
-/// Handles Esc: dismiss popup / cancel nickname edit / cancel group create /
-/// return to broadcast chat.
+/// Handles Esc one level at a time: dismiss popup / cancel edit / clear
+/// Contacts search / return to broadcast chat.
+///
+/// Device-binding, group-leave and delete prompts own Esc upstream in
+/// `prompt_key_action`, so they must not be cancelled again here.
 async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEvent>) {
     let mut s = state.lock().await;
-    dismiss_popup(&mut s);
-    decline_device_binding_prompt(&mut s);
-    if s.cancel_group_leave() {
-        p2plog_debug("Cancelled group leave".to_string());
-    } else if s.cancel_delete_message() {
-        p2plog_debug("Cancelled message deletion".to_string());
-    } else if s.cancel_edit_message() {
+    if dismiss_popup(&mut s) {
+        p2plog_debug("Dismissed popup".to_string());
+        drop(s);
+        let _ = render_tx.send(RenderEvent).await;
+        return;
+    }
+    if s.cancel_edit_message() {
         p2plog_debug("Cancelled message edit".to_string());
     } else if s.cancel_reaction() {
         p2plog_debug("Cancelled reaction".to_string());
@@ -780,7 +784,7 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
         if s.clear_reply(&tab) {
             p2plog_debug("Cleared reply draft".to_string());
         } else {
-            s.active_tab = 0;
+            s.switch_to_tab(0);
             s.chat_scroll_offset = 0;
             s.auto_scroll.chat = true;
             s.mark_broadcast_viewed();
@@ -851,7 +855,8 @@ fn open_peer_info_for_active_tab(state: &mut super::state::AppState) -> bool {
     let Some(peer_id) = state.peer_info_target(&tab_content) else {
         return false;
     };
-    state.active_tab = state.dynamic_tabs.add_peer_info_tab(peer_id);
+    let tab_idx = state.dynamic_tabs.add_peer_info_tab(peer_id);
+    state.switch_to_tab(tab_idx);
     true
 }
 
@@ -900,7 +905,7 @@ async fn handle_enter_key(
         if let Some(peer_id) = state.selected_contact_peer_id() {
             load_dm_messages(state, &peer_id);
             let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id.clone());
-            state.active_tab = tab_idx;
+            state.switch_to_tab(tab_idx);
             p2plog_debug(format!("Opened DM with peer: {peer_id}"));
         }
     } else if matches!(tab_content, p2p_app::tui_tabs::TabContent::Groups) {
@@ -913,7 +918,7 @@ async fn handle_enter_key(
     } else if let p2p_app::tui_tabs::TabContent::PeerInfo(peer_id) = &tab_content {
         load_dm_messages(state, peer_id);
         let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id.clone());
-        state.active_tab = tab_idx;
+        state.switch_to_tab(tab_idx);
         p2plog_debug(format!("Opened DM with peer: {peer_id}"));
     } else if tab_content.is_input_enabled() {
         let text: String = state.chat_input.lines().join("\n");
@@ -1905,24 +1910,21 @@ async fn process_mouse_event(
 
     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
     let is_peers_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Contacts);
-    let is_scrollable_tab = matches!(
-        tab_content,
-        p2p_app::tui_tabs::TabContent::Chat
-            | p2p_app::tui_tabs::TabContent::Direct(_)
-            | p2p_app::tui_tabs::TabContent::GroupChat(_)
-            | p2p_app::tui_tabs::TabContent::Log
-    );
     let peer_id = if let p2p_app::tui_tabs::TabContent::Direct(pid) = &tab_content {
         Some(pid.as_str())
     } else {
         None
     };
 
+    // List tabs move their selection on wheel events through the same handler
+    // as arrow keys; message tabs scroll their transcript. `handle_mouse_scroll`
+    // decides which applies and returns false for tabs with no wheel behavior
+    // (notably Peer Info), so no extra tab-type gate is needed here.
     match mouse_event.kind {
-        crossterm::event::MouseEventKind::ScrollUp if is_scrollable_tab => {
+        crossterm::event::MouseEventKind::ScrollUp => {
             should_render = handle_mouse_scroll(&mut s, "up", peer_id);
         }
-        crossterm::event::MouseEventKind::ScrollDown if is_scrollable_tab => {
+        crossterm::event::MouseEventKind::ScrollDown => {
             should_render = handle_mouse_scroll(&mut s, "down", peer_id);
         }
         crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {

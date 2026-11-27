@@ -42,15 +42,15 @@ fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[Strin
             if title.contains("[X]") && click_col >= close_start && click_col < title_end {
                 let tab_content = state.dynamic_tabs.tab_index_to_content(idx);
                 if let Some(closed_idx) = state.dynamic_tabs.remove_tab(&tab_content) {
-                    state.active_tab = focus_after_close(state.active_tab, closed_idx);
+                    let next_tab = focus_after_close(state.active_tab, closed_idx);
+                    state.switch_to_tab(next_tab);
                     p2plog_debug(format!("Closed tab via mouse: {tab_content:?}"));
                 }
                 return true;
             }
             if idx != state.active_tab {
-                state.active_tab = idx;
+                state.switch_to_tab(idx);
                 state.chat_scroll_offset = 0;
-                state.cancel_nickname_edit();
                 p2plog_debug(format!(
                     "Switched to tab {} via mouse click",
                     state.active_tab
@@ -269,8 +269,7 @@ fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
         state.peer_selection = flat_row;
         load_dm_messages(state, &peer_id);
         let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id.clone());
-        state.active_tab = tab_idx;
-        state.cancel_nickname_edit();
+        state.switch_to_tab(tab_idx);
         p2plog_debug(format!("Opened DM with peer via mouse: {peer_id}"));
         return true;
     }
@@ -283,8 +282,7 @@ pub fn open_group_chat(state: &mut AppState, group_id: &str, display_name: &str)
     let tab_idx = state
         .dynamic_tabs
         .add_group_tab(group_id.to_string(), display_name.to_string());
-    state.active_tab = tab_idx;
-    state.cancel_nickname_edit();
+    state.switch_to_tab(tab_idx);
 }
 
 /// Handles group row clicks in the Groups tab
@@ -358,7 +356,7 @@ fn handle_message_click(
                     .and_then(Clone::clone)
                 {
                     let idx = state.dynamic_tabs.add_peer_info_tab(peer_id.clone());
-                    state.active_tab = idx;
+                    state.switch_to_tab(idx);
                     p2plog_debug(format!("Opened Peer Info for group sender: {peer_id}"));
                     return true;
                 }
@@ -367,7 +365,7 @@ fn handle_message_click(
         }
         p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
             let idx = state.dynamic_tabs.add_peer_info_tab(peer_id.clone());
-            state.active_tab = idx;
+            state.switch_to_tab(idx);
             p2plog_debug(format!("Opened Peer Info for DM peer: {peer_id}"));
             true
         }
@@ -400,10 +398,10 @@ fn handle_message_click(
             if let Some(rel) = p2p_app::row_to_visible_index(&line_counts, 2, click_row) {
                 let actual_idx = start.saturating_add(rel);
                 if let Some(msg) = state.messages.get(actual_idx)
-                    && let Some(peer_id) = &msg.sender_peer_id
+                    && let Some(peer_id) = msg.sender_peer_id.clone()
                 {
                     let idx = state.dynamic_tabs.add_peer_info_tab(peer_id.clone());
-                    state.active_tab = idx;
+                    state.switch_to_tab(idx);
                     p2plog_debug(format!("Opened Peer Info for sender: {peer_id}"));
                     return true;
                 }
@@ -429,7 +427,7 @@ fn handle_settings_row_click(state: &mut AppState, mouse_row: u16) -> bool {
         return false;
     };
     let idx = state.dynamic_tabs.add_peer_info_tab(peer_id.clone());
-    state.active_tab = idx;
+    state.switch_to_tab(idx);
     p2plog_debug(format!("Opened Peer Info from Settings: {peer_id}"));
     true
 }

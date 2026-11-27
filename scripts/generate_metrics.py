@@ -152,6 +152,8 @@ def get_file_purpose(filepath: str) -> str:
         return 'TUI groups renderer'
     if 'tui_render/settings.rs' in filepath:
         return 'TUI settings renderer'
+    if 'tui_render/shares.rs' in filepath:
+        return 'TUI shares renderer'
     if 'web/mod.rs' in filepath:
         return 'Web server (axum HTTP+WS)'
     if 'web/methods.rs' in filepath:
@@ -274,17 +276,22 @@ def get_test_file_purpose(filepath: str) -> str:
 
 def normalize_path_for_display(filepath: str) -> Tuple[str, str]:
     path = Path(filepath)
+    parts = path.parts
     if path.name == 'build.rs':
         return ('/', 'build.rs')
-    elif 'src/bin/tui/render_loop' in filepath:
+    elif parts[:4] == ('src', 'bin', 'tui', 'render_loop'):
         return ('src/bin/tui/render_loop', path.name)
-    elif 'src/bin/tui' in filepath:
+    elif parts[:3] == ('src', 'bin', 'tui'):
         return ('src/bin/tui', path.name)
-    elif 'src/bin' in filepath:
+    elif parts[:2] == ('src', 'bin'):
         return ('src/bin', path.name)
-    elif 'src/generated' in filepath:
+    elif parts[:2] == ('src', 'generated'):
         return ('src/generated', path.name)
-    elif 'src' in filepath:
+    elif parts[:2] == ('src', 'tui_render'):
+        return ('src/tui_render', path.name)
+    elif parts[:2] == ('src', 'web'):
+        return ('src/web', path.name)
+    elif parts[:1] == ('src',):
         return ('src', path.name)
     else:
         return (str(path.parent), path.name)

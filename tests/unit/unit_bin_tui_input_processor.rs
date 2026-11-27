@@ -24,6 +24,15 @@ use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::{Mutex, mpsc};
 
+fn wheel_event(kind: MouseEventKind) -> MouseEvent {
+    MouseEvent {
+        kind,
+        column: 12,
+        row: 7,
+        modifiers: KeyModifiers::NONE,
+    }
+}
+
 // ── update_dm_transcript_labels ──────────────────────────────────────────
 
 #[test]
@@ -217,6 +226,139 @@ async fn test_mouse_scroll_noop_does_not_redraw() {
 
     assert!(!exited);
     assert!(render_rx.try_recv().is_err());
+}
+
+/// Send both wheel directions through the real dispatcher and assert the list
+/// selection moves like the arrow keys, then returns, with a rendered frame on
+/// the destination tab.
+async fn assert_wheel_moves_list_selection<F>(
+    state: AppState,
+    frame_marker: &str,
+    selected_marker: &str,
+    selection: F,
+) where
+    F: Fn(&AppState) -> usize,
+{
+    let initial = selection(&state);
+    let mut session = KeySession::new(state);
+
+    assert!(
+        !session
+            .press_mouse(wheel_event(MouseEventKind::ScrollDown))
+            .await
+    );
+    {
+        let s = session.state.lock().await;
+        assert_eq!(selection(&s), initial.saturating_add(1));
+    }
+    let frame = session.frame_text().await;
+    assert!(
+        frame.contains(frame_marker),
+        "missing {frame_marker} in rendered frame"
+    );
+    assert!(
+        frame.contains(selected_marker),
+        "selected row {selected_marker} is not rendered"
+    );
+
+    assert!(
+        !session
+            .press_mouse(wheel_event(MouseEventKind::ScrollUp))
+            .await
+    );
+    {
+        let s = session.state.lock().await;
+        assert_eq!(selection(&s), initial);
+    }
+}
+
+#[tokio::test]
+async fn test_mouse_wheel_moves_contacts_selection_through_real_dispatch() {
+    let mut state = app_state_with_peers(3);
+    state.active_tab = 1;
+    state.peer_selection = 0;
+    let selected_marker = state.contacts[1].display_name.clone();
+    assert_wheel_moves_list_selection(state, "Contacts", &selected_marker, |s| s.peer_selection)
+        .await;
+}
+
+#[tokio::test]
+async fn test_mouse_wheel_moves_groups_selection_through_real_dispatch() {
+    let mut state = groups_tab_state("g-wheel-1", "First");
+    state
+        .group_summaries
+        .push(group_summary("g-wheel-2", "Second"));
+    state.group_selection = 0;
+    assert_wheel_moves_list_selection(state, "Groups", "Second", |s| s.group_selection).await;
+}
+
+#[tokio::test]
+async fn test_mouse_wheel_moves_settings_selection_through_real_dispatch() {
+    let mut state = test_app_state();
+    state.active_tab = settings_tab_index(&state);
+    state.network_peers = vec![
+        p2p_app::network_config::NetworkPeer {
+            id: 1,
+            kind: "bootstrap".to_string(),
+            multiaddr: "/ip4/127.0.0.1/tcp/4001".to_string(),
+            created_at: "2026-01-01 00:00:00".to_string(),
+        },
+        p2p_app::network_config::NetworkPeer {
+            id: 2,
+            kind: "bootstrap".to_string(),
+            multiaddr: "/ip4/127.0.0.2/tcp/4001".to_string(),
+            created_at: "2026-01-01 00:00:00".to_string(),
+        },
+    ];
+    state.network_peer_selection = 0;
+    assert_wheel_moves_list_selection(state, "Settings", "/ip4/127.0.0.2/tcp/4001", |s| {
+        s.network_peer_selection
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn test_mouse_wheel_moves_shares_selection_through_real_dispatch() {
+    let share = |id: &str| p2p_app::shares::Share {
+        share_id: id.to_string(),
+        owner_user_id: "user".to_string(),
+        name: id.to_string(),
+        kind: p2p_app::shares::ShareKind::Private,
+        public_write: false,
+        local_root: None,
+        revision: 1,
+        manifest: None,
+    };
+    let mut state = test_app_state();
+    state.active_tab = shares_tab_index(&state);
+    state.shares = vec![share("s-wheel-1"), share("s-wheel-2")];
+    state.share_selection = 0;
+    assert_wheel_moves_list_selection(state, "Shares", "s-wheel-2", |s| s.share_selection).await;
+}
+
+#[tokio::test]
+async fn test_mouse_wheel_on_peer_info_is_noop_without_redraw() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    {
+        let mut s = state.lock().await;
+        s.active_tab = s.dynamic_tabs.add_peer_info_tab("peer-wheel".to_string());
+    }
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+
+    let exited = process_input_event(
+        InputEvent::Mouse(wheel_event(MouseEventKind::ScrollDown)),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    assert!(render_rx.try_recv().is_err(), "no-op wheel must not redraw");
+    let s = state.lock().await;
+    assert_eq!(s.peer_selection, 0);
+    assert_eq!(s.chat_scroll_offset, 0);
 }
 
 // ── process_key_event ─────────────────────────────────────────────────
@@ -641,6 +783,54 @@ async fn test_enter_key_keeps_the_contacts_search_filter() {
     assert_eq!(s.contact_search, "peer");
     // Enter must not have opened a DM tab from the filtered selection.
     assert_eq!(s.dynamic_tabs.dm_tab_count(), 0);
+}
+
+/// Drive a real Tab/BackTab press from an active Contacts search. The query
+/// stays as the applied filter, the shared editor is empty on the destination
+/// tab, and the rendered input title no longer claims the search box is open.
+async fn assert_contact_search_finalized_on_tab_key(key: KeyCode, expected_tab: usize) {
+    let mut state = app_state_with_peers(3);
+    state.active_tab = 1;
+    state.contacts_all = state.contacts.clone();
+    let mut session = KeySession::new(state);
+
+    assert!(!session.press_char('/').await);
+    assert!(!session.type_text("peer1").await);
+    {
+        let s = session.state.lock().await;
+        assert!(s.is_searching_contacts());
+        assert_eq!(s.contact_search, "peer1");
+        assert_eq!(s.chat_input.lines().join("\n"), "peer1");
+        assert_eq!(s.contacts.len(), 1);
+    }
+    assert!(
+        session.frame_text().await.contains("Search Contacts"),
+        "search box should be visible before switching tabs"
+    );
+
+    assert!(!session.press_code(key).await);
+    {
+        let s = session.state.lock().await;
+        assert_eq!(s.active_tab, expected_tab);
+        assert!(!s.is_searching_contacts());
+        assert_eq!(s.contact_search, "peer1", "the applied filter survives");
+        assert_eq!(s.chat_input.lines().join("\n"), "");
+        assert_eq!(s.contacts.len(), 1);
+    }
+    assert!(
+        !session.frame_text().await.contains("Search Contacts"),
+        "search box followed the user to the destination tab"
+    );
+}
+
+#[tokio::test]
+async fn test_tab_out_of_contacts_search_finalizes_the_query() {
+    assert_contact_search_finalized_on_tab_key(KeyCode::Tab, 2).await;
+}
+
+#[tokio::test]
+async fn test_back_tab_out_of_contacts_search_finalizes_the_query() {
+    assert_contact_search_finalized_on_tab_key(KeyCode::BackTab, 0).await;
 }
 
 #[tokio::test]
@@ -3182,6 +3372,17 @@ fn settings_tab_index(state: &AppState) -> usize {
         .unwrap_or(0)
 }
 
+fn shares_tab_index(state: &AppState) -> usize {
+    (0..state.dynamic_tabs.total_tab_count())
+        .find(|&idx| {
+            matches!(
+                state.dynamic_tabs.tab_index_to_content(idx),
+                TabContent::Shares
+            )
+        })
+        .unwrap_or(0)
+}
+
 #[tokio::test]
 async fn test_settings_add_prompt_owns_printable_keys() {
     let state = Arc::new(Mutex::new(test_app_state()));
@@ -4439,6 +4640,16 @@ fn test_settings_dial_and_network_peer_session_through_real_keys() {
                     .as_deref()
                     .is_some_and(|hint| hint.starts_with("Network peer not saved:"))
             );
+        }
+        assert!(!session.press_code(KeyCode::Esc).await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.popup.is_none(), "first Esc dismisses only the popup");
+            assert!(
+                s.is_adding_network_peer(),
+                "the prompt survives the validation popup"
+            );
+            assert_eq!(s.chat_input.lines().join("\n"), "not-an-address");
         }
         for _ in 0.."not-an-address".chars().count() {
             assert!(!session.press_code(KeyCode::Backspace).await);

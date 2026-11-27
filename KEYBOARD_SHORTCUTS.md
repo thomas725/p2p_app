@@ -26,22 +26,27 @@ Shares is a permanent suffix tab after Settings. While a modal prompt owns the
 input (nickname, message edit, reaction, group name, dial or network peer),
 `Tab` and `Shift+Tab` are no-ops so the prompt cannot be stranded on another
 tab. Contacts search is inline, not modal: Tab and arrows keep working there.
+Moving focus away from Contacts — by Tab, a tab click, a row click, or opening
+Peer Info — closes the search box but keeps the applied filter; the shared input
+is cleared so a Composer draft does not inherit the query.
 
 ## Scrolling
 
-Scrolling is **hover-based**: the section under the mouse pointer is the one
-that scrolls. If the pointer has never been over the content, the focused
-section is used.
+Message tabs scroll **hover-based**: the section under the mouse pointer is the
+one that scrolls. If the pointer has never been over the content, the focused
+section is used. On list tabs (Contacts, Groups, Settings and Shares), the arrow
+keys and the mouse wheel move the highlighted row instead; the detail pane
+follows the selection.
 
 | Key/Action | Behavior |
 |------------|----------|
-| `↑` / `↓` | Scroll the hovered section one line |
-| `PgUp` / `PgDn` | Page-scroll the hovered section |
-| `Home` | Jump to the first message in the hovered section |
-| `End` | Jump to the newest message in the hovered section (re-enters auto-scroll) |
-| `Mouse wheel` | Scroll the hovered section |
+| `↑` / `↓` | Scroll the hovered message section one line; move the list selection one row |
+| `PgUp` / `PgDn` | Page-scroll the hovered message section; page the list selection |
+| `Home` | Jump to the first message / list row in the focused section |
+| `End` | Jump to the newest message / last list row (re-enters auto-scroll in a conversation) |
+| `Mouse wheel` | Scroll the hovered message section; move the list selection one row |
 
-Which section that is, per tab:
+Which message section that is, per tab:
 
 | Tab | Sections |
 |-----|----------|
@@ -49,13 +54,11 @@ Which section that is, per tab:
 | DM / Direct | broadcast messages (top half) and the conversation (bottom half) — the pointer picks |
 | Group chat | the group's messages |
 | Log | the log lines |
-| Contacts | the contact table |
-| Groups | the group list |
-| Shares | the share list (arrow keys move the selection) |
 
-Peer Info and Settings do not scroll. On the Shares tab `↑`/`↓`,
-`PgUp`/`PgDn` and `Home`/`End` move the highlighted share; the detail pane wraps
-to show the selected share's manifest.
+Peer Info has no scrollable content and ignores the wheel. On Contacts, Groups,
+Settings and Shares, `↑`/`↓`, `PgUp`/`PgDn`, `Home`/`End` and the wheel move the
+highlighted row; Settings moves the persisted network-peer row, and the Shares
+detail pane wraps to show the selected share's manifest.
 
 ### Unread banners
 
@@ -340,7 +343,7 @@ error in the same popup.
 |-----|--------|
 | `?` | Open the compact shortcut-help overlay |
 | `F12` | Toggle mouse capture |
-| `Esc` | Dismiss the popup / decline the device-binding prompt / cancel a local-delete, local edit, group-leave, or current edit / return to the Chat tab |
+| `Esc` | Cancel one active layer — see the precedence below |
 | `Ctrl+Q` | Exit the application |
 
 `?` is a plain key, so it opens the help overlay only when no input box owns
@@ -350,12 +353,15 @@ is active. The overlay uses the ordinary popup slot: press any key or click to
 dismiss it, which is why typing `?` inside a prompt still inserts a question
 mark.
 
-`Esc` unwinds one level at a time, in this order: dismiss the popup →
-decline the device-binding prompt → cancel a group leave → cancel a local
-message deletion → cancel a local message edit → clear the contacts search →
-cancel a nickname edit →
-cancel the group create/join prompt → cancel a peer dial → return to the Chat
-tab.
+`Esc` unwinds one level at a time. The single-slot prompts own it first —
+decline a device-binding request, cancel a group leave, or cancel a local
+message deletion — followed by a live call overlay. Otherwise it cancels the
+innermost active layer: dismiss the popup → cancel a local message edit →
+cancel a reaction → clear the Contacts search → cancel a nickname edit →
+cancel the group create/join prompt → cancel a peer dial → cancel network-peer
+entry → clear a reply draft → return to the Chat tab. A second `Esc` is needed
+for the next layer; for example, dismissing a network-peer validation popup
+leaves the rejected address open for correction.
 
 ### Device-binding prompt
 

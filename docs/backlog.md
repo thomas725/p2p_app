@@ -273,6 +273,7 @@ here so they are not mistaken for unfinished work.
 |---|---|---|
 | TUI modal-editor boundary + renderer parity | 2026-11-27 | [`archive/2026-11-27_tui_modal_editor_boundary.md`](archive/2026-11-27_tui_modal_editor_boundary.md) |
 | Key-driven TUI sessions + input/reply-preview fixes | 2026-11-27 | [`archive/2026-11-27_tui_key_driven_sessions.md`](archive/2026-11-27_tui_key_driven_sessions.md) |
+| TUI focus finalization, one-level `Esc` + wheel selection | 2026-11-27 | [`archive/2026-11-27_tui_focus_and_wheel_routing.md`](archive/2026-11-27_tui_focus_and_wheel_routing.md) |
 | `url` 2.5.9 + `form_urlencoded` 1.2.3 (RUSTSEC-2026-0592) | 2026-11-27 | `deps: take url 2.5.9` |
 | Reply snapshots canonicalized at every trust boundary | 2026-11-27 | [`archive/2026-11-27_reply_ref_boundary_canonicalization.md`](archive/2026-11-27_reply_ref_boundary_canonicalization.md) |
 | Group names validated at the Rust choke point | 2026-11-27 | [`archive/2026-11-27_group_name_validation.md`](archive/2026-11-27_group_name_validation.md) |

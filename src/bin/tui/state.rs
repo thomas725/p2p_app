@@ -3,6 +3,7 @@ use super::{DynamicTabs, TextArea};
 use p2p_app::contacts::ContactDeviceInput;
 use p2p_app::messages::PeerMessageStats;
 use p2p_app::tui_helpers::PeerMessageMap;
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -427,6 +428,25 @@ impl AppState {
         self.input_mode = p2p_app::InputMode::Chat;
         self.editing_nickname_peer = None;
         self.chat_input = TextArea::default();
+    }
+
+    /// Finalize the shared single-line input when focus leaves a tab.
+    ///
+    /// Contacts search is an inline filter rather than a modal editor, so Tab,
+    /// mouse clicks, and Peer Info shortcuts can move focus while it is open.
+    /// Keep the applied query and clear the shared box instead of letting its
+    /// text follow the user to the destination tab.
+    pub fn finalize_tab_input(&mut self) {
+        self.cancel_nickname_edit();
+        self.end_contact_search(true);
+    }
+
+    /// Move focus to `tab_index`, finalizing inline input first. Every keyboard
+    /// and mouse tab transition goes through here so the shared editor never
+    /// follows a Contacts query onto another tab.
+    pub fn switch_to_tab(&mut self, tab_index: usize) {
+        self.finalize_tab_input();
+        self.active_tab = tab_index;
     }
 
     /// Open the shared editor for this install's own nickname (Settings tab).
@@ -997,12 +1017,13 @@ impl AppState {
         self.group_unread_count.remove(group_id);
         self.reply_drafts.remove(&format!("group:{group_id}"));
         if let Some(closed) = self.dynamic_tabs.remove_group_tab(group_id) {
-            if closed == self.active_tab {
+            let next_tab = match closed.cmp(&self.active_tab) {
                 // Leaving from the group's own chat tab: back to the list.
-                self.active_tab = p2p_app::tui_tabs::FIXED_TAB_COUNT.saturating_sub(1);
-            } else if closed < self.active_tab {
-                self.active_tab = self.active_tab.saturating_sub(1);
-            }
+                Ordering::Equal => p2p_app::tui_tabs::FIXED_TAB_COUNT.saturating_sub(1),
+                Ordering::Less => self.active_tab.saturating_sub(1),
+                Ordering::Greater => self.active_tab,
+            };
+            self.switch_to_tab(next_tab);
         }
     }
 

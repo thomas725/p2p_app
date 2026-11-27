@@ -13,7 +13,7 @@
 use crate::tui::event_source::InputEvent;
 use crate::tui::main_loop::RenderEvent;
 use crate::tui::state::{AppState, SharedState};
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent};
 use p2p_app::{DisplayMessage, PeerRecord, SwarmCommand};
 use ratatui::{Terminal, backend::TestBackend, buffer::Cell};
 use std::collections::{HashMap, VecDeque};
@@ -74,6 +74,20 @@ impl KeySession {
     pub async fn press_code(&mut self, code: KeyCode) -> bool {
         self.press_key(KeyEvent::new(code, KeyModifiers::NONE))
             .await
+    }
+
+    /// Send one mouse event through the same real input event processor the
+    /// event loop uses. Returns whether the app asked to exit.
+    pub async fn press_mouse(&mut self, mouse_event: MouseEvent) -> bool {
+        let exited = crate::tui::input_processor::process_input_event(
+            InputEvent::Mouse(mouse_event),
+            &self.state,
+            &self.command_tx,
+            &self.render_tx,
+        )
+        .await;
+        self.drain_renders();
+        exited
     }
 
     /// Type a string as individual key events. Any exit request is returned so

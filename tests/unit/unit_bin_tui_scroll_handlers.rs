@@ -687,6 +687,122 @@ fn test_handle_mouse_scroll_chat_tab() {
     assert_eq!(state.chat_scroll_offset, 3);
 }
 
+fn tab_index(state: &AppState, content: &p2p_app::tui_tabs::TabContent) -> usize {
+    (0..state.dynamic_tabs.total_tab_count())
+        .find(|&idx| &state.dynamic_tabs.tab_index_to_content(idx) == content)
+        .unwrap_or(0)
+}
+
+fn two_network_peers() -> Vec<p2p_app::network_config::NetworkPeer> {
+    (1..=2)
+        .map(|id| p2p_app::network_config::NetworkPeer {
+            id,
+            kind: "bootstrap".to_string(),
+            multiaddr: format!("/ip4/127.0.0.{id}/tcp/4001"),
+            created_at: "2026-01-01 00:00:00".to_string(),
+        })
+        .collect()
+}
+
+fn two_shares() -> Vec<p2p_app::shares::Share> {
+    (1..=2)
+        .map(|id| p2p_app::shares::Share {
+            share_id: format!("share-{id}"),
+            owner_user_id: "user".to_string(),
+            name: format!("Share {id}"),
+            kind: p2p_app::shares::ShareKind::Private,
+            public_write: false,
+            local_root: None,
+            revision: 1,
+            manifest: None,
+        })
+        .collect()
+}
+
+#[test]
+fn test_handle_mouse_scroll_contacts_moves_selection() {
+    let mut state = app_state_with_peers(3);
+    state.active_tab = 1;
+    state.peer_selection = 0;
+
+    assert!(handle_mouse_scroll(&mut state, "down", None));
+    assert_eq!(state.peer_selection, 1);
+    assert!(handle_mouse_scroll(&mut state, "up", None));
+    assert_eq!(state.peer_selection, 0);
+}
+
+#[test]
+fn test_handle_mouse_scroll_groups_moves_selection() {
+    let mut state = test_app_state();
+    state.active_tab = tab_index(&state, &p2p_app::tui_tabs::TabContent::Groups);
+    state.group_summaries = (1..=2)
+        .map(|id| p2p_app::groups::GroupSummary {
+            group: p2p_app::generated::models_queryable::Group {
+                id,
+                group_id: format!("g-{id}"),
+                display_name: format!("Group {id}"),
+                is_private: 0,
+                created_at: chrono::NaiveDateTime::default(),
+            },
+            member_count: 1,
+        })
+        .collect();
+    state.group_selection = 0;
+
+    assert!(handle_mouse_scroll(&mut state, "down", None));
+    assert_eq!(state.group_selection, 1);
+    assert!(handle_mouse_scroll(&mut state, "up", None));
+    assert_eq!(state.group_selection, 0);
+}
+
+#[test]
+fn test_handle_mouse_scroll_settings_moves_selection() {
+    let mut state = test_app_state();
+    state.active_tab = tab_index(&state, &p2p_app::tui_tabs::TabContent::Settings);
+    state.network_peers = two_network_peers();
+    state.network_peer_selection = 0;
+
+    assert!(handle_mouse_scroll(&mut state, "down", None));
+    assert_eq!(state.network_peer_selection, 1);
+    assert!(handle_mouse_scroll(&mut state, "up", None));
+    assert_eq!(state.network_peer_selection, 0);
+}
+
+#[test]
+fn test_handle_mouse_scroll_shares_moves_selection() {
+    let mut state = test_app_state();
+    state.active_tab = tab_index(&state, &p2p_app::tui_tabs::TabContent::Shares);
+    state.shares = two_shares();
+    state.share_selection = 0;
+
+    assert!(handle_mouse_scroll(&mut state, "down", None));
+    assert_eq!(state.share_selection, 1);
+    assert!(handle_mouse_scroll(&mut state, "up", None));
+    assert_eq!(state.share_selection, 0);
+}
+
+#[test]
+fn test_handle_mouse_scroll_peer_info_is_noop() {
+    let mut state = test_app_state();
+    state.active_tab = state
+        .dynamic_tabs
+        .add_peer_info_tab("peer-wheel-unit".to_string());
+
+    assert!(!handle_mouse_scroll(&mut state, "down", None));
+    assert_eq!(state.peer_selection, 0);
+    assert_eq!(state.chat_scroll_offset, 0);
+}
+
+#[test]
+fn test_handle_mouse_scroll_list_ignores_unknown_direction() {
+    let mut state = app_state_with_peers(3);
+    state.active_tab = 1;
+    state.peer_selection = 0;
+
+    assert!(!handle_mouse_scroll(&mut state, "sideways", None));
+    assert_eq!(state.peer_selection, 0);
+}
+
 // ── handle_mouse_scroll: Direct tab ─────────────────────────────────────
 
 #[test]
