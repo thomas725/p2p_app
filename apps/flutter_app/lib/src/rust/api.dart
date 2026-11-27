@@ -4,6 +4,7 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import 'frb_generated.dart';
+import 'location.dart';
 import 'mobile_api.dart';
 import 'mobile_node.dart';
 import 'net_diag.dart';
@@ -441,6 +442,33 @@ Future<List<String>> quickReactions() =>
 /// re-derive the thresholds in Dart.
 Future<String> networkSizeLabel({required PlatformInt64 peerCount}) =>
     RustLib.instance.api.crateApiNetworkSizeLabel(peerCount: peerCount);
+
+/// Canonical, free OpenStreetMap URL for a coordinate pair.
+///
+/// Both frontends render the URL Rust builds; neither formats coordinates or
+/// constructs map links itself. Invalid coordinates fall back to `(0, 0)`
+/// rather than producing a malformed URL.
+Future<String> locationMapUrl({
+  required double latitude,
+  required double longitude,
+}) => RustLib.instance.api.crateApiLocationMapUrl(
+  latitude: latitude,
+  longitude: longitude,
+);
+
+/// Validate a location share and render the canonical DM body.
+///
+/// Rust owns coordinate, accuracy, frequency, duration and session validation;
+/// a frontend never sends a location before this accepts it.
+///
+/// # Errors
+/// Returns a human-readable validation error for invalid input.
+Future<String> buildLocationMessage({required LocationShareInput input}) =>
+    RustLib.instance.api.crateApiBuildLocationMessage(input: input);
+
+/// Whether a message body is a canonical location share.
+Future<bool> isLocationMessage({required String content}) =>
+    RustLib.instance.api.crateApiIsLocationMessage(content: content);
 
 /// Resolve this install's user ID from its stored identity and binding.
 ///

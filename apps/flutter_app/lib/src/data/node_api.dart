@@ -24,6 +24,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
 import 'package:p2p_app_flutter/src/data/frb_node_api.dart';
 import 'package:p2p_app_flutter/src/rust/api.dart'
     show BindShareParams, CreateShareParams, MobileShare, MobileShareGrant;
+import 'package:p2p_app_flutter/src/rust/location.dart' show LocationShareInput;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
@@ -266,6 +267,22 @@ abstract class NodeApi {
   Future<bool> validateNickname({required String nickname});
 
   Future<String> networkSizeLabel({required int peerCount});
+
+  // --- Location sharing ---
+
+  /// Canonical free map URL Rust builds for a coordinate pair.
+  Future<String> locationMapUrl({
+    required double latitude,
+    required double longitude,
+  });
+
+  /// Validate a location share and build the canonical DM body. Rust owns all
+  /// coordinate/frequency/duration validation; never send a location that this
+  /// call rejected.
+  Future<String> buildLocationMessage({required LocationShareInput input});
+
+  /// Whether a message body is a canonical location share.
+  Future<bool> isLocationMessage({required String content});
 
   // --- Identity / device binding ---
 

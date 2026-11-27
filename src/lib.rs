@@ -72,6 +72,7 @@ pub mod files;
 pub mod fmt;
 pub mod groups;
 pub mod identity;
+pub mod location;
 pub mod logging;
 pub mod messages;
 #[cfg(feature = "mobile")]

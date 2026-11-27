@@ -12,6 +12,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/api.dart'
     show BindShareParams, CreateShareParams, MobileShare, MobileShareGrant;
+import 'package:p2p_app_flutter/src/rust/location.dart' show LocationShareInput;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
@@ -683,6 +684,41 @@ class FakeNodeApi implements NodeApi {
     final override = networkSizeLabelOverride;
     if (override != null) return override(peerCount);
     throw UnimplementedError('set networkSizeLabelOverride in this test');
+  }
+
+  /// Rust-owned location helpers. Tests override these rather than formatting
+  /// coordinates or URLs in Dart.
+  Future<String> Function(double latitude, double longitude)?
+  locationMapUrlOverride;
+  Future<String> Function(LocationShareInput input)?
+  buildLocationMessageOverride;
+  Future<bool> Function(String content)? isLocationMessageOverride;
+
+  @override
+  Future<String> locationMapUrl({
+    required double latitude,
+    required double longitude,
+  }) {
+    _record('locationMapUrl', {'latitude': latitude, 'longitude': longitude});
+    final override = locationMapUrlOverride;
+    if (override != null) return override(latitude, longitude);
+    throw UnimplementedError('set locationMapUrlOverride in this test');
+  }
+
+  @override
+  Future<String> buildLocationMessage({required LocationShareInput input}) {
+    _record('buildLocationMessage', input);
+    final override = buildLocationMessageOverride;
+    if (override != null) return override(input);
+    throw UnimplementedError('set buildLocationMessageOverride in this test');
+  }
+
+  @override
+  Future<bool> isLocationMessage({required String content}) {
+    _record('isLocationMessage', content);
+    final override = isLocationMessageOverride;
+    if (override != null) return override(content);
+    throw UnimplementedError('set isLocationMessageOverride in this test');
   }
 
   @override

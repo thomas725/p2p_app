@@ -8,6 +8,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'frb_generated.dart';
+import 'location.dart';
 import 'mobile_api.dart';
 import 'mobile_node.dart';
 import 'net_diag.dart';
@@ -58,6 +59,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double dco_decode_box_autoadd_f_64(dynamic raw);
 
   @protected
+  LocationShareInput dco_decode_box_autoadd_location_share_input(dynamic raw);
+
+  @protected
   MobileAttachment dco_decode_box_autoadd_mobile_attachment(dynamic raw);
 
   @protected
@@ -82,6 +86,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   SwarmEventJson dco_decode_box_autoadd_swarm_event_json(dynamic raw);
+
+  @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw);
 
   @protected
   ChatMessage dco_decode_chat_message(dynamic raw);
@@ -179,6 +186,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ShareEntry> dco_decode_list_share_entry(dynamic raw);
 
   @protected
+  LocationShareInput dco_decode_location_share_input(dynamic raw);
+
+  @protected
   MobileAttachment dco_decode_mobile_attachment(dynamic raw);
 
   @protected
@@ -252,6 +262,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   SwarmEventJson? dco_decode_opt_box_autoadd_swarm_event_json(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
 
   @protected
   Int16List? dco_decode_opt_list_prim_i_16_strict(dynamic raw);
@@ -344,6 +357,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double sse_decode_box_autoadd_f_64(SseDeserializer deserializer);
 
   @protected
+  LocationShareInput sse_decode_box_autoadd_location_share_input(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   MobileAttachment sse_decode_box_autoadd_mobile_attachment(
     SseDeserializer deserializer,
   );
@@ -376,6 +394,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SwarmEventJson sse_decode_box_autoadd_swarm_event_json(
     SseDeserializer deserializer,
   );
+
+  @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
 
   @protected
   ChatMessage sse_decode_chat_message(SseDeserializer deserializer);
@@ -501,6 +522,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ShareEntry> sse_decode_list_share_entry(SseDeserializer deserializer);
 
   @protected
+  LocationShareInput sse_decode_location_share_input(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   MobileAttachment sse_decode_mobile_attachment(SseDeserializer deserializer);
 
   @protected
@@ -594,6 +620,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SwarmEventJson? sse_decode_opt_box_autoadd_swarm_event_json(
     SseDeserializer deserializer,
   );
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
 
   @protected
   Int16List? sse_decode_opt_list_prim_i_16_strict(SseDeserializer deserializer);
@@ -691,6 +720,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_location_share_input(
+    LocationShareInput self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_mobile_attachment(
     MobileAttachment self,
     SseSerializer serializer,
@@ -737,6 +772,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     SwarmEventJson self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_chat_message(ChatMessage self, SseSerializer serializer);
@@ -904,6 +942,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_location_share_input(
+    LocationShareInput self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_mobile_attachment(
     MobileAttachment self,
     SseSerializer serializer,
@@ -1034,6 +1078,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     SwarmEventJson? self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_list_prim_i_16_strict(

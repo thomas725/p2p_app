@@ -14,6 +14,7 @@ import 'package:p2p_app_flutter/src/data/node_transport.dart';
 import 'package:p2p_app_flutter/src/data/shares_json.dart';
 import 'package:p2p_app_flutter/src/rust/api.dart'
     show BindShareParams, CreateShareParams, MobileShare, MobileShareGrant;
+import 'package:p2p_app_flutter/src/rust/location.dart' show LocationShareInput;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
@@ -868,6 +869,40 @@ class HttpNodeApi implements NodeApi {
   @override
   Future<String> networkSizeLabel({required int peerCount}) async =>
       await _call('networkSizeLabel', {'peerCount': peerCount}) as String;
+
+  @override
+  Future<String> locationMapUrl({
+    required double latitude,
+    required double longitude,
+  }) async =>
+      await _call('locationMapUrl', {
+            'latitude': latitude,
+            'longitude': longitude,
+          })
+          as String;
+
+  @override
+  Future<String> buildLocationMessage({
+    required LocationShareInput input,
+  }) async =>
+      await _call('buildLocationMessage', {
+            'latitude': input.latitude,
+            'longitude': input.longitude,
+            'accuracy': input.accuracy,
+            'mode': input.mode,
+            'durationSecs': input.durationSecs,
+            'sensorIntervalSecs': input.sensorIntervalSecs,
+            'sendIntervalSecs': input.sendIntervalSecs,
+            'motionGate': input.motionGate,
+            'sessionId': input.sessionId,
+            'sequence': input.sequence,
+            'isFinal': input.isFinal,
+          })
+          as String;
+
+  @override
+  Future<bool> isLocationMessage({required String content}) async =>
+      await _call('isLocationMessage', {'content': content}) as bool;
 
   // ── Identity / device binding ─────────────────────────────────────────────
 

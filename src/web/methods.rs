@@ -104,6 +104,9 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "isAtBottom"
         | "parseLastSeenMs"
         | "replyDraft"
+        | "locationMapUrl"
+        | "buildLocationMessage"
+        | "isLocationMessage"
         | "setTheme"
         | "setNotificationSettings") => ui_helpers(m, params),
         other => Err(format!("unknown method: {other}")),
@@ -544,6 +547,18 @@ fn ui_helpers(method: &str, params: Value) -> Result<Value, String> {
             let p: ThemeParams = parse(params)?;
             json(api::set_theme(p.dark, &p.accent_name))
         }
+        "locationMapUrl" => {
+            let p: LocationMapUrlParams = parse(params)?;
+            ok(api::location_map_url(p.latitude, p.longitude))
+        }
+        "buildLocationMessage" => {
+            let p: BuildLocationMessageParams = parse(params)?;
+            json(api::build_location_message(p.into()))
+        }
+        "isLocationMessage" => {
+            let p: IsLocationMessageParams = parse(params)?;
+            ok(api::is_location_message(&p.content))
+        }
         "setNotificationSettings" => {
             let p: NotificationSettingsParams = parse(params)?;
             json(api::set_notification_settings(p.sound, p.desktop))
@@ -789,6 +804,54 @@ struct NotificationSettingsParams {
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct LocationMapUrlParams {
+    latitude: f64,
+    longitude: f64,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct IsLocationMessageParams {
+    content: String,
+}
+
+/// Web JSON mirror of the flat FRB location-share DTO (camelCase on the wire).
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct BuildLocationMessageParams {
+    latitude: f64,
+    longitude: f64,
+    accuracy: f64,
+    mode: String,
+    duration_secs: Option<u32>,
+    sensor_interval_secs: u32,
+    send_interval_secs: u32,
+    motion_gate: bool,
+    session_id: String,
+    sequence: u32,
+    is_final: bool,
+}
+
+impl From<BuildLocationMessageParams> for crate::location::LocationShareInput {
+    fn from(p: BuildLocationMessageParams) -> Self {
+        Self {
+            latitude: p.latitude,
+            longitude: p.longitude,
+            accuracy: p.accuracy,
+            mode: p.mode,
+            duration_secs: p.duration_secs,
+            sensor_interval_secs: p.sensor_interval_secs,
+            send_interval_secs: p.send_interval_secs,
+            motion_gate: p.motion_gate,
+            session_id: p.session_id,
+            sequence: p.sequence,
+            is_final: p.is_final,
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ProvisionParams {
     self_username: Option<String>,
     self_nickname: Option<String>,
@@ -990,6 +1053,53 @@ mod tests {
         // The previous web arm parsed a bare String, which is not what any
         // frontend sends — keep the mismatch documented so it cannot regress.
         assert!(parse::<StartNodeParams>(json!("/tmp/p2p-test.db")).is_err());
+    }
+
+    #[test]
+    fn location_methods_are_routed_and_validate_params() {
+        // All three methods take parameters, so Null is a safe probe that each
+        // is reachable through the shared dispatcher.
+        for method in [
+            "locationMapUrl",
+            "buildLocationMessage",
+            "isLocationMessage",
+        ] {
+            let err = dispatch(method, Value::Null).expect_err("missing params must fail");
+            assert!(
+                err.starts_with("invalid params:"),
+                "{method}: unexpected error: {err}"
+            );
+        }
+        let url = dispatch(
+            "locationMapUrl",
+            json!({"latitude": 52.52, "longitude": 13.405}),
+        )
+        .expect("url");
+        assert!(
+            url.as_str()
+                .is_some_and(|u| u.contains("openstreetmap.org")),
+            "{url}"
+        );
+        let body = dispatch(
+            "buildLocationMessage",
+            json!({
+                "latitude": 52.52, "longitude": 13.405, "accuracy": 12.5,
+                "mode": "once", "durationSecs": null, "sensorIntervalSecs": 10,
+                "sendIntervalSecs": 60, "motionGate": true,
+                "sessionId": "s-1", "sequence": 1, "isFinal": false
+            }),
+        )
+        .expect("body");
+        assert!(
+            body.as_str().is_some_and(|b| b.starts_with("[Location]")),
+            "{body}"
+        );
+        let detected = dispatch(
+            "isLocationMessage",
+            json!({"content": body.as_str().unwrap_or("")}),
+        )
+        .expect("detected");
+        assert_eq!(detected, json!(true));
     }
 
     #[test]

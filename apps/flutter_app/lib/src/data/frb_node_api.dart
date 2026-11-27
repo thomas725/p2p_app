@@ -11,6 +11,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
 
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/api.dart' as bridge;
+import 'package:p2p_app_flutter/src/rust/location.dart' as location;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart' as mobile;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart' as node;
@@ -332,6 +333,21 @@ class FrbNodeApi implements NodeApi {
   @override
   Future<String> networkSizeLabel({required int peerCount}) =>
       bridge.networkSizeLabel(peerCount: PlatformInt64Util.from(peerCount));
+
+  @override
+  Future<String> locationMapUrl({
+    required double latitude,
+    required double longitude,
+  }) => bridge.locationMapUrl(latitude: latitude, longitude: longitude);
+
+  @override
+  Future<String> buildLocationMessage({
+    required location.LocationShareInput input,
+  }) => bridge.buildLocationMessage(input: input);
+
+  @override
+  Future<bool> isLocationMessage({required String content}) =>
+      bridge.isLocationMessage(content: content);
 
   // ── Identity / device binding ─────────────────────────────────────────────
 

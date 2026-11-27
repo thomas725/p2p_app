@@ -546,6 +546,37 @@ pub fn network_size_label(peer_count: i64) -> String {
     crate::network::network_size_label(peer_count)
 }
 
+// --- Location sharing ---
+
+/// Canonical, free OpenStreetMap URL for a coordinate pair.
+///
+/// Both frontends render the URL Rust builds; neither formats coordinates or
+/// constructs map links itself. Invalid coordinates fall back to `(0, 0)`
+/// rather than producing a malformed URL.
+#[must_use]
+pub fn location_map_url(latitude: f64, longitude: f64) -> String {
+    crate::location::location_map_url(latitude, longitude)
+}
+
+/// Validate a location share and render the canonical DM body.
+///
+/// Rust owns coordinate, accuracy, frequency, duration and session validation;
+/// a frontend never sends a location before this accepts it.
+///
+/// # Errors
+/// Returns a human-readable validation error for invalid input.
+pub fn build_location_message(
+    input: crate::location::LocationShareInput,
+) -> Result<String, String> {
+    crate::location::build_location_message(input)
+}
+
+/// Whether a message body is a canonical location share.
+#[must_use]
+pub fn is_location_message(content: &str) -> bool {
+    crate::location::is_location_message(content)
+}
+
 // --- Identity lane ---
 
 /// Resolve this install's user ID from its stored identity and binding.
