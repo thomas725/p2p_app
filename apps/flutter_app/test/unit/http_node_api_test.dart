@@ -838,6 +838,33 @@ void main() {
       });
     });
 
+    test('setShareVisibility sends camelCase params and parses the row', () async {
+      final fake = FakeRemoteTransport();
+      fake.onSend = (frame) {
+        final request = fake.frame(fake.sentFrames.length - 1);
+        expect(request['method'], 'setShareVisibility');
+        fake.respond(request, ok: {
+          ...shareJson,
+          'kind': 'public',
+          'publicWrite': true,
+        });
+      };
+      final api = HttpNodeApi(connect: () async => fake);
+
+      final updated = await api.setShareVisibility(
+        shareId: 'share-1',
+        kind: 'public',
+        publicWrite: true,
+      );
+      expect(updated.kind, 'public');
+      expect(updated.publicWrite, isTrue);
+      expect(fake.frame(0)['params'], {
+        'shareId': 'share-1',
+        'kind': 'public',
+        'publicWrite': true,
+      });
+    });
+
     test('manifest/offer/publish shapes round-trip through JSON', () async {
       final fake = FakeRemoteTransport();
       fake.onSend = (frame) {

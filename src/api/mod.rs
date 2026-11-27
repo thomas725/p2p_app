@@ -903,6 +903,26 @@ pub fn bind_share(params: BindShareParams) -> Result<(), String> {
         .map_err(|error| error.to_string())
 }
 
+/// Change a locally owned share's visibility and public-write flag.
+///
+/// The local user id is resolved here (never accepted from a client), and the
+/// canonical store refuses peer-owned shares. `kind` is `private` or `public`.
+///
+/// # Errors
+/// Returns an error for an invalid kind, a missing local user, a peer-owned or
+/// unknown share, or a DB failure.
+pub fn set_share_visibility(
+    share_id: &str,
+    kind: &str,
+    public_write: bool,
+) -> Result<MobileShare, String> {
+    let owner = local_share_owner()?;
+    let share =
+        crate::shares::set_visibility(share_id, &owner, parse_share_kind(kind)?, public_write)
+            .map_err(|error| error.to_string())?;
+    Ok(share.into())
+}
+
 /// Delete a share row. Blobs and the bound folder are left untouched.
 ///
 /// # Errors

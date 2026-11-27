@@ -426,6 +426,17 @@ class FrbNodeApi implements NodeApi {
       bridge.deleteShare(shareId: shareId);
 
   @override
+  Future<bridge.MobileShare> setShareVisibility({
+    required String shareId,
+    required String kind,
+    required bool publicWrite,
+  }) => bridge.setShareVisibility(
+    shareId: shareId,
+    kind: kind,
+    publicWrite: publicWrite,
+  );
+
+  @override
   Future<List<bridge.MobileShareGrant>> listShareGrants(String shareId) =>
       bridge.listShareGrants(shareId: shareId);
 

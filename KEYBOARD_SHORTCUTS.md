@@ -329,11 +329,13 @@ message while the Settings tab is active.
 ## Shares tab
 
 A selectable list of this install's shares on the left and the highlighted
-share's details on the right: owner, local root, revision, private-share
-grants and manifest files. The latest `share_offered` / `share_updated` /
-`share_rejected` event appears as a "Last event" line. Creation, binding,
-snapshots, public/write toggles and publish actions are still Flutter/web
-actions; grants are editable here too.
+share's details on the right: owner, local root, revision, visibility,
+private-share grants and manifest files. The latest `share_offered` /
+`share_updated` / `share_rejected` event appears as a "Last event" line.
+Locally owned shares can be toggled between private/public and can allow
+anonymous writes while public; the canonical store refuses changes to accepted
+peer shares. Grants are editable here too. Creation, binding, snapshots and
+publish actions remain Flutter/web actions.
 
 | Key | Action |
 |-----|--------|
@@ -344,6 +346,8 @@ actions; grants are editable here too.
 | `Click` in the list pane | Select that share (the detail pane follows) |
 | `a` | Add or upgrade a grant on the selected private share |
 | `x` | Revoke the highlighted grant |
+| `p` | Toggle the selected owned share between private and public |
+| `w` | Toggle anonymous writes on the selected owned public share |
 | `r` | Re-read the share list from Rust |
 | `Esc` | Return to the Chat tab |
 

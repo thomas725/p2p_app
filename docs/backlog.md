@@ -205,12 +205,18 @@ Shipped after the core:
   sessions cover both prompts, cursor isolation, validation failures, DB
   effects and prompt pointer ownership. Record:
   [`archive/2026-11-27_tui_share_grant_editor.md`](archive/2026-11-27_tui_share_grant_editor.md).
+- canonical share visibility/write setters with owner-only toggles in both
+  frontends: `shares::set_visibility` normalises `public_write` and refuses
+  peer-owned shares; FRB/web `setShareVisibility` resolves the local owner,
+  TUI uses `p`/`w`, and Flutter's detail route shows owner-only controls that
+  keep the returned row. Record:
+  [`archive/2026-11-27_share_visibility_toggles.md`](archive/2026-11-27_share_visibility_toggles.md).
 
 Still open (UI/integration, not protocol work):
 
-- TUI Shares tab actions: create/bind/snapshot, public/write toggles and
-  offer/manifest/publish actions (the list, detail, event notice and grant
-  editor already ship);
+- TUI Shares tab actions: create/bind/snapshot and offer/manifest/publish
+  actions (the list, detail, event notice, grant and visibility editors
+  already ship);
 - Native share creation/binding and folder snapshot UI. Deletion publishing,
   discovery, manifest refresh and re-advertise already ship on both transports;
   the browser remains a display client — adding new files needs a real local

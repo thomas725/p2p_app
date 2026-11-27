@@ -989,6 +989,19 @@ class HttpNodeApi implements NodeApi {
   }
 
   @override
+  Future<MobileShare> setShareVisibility({
+    required String shareId,
+    required String kind,
+    required bool publicWrite,
+  }) async => mobileShareFromJson(
+    (await _call('setShareVisibility', {
+      'shareId': shareId,
+      'kind': kind,
+      'publicWrite': publicWrite,
+    }) as Map<String, dynamic>),
+  );
+
+  @override
   Future<List<MobileShareGrant>> listShareGrants(String shareId) async {
     final raw =
         await _call('listShareGrants', {'shareId': shareId}) as List<dynamic>;

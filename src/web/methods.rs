@@ -86,6 +86,7 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "getShare"
         | "bindShare"
         | "deleteShare"
+        | "setShareVisibility"
         | "listShareGrants"
         | "setShareGrant"
         | "removeShareGrant"
@@ -220,6 +221,14 @@ fn shares(method: &str, params: Value) -> Result<Value, String> {
         "deleteShare" => {
             let p: ShareIdParams = parse(params)?;
             json(api::delete_share(&p.share_id))
+        }
+        "setShareVisibility" => {
+            let p: ShareVisibilityParams = parse(params)?;
+            json(api::set_share_visibility(
+                &p.share_id,
+                &p.kind,
+                p.public_write,
+            ))
         }
         "listShareGrants" => {
             let p: ShareIdParams = parse(params)?;
@@ -912,6 +921,14 @@ struct WebCreateShareParams {
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct ShareVisibilityParams {
+    share_id: String,
+    kind: String,
+    public_write: bool,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ShareGrantParams {
     share_id: String,
     user_id: String,
@@ -988,6 +1005,7 @@ mod tests {
             "getShare",
             "bindShare",
             "deleteShare",
+            "setShareVisibility",
             "listShareGrants",
             "setShareGrant",
             "removeShareGrant",

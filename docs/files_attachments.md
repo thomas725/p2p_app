@@ -8,10 +8,10 @@ DMs, broadcast, and groups.
 This document is the lane's reference: the wire design, the store surface, and
 the blob lifecycle. It also covers the versioned file-share/folder-sync
 extension built on the same store. Its Rust core and both frontends' list,
-detail and private-share grant editor have shipped, along with Flutter/web
-discovery, network actions and deletion publishing; native creation/binding/
-snapshot UI, public/write toggles and TUI offer/manifest/publish actions stay
-open in [`backlog.md`](backlog.md). The code is the authority.
+detail, private-share grant and visibility editors have shipped, along with
+Flutter/web discovery, network actions and deletion publishing; native
+creation/binding/snapshot UI and TUI offer/manifest/publish actions stay open
+in [`backlog.md`](backlog.md). The code is the authority.
 
 ## Wire design
 
@@ -169,10 +169,12 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   a grant, `x` revokes the highlighted grant, and `Ctrl+Up`/`Ctrl+Down` moves
   the grant cursor. `Enter` commits through `shares::set_grant` /
   `shares::remove_grant` directly, so no FRB/web method changed; `Esc` leaves
-  the persisted grants untouched. Share events and grant commits reload the
-  canonical store and leave a visible notice. Native creation/binding/folder
-  snapshots, public/write toggles and TUI offer/manifest/publish actions remain
-  deferred.
+  the persisted grants untouched. `p` toggles private/public and `w` toggles
+  anonymous writes through `shares::set_visibility`, while Flutter's owner-only
+  detail controls use the same setter via FRB/web `setShareVisibility`. Share
+  events and editor commits reload the canonical store and leave a visible
+  notice. Native creation/binding/folder snapshots and TUI
+  offer/manifest/publish actions remain deferred.
 
 ## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
 

@@ -28,6 +28,7 @@ fn detail_lines(
     grants: &[ShareGrant],
     grant_selection: usize,
     notice: Option<&str>,
+    own_user_id: Option<&str>,
 ) -> Vec<String> {
     let mut lines = Vec::new();
     if let Some(notice) = notice {
@@ -51,6 +52,9 @@ fn detail_lines(
         share.local_root.as_deref().unwrap_or("not bound")
     ));
     lines.push(format!("Revision: {}", share.revision));
+    if own_user_id.is_some_and(|id| id == share.owner_user_id) {
+        lines.push("Access: p: toggle visibility | w: toggle public writes".to_string());
+    }
     // Public shares have no ACL rows; mirror Flutter, which hides the Grants
     // section unless the share is private.
     if share.kind == ShareKind::Private {
@@ -126,6 +130,7 @@ pub fn render_shares_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRend
         grants,
         state.share_grant_selection,
         state.share_event_notice.as_deref(),
+        state.own_user_id.as_deref(),
     );
     let para = Paragraph::new(lines.join("\n"))
         .block(bordered_block("Share details".to_string()))

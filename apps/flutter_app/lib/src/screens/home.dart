@@ -1210,6 +1210,13 @@ class _HomeScreenState extends State<HomeScreen> {
           share: share,
           loadManifest: nodeApi.loadShareManifest,
           loadGrants: nodeApi.listShareGrants,
+          ownUserId: _ownUserId,
+          onSetVisibility: (shareId, kind, publicWrite) =>
+              nodeApi.setShareVisibility(
+            shareId: shareId,
+            kind: kind,
+            publicWrite: publicWrite,
+          ),
           onSetGrant: (shareId, userId, mode) => nodeApi.setShareGrant(
             shareId: shareId,
             userId: userId,

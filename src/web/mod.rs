@@ -798,6 +798,7 @@ mod tests {
             "getShare",
             "bindShare",
             "deleteShare",
+            "setShareVisibility",
             "listShareGrants",
             "setShareGrant",
             "removeShareGrant",

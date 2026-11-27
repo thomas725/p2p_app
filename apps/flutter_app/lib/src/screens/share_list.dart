@@ -148,6 +148,8 @@ class ShareDetailScreen extends StatefulWidget {
     required this.share,
     required this.loadManifest,
     required this.loadGrants,
+    this.ownUserId,
+    this.onSetVisibility,
     this.onSetGrant,
     this.onRemoveGrant,
     this.peerIds = const [],
@@ -161,6 +163,19 @@ class ShareDetailScreen extends StatefulWidget {
   final MobileShare share;
   final Future<ShareManifest?> Function(String shareId) loadManifest;
   final Future<List<MobileShareGrant>> Function(String shareId) loadGrants;
+
+  /// This install's user id, used only to decide whether the local visibility
+  /// controls apply. Rust repeats the ownership check before every write.
+  final String? ownUserId;
+
+  /// Optional visibility editor seam. Home supplies it so both transports use
+  /// the same Rust-owned `private`/`public` + `publicWrite` setter.
+  final Future<MobileShare> Function(
+    String shareId,
+    String kind,
+    bool publicWrite,
+  )?
+  onSetVisibility;
 
   /// Optional permission editor seams. When omitted the page stays purely
   /// read-only (widget tests and transports that cannot edit a share).
@@ -187,15 +202,18 @@ class ShareDetailScreen extends StatefulWidget {
 }
 
 class _ShareDetailScreenState extends State<ShareDetailScreen> {
+  late MobileShare _share;
   ShareManifest? _manifest;
   List<MobileShareGrant> _grants = const [];
   bool _loading = true;
   String? _error;
   String? _actionError;
+  String? _visibilityError;
 
   @override
   void initState() {
     super.initState();
+    _share = widget.share;
     unawaited(_reload());
   }
 
@@ -206,8 +224,8 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
       _actionError = null;
     });
     try {
-      final manifest = await widget.loadManifest(widget.share.shareId);
-      final grants = await widget.loadGrants(widget.share.shareId);
+      final manifest = await widget.loadManifest(_share.shareId);
+      final grants = await widget.loadGrants(_share.shareId);
       if (!mounted) return;
       setState(() {
         _manifest = manifest;
@@ -227,7 +245,7 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.share.name),
+        title: Text(_share.name),
         actions: [
           IconButton(
             key: const Key('share-detail-refresh'),
@@ -269,21 +287,22 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 _section('Overview', [
-                  _row('Share ID', widget.share.shareId),
-                  _row('Kind', widget.share.kind),
-                  _row('Owner', widget.share.ownerUserId),
-                  _row('Revision', '${widget.share.revision.toInt()}'),
-                  _row('Public write', widget.share.publicWrite ? 'yes' : 'no'),
+                  _row('Share ID', _share.shareId),
+                  _row('Kind', _share.kind),
+                  _row('Owner', _share.ownerUserId),
+                  _row('Revision', '${_share.revision.toInt()}'),
+                  _row('Public write', _share.publicWrite ? 'yes' : 'no'),
                   _row(
                     'Local root',
-                    widget.share.localRoot ?? 'Not bound on this device',
+                    _share.localRoot ?? 'Not bound on this device',
                   ),
                 ]),
-                if (widget.share.kind == 'private') _grantsSection(),
+                if (_canEditVisibility) _visibilitySection(),
+                if (_share.kind == 'private') _grantsSection(),
                 if (widget.onRequestManifest != null &&
                     widget.onReadvertise != null)
                   ShareNetworkSection(
-                    share: widget.share,
+                    share: _share,
                     peerIds: widget.peerIds,
                     onRequestManifest: widget.onRequestManifest!,
                     onReadvertise: widget.onReadvertise!,
@@ -291,7 +310,7 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
                   ),
                 if (widget.onPublish != null)
                   SharePublishSection(
-                    share: widget.share,
+                    share: _share,
                     manifest: _manifest,
                     peerIds: widget.peerIds,
                     onPublish: widget.onPublish!,
@@ -319,6 +338,65 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
               ],
             ),
     );
+  }
+
+  /// Visibility controls are owner-only; Rust repeats the same check so a
+  /// stale UI cannot reclassify a peer-owned share.
+  bool get _canEditVisibility =>
+      widget.onSetVisibility != null &&
+      widget.ownUserId != null &&
+      widget.ownUserId == _share.ownerUserId;
+
+  Widget _visibilitySection() {
+    final isPrivate = _share.kind == 'private';
+    final children = <Widget>[
+      Wrap(
+        spacing: 8,
+        children: [
+          FilledButton(
+            key: const Key('share-visibility-private'),
+            onPressed: isPrivate ? null : () => _setVisibility('private', false),
+            child: const Text('Private'),
+          ),
+          FilledButton.tonal(
+            key: const Key('share-visibility-public'),
+            onPressed: !isPrivate ? null : () => _setVisibility('public', false),
+            child: const Text('Public'),
+          ),
+        ],
+      ),
+      if (!isPrivate)
+        SwitchListTile(
+          key: const Key('share-public-write'),
+          title: const Text('Allow anonymous writes'),
+          value: _share.publicWrite,
+          onChanged: (value) => _setVisibility('public', value),
+        ),
+      if (_visibilityError != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            _visibilityError!,
+            key: const Key('share-visibility-error'),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ),
+    ];
+    return _section('Access', children);
+  }
+
+  Future<void> _setVisibility(String kind, bool publicWrite) async {
+    final setter = widget.onSetVisibility;
+    if (setter == null) return;
+    setState(() => _visibilityError = null);
+    try {
+      final updated = await setter(_share.shareId, kind, publicWrite);
+      if (!mounted) return;
+      setState(() => _share = updated);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _visibilityError = 'Failed to change visibility: $e');
+    }
   }
 
   /// Private-share grants, with revoke/add controls only when Home supplied
@@ -379,7 +457,7 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
     if (remove == null) return;
     setState(() => _actionError = null);
     try {
-      await remove(widget.share.shareId, grant.userId);
+      await remove(_share.shareId, grant.userId);
       if (!mounted) return;
       await _reload();
     } catch (e) {
@@ -395,7 +473,7 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
       context: context,
       builder: (_) => _AddGrantDialog(
         onSubmit: (userId, mode) =>
-            setGrant(widget.share.shareId, userId, mode),
+            setGrant(_share.shareId, userId, mode),
       ),
     );
     if (added == true && mounted) await _reload();

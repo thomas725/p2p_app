@@ -5303,8 +5303,10 @@ async fn test_group_message_cursor_highlights_row_through_real_keys() {
 
 /// Set up one share in an isolated DB and land the real app on its Shares tab.
 /// The returned `TempDir` must outlive every DB call in the test.
-fn share_grant_db_state(
+fn share_db_state(
+    owner: &str,
     kind: p2p_app::shares::ShareKind,
+    public_write: bool,
     grants: &[(&str, p2p_app::shares::ShareMode)],
 ) -> (TempDir, AppState, String) {
     let dir = TempDir::new().expect("tempdir");
@@ -5312,16 +5314,31 @@ fn share_grant_db_state(
     p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
     p2p_app::db::init_database().expect("init db");
 
-    let share =
-        p2p_app::shares::create_share("Docs", "owner", kind, false, None).expect("create share");
+    let share = p2p_app::shares::create_share("Docs", owner, kind, public_write, None)
+        .expect("create share");
     for &(user_id, mode) in grants {
         p2p_app::shares::set_grant(&share.share_id, user_id, mode).expect("seed grant");
     }
 
     let mut state = test_app_state();
     state.active_tab = shares_tab_index(&state);
+    state.own_user_id = Some("owner".to_string());
     state.reload_shares();
     (dir, state, share.share_id)
+}
+
+fn share_grant_db_state(
+    kind: p2p_app::shares::ShareKind,
+    grants: &[(&str, p2p_app::shares::ShareMode)],
+) -> (TempDir, AppState, String) {
+    share_db_state("owner", kind, false, grants)
+}
+
+fn share_kind_and_write(share_id: &str) -> (p2p_app::shares::ShareKind, bool) {
+    let share = p2p_app::shares::get_share(share_id)
+        .expect("get share")
+        .expect("present");
+    (share.kind, share.public_write)
 }
 
 fn close_share_grant_db() {
@@ -5630,6 +5647,114 @@ fn test_share_grant_editor_owns_tab_and_mouse_until_cancelled() {
                 mode: p2p_app::shares::ShareMode::ReadOnly,
             }],
             "Esc must leave the persisted grants untouched"
+        );
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_visibility_keys_persist_and_reload() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, state, share_id) =
+            share_db_state("owner", p2p_app::shares::ShareKind::Private, false, &[]);
+        let mut session = KeySession::new(state);
+        assert!(
+            session
+                .frame_text()
+                .await
+                .contains("Access: p: toggle visibility | w: toggle public writes")
+        );
+
+        assert!(!session.press_char('p').await);
+        assert_eq!(
+            share_kind_and_write(&share_id),
+            (p2p_app::shares::ShareKind::Public, false)
+        );
+        {
+            let s = session.state.lock().await;
+            assert_eq!(
+                s.share_event_notice.as_deref(),
+                Some("Share is public (writes: no)")
+            );
+        }
+        assert!(
+            session
+                .frame_text()
+                .await
+                .contains("Kind: public (writes: no)")
+        );
+
+        assert!(!session.press_char('w').await);
+        assert_eq!(
+            share_kind_and_write(&share_id),
+            (p2p_app::shares::ShareKind::Public, true)
+        );
+        assert!(
+            session
+                .frame_text()
+                .await
+                .contains("Kind: public (writes: allowed)")
+        );
+
+        assert!(!session.press_char('p').await);
+        assert_eq!(
+            share_kind_and_write(&share_id),
+            (p2p_app::shares::ShareKind::Private, false),
+            "returning to private must clear anonymous writes"
+        );
+        assert!(
+            session
+                .frame_text()
+                .await
+                .contains("Kind: private (writes: no)")
+        );
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_visibility_keys_refuse_foreign_shares_and_private_writes() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, state, share_id) = share_db_state(
+            "peer-owner",
+            p2p_app::shares::ShareKind::Private,
+            false,
+            &[],
+        );
+        let mut session = KeySession::new(state);
+        assert!(!session.press_char('p').await);
+        assert_eq!(
+            session.state.lock().await.popup.as_deref(),
+            Some("Only the share owner can change visibility")
+        );
+        assert_eq!(
+            share_kind_and_write(&share_id),
+            (p2p_app::shares::ShareKind::Private, false)
+        );
+
+        let (_dir, state, share_id) =
+            share_db_state("owner", p2p_app::shares::ShareKind::Private, false, &[]);
+        let mut session = KeySession::new(state);
+        assert!(!session.press_char('w').await);
+        assert_eq!(
+            session.state.lock().await.popup.as_deref(),
+            Some("Only public shares can allow anonymous writes")
+        );
+        assert_eq!(
+            share_kind_and_write(&share_id),
+            (p2p_app::shares::ShareKind::Private, false)
         );
         assert!(session.drain_commands().is_empty());
     });

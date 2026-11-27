@@ -327,6 +327,14 @@ abstract class NodeApi {
 
   Future<void> deleteShare(String shareId);
 
+  /// Change visibility/public-write on a share owned by the local user.
+  /// Rust resolves the caller and refuses peer-owned shares.
+  Future<MobileShare> setShareVisibility({
+    required String shareId,
+    required String kind,
+    required bool publicWrite,
+  });
+
   Future<List<MobileShareGrant>> listShareGrants(String shareId);
 
   Future<void> setShareGrant({

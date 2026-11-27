@@ -20,12 +20,14 @@ MobileShare makeShare(
   required String kind,
   int revision = 1,
   String? localRoot,
+  String ownerUserId = 'user-owner',
+  bool publicWrite = false,
 }) => MobileShare(
   shareId: id,
-  ownerUserId: 'user-owner',
+  ownerUserId: ownerUserId,
   name: name,
   kind: kind,
-  publicWrite: false,
+  publicWrite: publicWrite,
   localRoot: localRoot,
   revision: revision,
 );
@@ -177,6 +179,75 @@ void main() {
 
     expect(find.text('Grants'), findsNothing);
     expect(find.text('No manifest received yet.'), findsOneWidget);
+  });
+
+  testWidgets('owner can change visibility through the injected setter', (
+    tester,
+  ) async {
+    final calls = <List<dynamic>>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShareDetailScreen(
+          share: makeShare('share-a', name: 'Docs', kind: 'private'),
+          loadManifest: (_) async => null,
+          loadGrants: (_) async => const [],
+          ownUserId: 'user-owner',
+          onSetVisibility: (shareId, kind, publicWrite) async {
+            calls.add([shareId, kind, publicWrite]);
+            return makeShare(
+              shareId,
+              name: 'Docs',
+              kind: kind,
+              publicWrite: publicWrite,
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Access'), findsOneWidget);
+    expect(find.byKey(const Key('share-visibility-private')), findsOneWidget);
+    expect(find.byKey(const Key('share-visibility-public')), findsOneWidget);
+    expect(find.byKey(const Key('share-public-write')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('share-visibility-public')));
+    await tester.pumpAndSettle();
+
+    expect(calls, [
+      ['share-a', 'public', false],
+    ]);
+    expect(find.byKey(const Key('share-public-write')), findsOneWidget);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+
+    await tester.tap(find.byKey(const Key('share-public-write')));
+    await tester.pumpAndSettle();
+    expect(calls.last, ['share-a', 'public', true]);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+  });
+
+  testWidgets('peer-owned shares have no visibility controls', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShareDetailScreen(
+          share: makeShare(
+            'share-a',
+            name: 'Docs',
+            kind: 'private',
+            ownerUserId: 'peer-owner',
+          ),
+          loadManifest: (_) async => null,
+          loadGrants: (_) async => const [],
+          ownUserId: 'user-owner',
+          onSetVisibility: (_, _, _) async => throw StateError('must not run'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Access'), findsNothing);
+    expect(find.byKey(const Key('share-visibility-private')), findsNothing);
+    expect(find.byKey(const Key('share-visibility-public')), findsNothing);
   });
 
   testWidgets('refresh button re-runs both loaders', (tester) async {

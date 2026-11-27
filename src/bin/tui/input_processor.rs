@@ -1472,6 +1472,73 @@ fn arm_revoke_share_grant(s: &mut super::state::AppState) {
     s.begin_revoke_share_grant(share_id, user_id);
 }
 
+/// Apply a visibility change to the highlighted locally owned share.
+///
+/// Ownership is checked in Rust before the canonical store write, so the UI
+/// cannot reclassify an accepted peer share. The store repeats the check.
+fn apply_share_visibility(
+    s: &mut super::state::AppState,
+    kind: p2p_app::shares::ShareKind,
+    public_write: bool,
+) {
+    let Some(share) = s.shares.get(s.share_selection).cloned() else {
+        s.popup = Some("No share selected".to_string());
+        return;
+    };
+    let Some(owner) = s.own_user_id.clone() else {
+        s.popup = Some("Local user is not provisioned".to_string());
+        return;
+    };
+    if share.owner_user_id != owner {
+        s.popup = Some("Only the share owner can change visibility".to_string());
+        return;
+    }
+    match p2p_app::shares::set_visibility(&share.share_id, &owner, kind, public_write) {
+        Ok(updated) => {
+            let notice = format!(
+                "Share is {} (writes: {})",
+                p2p_app::shares::kind_label(updated.kind),
+                if updated.public_write {
+                    "allowed"
+                } else {
+                    "no"
+                }
+            );
+            s.share_event_notice = Some(notice.clone());
+            s.reload_shares();
+            p2plog_debug(format!("Share visibility: {notice}"));
+        }
+        Err(error) => s.popup = Some(format!("Could not change share visibility: {error}")),
+    }
+}
+
+/// `p` flips private/public; `w` toggles anonymous writes only on public shares.
+fn toggle_share_visibility(s: &mut super::state::AppState) {
+    let Some(share) = s.shares.get(s.share_selection).cloned() else {
+        s.popup = Some("No share selected".to_string());
+        return;
+    };
+    let next = if share.kind == p2p_app::shares::ShareKind::Private {
+        p2p_app::shares::ShareKind::Public
+    } else {
+        p2p_app::shares::ShareKind::Private
+    };
+    let public_write = next == p2p_app::shares::ShareKind::Public && share.public_write;
+    apply_share_visibility(s, next, public_write);
+}
+
+fn toggle_share_public_write(s: &mut super::state::AppState) {
+    let Some(share) = s.shares.get(s.share_selection).cloned() else {
+        s.popup = Some("No share selected".to_string());
+        return;
+    };
+    if share.kind != p2p_app::shares::ShareKind::Public {
+        s.popup = Some("Only public shares can allow anonymous writes".to_string());
+        return;
+    }
+    apply_share_visibility(s, p2p_app::shares::ShareKind::Public, !share.public_write);
+}
+
 /// Commit the active grant editor through the canonical store, then re-read the
 /// Shares pane. Any validation or DB failure keeps the editor open with a hint.
 fn confirm_share_grant(s: &mut super::state::AppState) {
@@ -1887,6 +1954,18 @@ fn handle_tab_specific_shortcut(
             if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
         {
             arm_revoke_share_grant(s);
+            true
+        }
+        crossterm::event::KeyCode::Char('p')
+            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
+        {
+            toggle_share_visibility(s);
+            true
+        }
+        crossterm::event::KeyCode::Char('w')
+            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
+        {
+            toggle_share_public_write(s);
             true
         }
         crossterm::event::KeyCode::Char(c)

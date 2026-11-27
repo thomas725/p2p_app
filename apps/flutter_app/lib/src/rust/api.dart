@@ -671,6 +671,24 @@ Future<MobileShare?> getShare({required String shareId}) =>
 Future<void> bindShare({required BindShareParams params}) =>
     RustLib.instance.api.crateApiBindShare(params: params);
 
+/// Change a locally owned share's visibility and public-write flag.
+///
+/// The local user id is resolved here (never accepted from a client), and the
+/// canonical store refuses peer-owned shares. `kind` is `private` or `public`.
+///
+/// # Errors
+/// Returns an error for an invalid kind, a missing local user, a peer-owned or
+/// unknown share, or a DB failure.
+Future<MobileShare> setShareVisibility({
+  required String shareId,
+  required String kind,
+  required bool publicWrite,
+}) => RustLib.instance.api.crateApiSetShareVisibility(
+  shareId: shareId,
+  kind: kind,
+  publicWrite: publicWrite,
+);
+
 /// Delete a share row. Blobs and the bound folder are left untouched.
 ///
 /// # Errors

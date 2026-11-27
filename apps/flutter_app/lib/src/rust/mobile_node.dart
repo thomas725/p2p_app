@@ -196,6 +196,9 @@ class ChatMessageOrigin {
 }
 
 /// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12).
+///
+/// `Deserialize` lets pure Rust helpers accept the same projection back from
+/// the web client (FRB hands structs directly, web crosses JSON).
 class MobileAttachment {
   /// SHA-256 hex of the file bytes (content address)
   final String fileId;

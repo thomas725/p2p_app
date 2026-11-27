@@ -523,6 +523,40 @@ pub fn set_local_root(share_id: &str, local_root: Option<&str>) -> color_eyre::R
     Ok(())
 }
 
+/// Change a locally owned share's visibility and public-write flag.
+///
+/// `expected_owner_user_id` is supplied by the caller's resolved local user so
+/// accepted peer shares cannot be reclassified by this install. `public_write`
+/// is normalised through [`effective_public_write`], making anonymous writes
+/// impossible on a private share.
+///
+/// # Errors
+/// Returns an error if the share is unknown, not owned by the caller, or the
+/// DB write fails.
+pub fn set_visibility(
+    share_id: &str,
+    expected_owner_user_id: &str,
+    kind: ShareKind,
+    public_write: bool,
+) -> color_eyre::Result<Share> {
+    let mut share = get_share(share_id)?.ok_or_else(|| eyre!("unknown share: {share_id}"))?;
+    if share.owner_user_id != expected_owner_user_id {
+        return Err(eyre!("share is not owned by the local user"));
+    }
+    let public_write = effective_public_write(kind, public_write);
+    let conn = &mut crate::sqlite_connect()?;
+    diesel::update(shares::table.filter(shares::share_id.eq(share_id)))
+        .set((
+            shares::kind.eq(kind.as_i32()),
+            shares::public_write.eq(i32::from(public_write)),
+        ))
+        .execute(conn)
+        .wrap_err("failed to set share visibility")?;
+    share.kind = kind;
+    share.public_write = public_write;
+    Ok(share)
+}
+
 /// Set a target user's grant on a private share (upsert).
 ///
 /// # Errors

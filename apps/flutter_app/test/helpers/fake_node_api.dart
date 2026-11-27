@@ -790,6 +790,13 @@ class FakeNodeApi implements NodeApi {
   Future<void> deleteShare(String shareId) => throw UnimplementedError();
 
   @override
+  Future<MobileShare> setShareVisibility({
+    required String shareId,
+    required String kind,
+    required bool publicWrite,
+  }) => throw UnimplementedError();
+
+  @override
   Future<List<MobileShareGrant>> listShareGrants(String shareId) =>
       throw UnimplementedError();
 

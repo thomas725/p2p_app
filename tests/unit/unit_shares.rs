@@ -351,6 +351,54 @@ fn public_share_is_readable_by_default_and_write_is_opt_in() {
 
 #[test]
 #[serial(db)]
+fn owner_can_change_visibility_without_enabling_private_writes() {
+    with_test_db(|| {
+        let share =
+            create_share("Photos", "owner", ShareKind::Private, false, None).expect("create share");
+        assert_eq!(share.kind, ShareKind::Private);
+
+        let public =
+            set_visibility(&share.share_id, "owner", ShareKind::Public, true).expect("make public");
+        assert_eq!(public.kind, ShareKind::Public);
+        assert!(public.public_write);
+        assert!(can_read(&public.share_id, "any-peer"));
+        assert!(can_write(&public.share_id, "any-peer"));
+
+        let private = set_visibility(&share.share_id, "owner", ShareKind::Private, true)
+            .expect("make private");
+        assert_eq!(private.kind, ShareKind::Private);
+        assert!(!private.public_write);
+        assert!(!can_read(&private.share_id, "any-peer"));
+
+        let stored = get_share(&share.share_id).expect("get").expect("present");
+        assert_eq!(stored.kind, ShareKind::Private);
+        assert!(!stored.public_write);
+    });
+}
+
+#[test]
+#[serial(db)]
+fn visibility_changes_refuse_foreign_owners_and_unknown_shares() {
+    with_test_db(|| {
+        let share =
+            create_share("Photos", "owner", ShareKind::Private, false, None).expect("create share");
+        let error = set_visibility(&share.share_id, "stranger", ShareKind::Public, false)
+            .expect_err("a peer must not reclassify our share");
+        assert!(error.to_string().contains("not owned"));
+        assert_eq!(
+            get_share(&share.share_id)
+                .expect("get")
+                .expect("present")
+                .kind,
+            ShareKind::Private
+        );
+
+        assert!(set_visibility("missing", "owner", ShareKind::Public, false).is_err());
+    });
+}
+
+#[test]
+#[serial(db)]
 fn save_manifest_persists_entries_and_revision() {
     with_test_db(|| {
         let share =
