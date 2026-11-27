@@ -560,6 +560,7 @@ class _HomeScreenState extends State<HomeScreen> {
             event.latency,
             msgId: event.msgId,
             replyTo: event.replyTo,
+            attachment: event.attachment,
             encrypted: event.encrypted,
           );
         }
@@ -582,6 +583,7 @@ class _HomeScreenState extends State<HomeScreen> {
             event.latency,
             msgId: event.msgId,
             replyTo: event.replyTo,
+            attachment: event.attachment,
             encrypted: event.encrypted,
           );
         }
@@ -761,6 +763,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String? msgId,
     ReplyRef? replyTo,
     required bool encrypted,
+    MobileAttachment? attachment,
   }) async {
     try {
       final msg = await nodeApi.saveIncomingMessage(
@@ -771,6 +774,7 @@ class _HomeScreenState extends State<HomeScreen> {
         latency: latency,
         msgId: msgId,
         replyTo: replyTo,
+        attachment: attachment,
         encrypted: encrypted,
       );
       if (mounted) {
@@ -794,6 +798,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String? msgId,
     ReplyRef? replyTo,
     required bool encrypted,
+    MobileAttachment? attachment,
   }) async {
     try {
       await nodeApi.saveIncomingMessage(
@@ -804,6 +809,7 @@ class _HomeScreenState extends State<HomeScreen> {
         latency: latency,
         msgId: msgId,
         replyTo: replyTo,
+        attachment: attachment,
         encrypted: encrypted,
       );
     } catch (e) {
@@ -1213,10 +1219,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ownUserId: _ownUserId,
           onSetVisibility: (shareId, kind, publicWrite) =>
               nodeApi.setShareVisibility(
-            shareId: shareId,
-            kind: kind,
-            publicWrite: publicWrite,
-          ),
+                shareId: shareId,
+                kind: kind,
+                publicWrite: publicWrite,
+              ),
           onSetGrant: (shareId, userId, mode) => nodeApi.setShareGrant(
             shareId: shareId,
             userId: userId,

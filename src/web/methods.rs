@@ -364,6 +364,7 @@ fn messages(method: &str, params: Value) -> Result<Value, String> {
                 latency: p.latency,
                 msg_id: p.msg_id,
                 reply_to: p.reply_to,
+                attachment: p.attachment,
                 encrypted: p.encrypted,
             }))
         }
@@ -737,6 +738,11 @@ struct SaveIncomingParams {
     /// Immutable reply snapshot carried by the live event (US-006).
     #[serde(default)]
     reply_to: Option<crate::ReplyRef>,
+    /// Rust-built file descriptor from the live event (files lane §12). The
+    /// browser only echoes the `MobileAttachment` it received; Rust converts it
+    /// to the canonical store descriptor before persisting.
+    #[serde(default)]
+    attachment: Option<crate::mobile_node::MobileAttachment>,
     /// Whether the live DM arrived sealed end to end (US-042).
     #[serde(default)]
     encrypted: bool,

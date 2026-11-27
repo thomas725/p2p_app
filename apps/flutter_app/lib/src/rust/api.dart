@@ -985,6 +985,9 @@ class SaveIncomingMessageParams {
   /// Immutable reply snapshot (US-006).
   final ReplyRef? replyTo;
 
+  /// Rust-built file descriptor from the live event (files lane §12).
+  final MobileAttachment? attachment;
+
   /// Whether the DM arrived sealed end to end (US-042).
   final bool encrypted;
 
@@ -996,6 +999,7 @@ class SaveIncomingMessageParams {
     this.latency,
     this.msgId,
     this.replyTo,
+    this.attachment,
     required this.encrypted,
   });
 
@@ -1008,6 +1012,7 @@ class SaveIncomingMessageParams {
       latency.hashCode ^
       msgId.hashCode ^
       replyTo.hashCode ^
+      attachment.hashCode ^
       encrypted.hashCode;
 
   @override
@@ -1022,5 +1027,6 @@ class SaveIncomingMessageParams {
           latency == other.latency &&
           msgId == other.msgId &&
           replyTo == other.replyTo &&
+          attachment == other.attachment &&
           encrypted == other.encrypted;
 }

@@ -644,6 +644,17 @@ fn mobile_attachment(att: crate::files::MessageAttachment) -> MobileAttachment {
     }
 }
 
+impl From<MobileAttachment> for crate::files::MessageAttachment {
+    fn from(att: MobileAttachment) -> Self {
+        Self {
+            file_id: att.file_id,
+            name: att.name,
+            size: u64::try_from(att.size).unwrap_or(u64::MAX),
+            mime: att.mime,
+        }
+    }
+}
+
 fn attachment_from_row(attachment_json: Option<&str>) -> Option<MobileAttachment> {
     attachment_json
         .and_then(crate::files::attachment_from_json)
@@ -932,6 +943,9 @@ pub struct IncomingMessageData {
     pub msg_id: Option<String>,
     /// Immutable reply snapshot (US-006).
     pub reply_to: Option<crate::ReplyRef>,
+    /// File descriptor from the live event (files lane §12); persisted so a
+    /// reloaded row still renders the chip.
+    pub attachment: Option<crate::files::MessageAttachment>,
     /// Whether the DM arrived sealed (US-042); persisted.
     pub encrypted: bool,
 }
@@ -952,6 +966,7 @@ pub fn save_incoming_message(data: IncomingMessageData) -> Result<ChatMessage, S
         latency,
         msg_id,
         reply_to,
+        attachment,
         encrypted,
     } = data;
     let target = is_direct.then_some(peer_id.as_str());
@@ -965,7 +980,7 @@ pub fn save_incoming_message(data: IncomingMessageData) -> Result<ChatMessage, S
         sender_nickname: nickname,
         msg_id,
         sent_at: None,
-        attachment: None,
+        attachment,
         reply_to,
         encrypted,
     };
@@ -1424,6 +1439,9 @@ pub struct SwarmEventJson {
     pub msg_id: Option<String>,
     /// Immutable reply snapshot on a live chat event (US-006).
     pub reply_to: Option<crate::ReplyRef>,
+    /// File descriptor carried by a live broadcast/DM (files lane §12), Rust-built
+    /// and re-posted verbatim when the frontend persists the message.
+    pub attachment: Option<MobileAttachment>,
     /// True when a live DM arrived sealed end to end (US-042).
     pub encrypted: bool,
     /// Multiaddr of a listen/external-address/discovery event.
@@ -1674,6 +1692,7 @@ const fn default_event() -> SwarmEventJson {
         nickname: None,
         msg_id: None,
         reply_to: None,
+        attachment: None,
         encrypted: false,
         address: None,
         group_id: None,
@@ -1701,6 +1720,7 @@ fn message_event_json(event_type: &str, m: crate::MessageEvent) -> SwarmEventJso
         nickname: m.nickname,
         msg_id: m.msg_id,
         reply_to: m.reply_to,
+        attachment: m.attachment.map(mobile_attachment),
         encrypted: m.encrypted,
         address: None,
         group_id: None,
@@ -1758,13 +1778,19 @@ mod tests {
 
     #[test]
     fn test_event_to_json_broadcast() {
+        let attachment = crate::files::MessageAttachment {
+            file_id: "abc123".into(),
+            name: "notes.txt".into(),
+            size: 2048,
+            mime: Some("text/plain".into()),
+        };
         let ev = SwarmEvent::BroadcastMessage(MessageEvent {
             content: "hello".into(),
             peer_id: "p1".into(),
             latency: Some("5ms".into()),
             nickname: Some("Alice".into()),
             msg_id: Some("m1".into()),
-            attachment: None,
+            attachment: Some(attachment),
             reply_to: None,
             encrypted: false,
         });
@@ -1776,6 +1802,11 @@ mod tests {
         assert_eq!(j.nickname.as_deref(), Some("Alice"));
         assert_eq!(j.msg_id.as_deref(), Some("m1"));
         assert!(j.address.is_none());
+        let forwarded = j.attachment.expect("live attachment reaches the event");
+        assert_eq!(forwarded.file_id, "abc123");
+        assert_eq!(forwarded.size_label, "2 KiB");
+        assert_eq!(forwarded.chip, "[file] notes.txt (2 KiB)");
+        assert_eq!(forwarded.mime.as_deref(), Some("text/plain"));
     }
 
     #[test]

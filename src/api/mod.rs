@@ -326,6 +326,8 @@ pub struct SaveIncomingMessageParams {
     pub msg_id: Option<String>,
     /// Immutable reply snapshot (US-006).
     pub reply_to: Option<crate::ReplyRef>,
+    /// Rust-built file descriptor from the live event (files lane §12).
+    pub attachment: Option<crate::mobile_node::MobileAttachment>,
     /// Whether the DM arrived sealed end to end (US-042).
     pub encrypted: bool,
 }
@@ -347,6 +349,7 @@ pub fn save_incoming_message(params: SaveIncomingMessageParams) -> Result<ChatMe
         latency,
         msg_id,
         reply_to,
+        attachment,
         encrypted,
     } = params;
     crate::mobile_node::save_incoming_message(crate::mobile_node::IncomingMessageData {
@@ -357,6 +360,7 @@ pub fn save_incoming_message(params: SaveIncomingMessageParams) -> Result<ChatMe
         latency,
         msg_id,
         reply_to,
+        attachment: attachment.map(crate::files::MessageAttachment::from),
         encrypted,
     })
 }

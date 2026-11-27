@@ -58,12 +58,7 @@ pub fn reply_draft(
 ) -> Option<crate::ReplyRef> {
     let msg_id = msg_id.filter(|id| !id.trim().is_empty())?;
     let sender = reply_sender_label(sender_nickname.as_deref(), peer_id.as_deref());
-    let attachment = attachment.map(|att| crate::files::MessageAttachment {
-        file_id: att.file_id,
-        name: att.name,
-        size: u64::try_from(att.size).unwrap_or(u64::MAX),
-        mime: att.mime,
-    });
+    let attachment = attachment.map(crate::files::MessageAttachment::from);
     let body = crate::files::render_message_body(&content, attachment.as_ref());
     Some(crate::ReplyRef::new(msg_id, sender, &body))
 }

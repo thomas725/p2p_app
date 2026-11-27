@@ -441,6 +441,7 @@ fn test_incoming_message_from_silent_peer_shows_generated_name() {
                 latency: Some("5ms".to_string()),
                 msg_id: Some("incoming-1".to_string()),
                 reply_to: None,
+                attachment: None,
                 encrypted: false,
             },
         )
@@ -470,6 +471,49 @@ fn test_incoming_message_from_silent_peer_shows_generated_name() {
             .expect("message persisted");
         assert_eq!(loaded.sender_nickname, Some(name));
         // …but the latency is live-only, so a reload drops it.
+        assert_eq!(loaded.latency, None);
+    });
+}
+
+#[cfg(feature = "mobile")]
+#[serial]
+#[test]
+fn test_incoming_message_persists_attachment_descriptor() {
+    with_test_db(|| {
+        let chat = p2p_app::mobile_node::save_incoming_message(
+            p2p_app::mobile_node::IncomingMessageData {
+                content: String::new(),
+                peer_id: "file-peer".to_string(),
+                is_direct: false,
+                nickname: None,
+                latency: Some("7ms".to_string()),
+                msg_id: Some("incoming-attachment".to_string()),
+                reply_to: None,
+                attachment: Some(p2p_app::MessageAttachment {
+                    file_id: "abc123".to_string(),
+                    name: "notes.txt".to_string(),
+                    size: 2048,
+                    mime: Some("text/plain".to_string()),
+                }),
+                encrypted: false,
+            },
+        )
+        .unwrap();
+
+        // The live reply carries the canonical Rust chip, and a DB reload keeps
+        // the descriptor so Flutter/web history renders the same attachment.
+        let live = chat.attachment.expect("live attachment on the saved row");
+        assert_eq!(live.file_id, "abc123");
+        assert_eq!(live.chip, "[file] notes.txt (2 KiB)");
+        let loaded = p2p_app::mobile_node::load_broadcast_messages(10)
+            .unwrap()
+            .into_iter()
+            .find(|m| m.msg_id.as_deref() == Some("incoming-attachment"))
+            .expect("attachment-only row persisted");
+        let reloaded = loaded.attachment.expect("stored attachment descriptor");
+        assert_eq!(reloaded.file_id, "abc123");
+        assert_eq!(reloaded.size_label, "2 KiB");
+        assert_eq!(reloaded.chip, "[file] notes.txt (2 KiB)");
         assert_eq!(loaded.latency, None);
     });
 }

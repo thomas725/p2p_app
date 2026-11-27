@@ -495,6 +495,9 @@ class HttpNodeApi implements NodeApi {
       nickname: m['nickname'] as String?,
       msgId: m['msgId'] as String?,
       replyTo: replyFromJson(m['replyTo']),
+      attachment: m['attachment'] == null
+          ? null
+          : attachmentFromJson(m['attachment']),
       encrypted: m['encrypted'] as bool? ?? false,
       address: m['address'] as String?,
       groupId: m['groupId'] as String?,
@@ -696,6 +699,7 @@ class HttpNodeApi implements NodeApi {
     String? msgId,
     ReplyRef? replyTo,
     required bool encrypted,
+    MobileAttachment? attachment,
   }) async => chatMessageFromJson(
     await _call('saveIncomingMessage', {
       'content': content,
@@ -705,6 +709,7 @@ class HttpNodeApi implements NodeApi {
       'latency': ?latency,
       'msgId': ?msgId,
       'replyTo': ?replyToJson(replyTo),
+      'attachment': ?(attachment == null ? null : attachmentToJson(attachment)),
       'encrypted': encrypted,
     }),
   );
@@ -995,10 +1000,11 @@ class HttpNodeApi implements NodeApi {
     required bool publicWrite,
   }) async => mobileShareFromJson(
     (await _call('setShareVisibility', {
-      'shareId': shareId,
-      'kind': kind,
-      'publicWrite': publicWrite,
-    }) as Map<String, dynamic>),
+          'shareId': shareId,
+          'kind': kind,
+          'publicWrite': publicWrite,
+        })
+        as Map<String, dynamic>),
   );
 
   @override

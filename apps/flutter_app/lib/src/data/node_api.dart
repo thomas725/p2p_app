@@ -167,6 +167,7 @@ abstract class NodeApi {
     String? msgId,
     ReplyRef? replyTo,
     required bool encrypted,
+    MobileAttachment? attachment,
   });
 
   Future<void> dialPeer({required String address});

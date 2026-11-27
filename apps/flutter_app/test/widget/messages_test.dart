@@ -20,6 +20,16 @@ import 'package:p2p_app_flutter/src/util/reply.dart';
 
 import '../helpers/fake_node_api.dart';
 
+/// Rust-built attachment descriptor carried by a live message event.
+const MobileAttachment liveAttachment = MobileAttachment(
+  fileId: 'abc123',
+  name: 'notes.txt',
+  size: 2048,
+  sizeLabel: '2 KiB',
+  chip: '[file] notes.txt (2 KiB)',
+  mime: 'text/plain',
+);
+
 ChatMessage chatMessage({
   int id = 1,
   String content = 'hello',
@@ -571,6 +581,7 @@ void main() {
           msgId,
           replyTo,
           encrypted,
+          attachment,
         ) => chatMessage(
           id: 7,
           content: content,
@@ -601,6 +612,61 @@ void main() {
     expect(find.text('12ms'), findsOneWidget);
   });
 
+  testWidgets('a live broadcast carries its attachment into the chat', (
+    tester,
+  ) async {
+    MobileAttachment? persisted;
+    final fake = FakeNodeApi(isRemoteTransport: true)
+      ..mobilePeerStatus = const MobilePeerStatus(
+        databaseUrl: ':memory:',
+        localPeerId: 'me',
+      )
+      ..loadBroadcastMessagesOverride = (_) => [];
+    fake.saveIncomingMessageOverride =
+        (
+          content,
+          peerId,
+          isDirect,
+          nickname,
+          latency,
+          msgId,
+          replyTo,
+          encrypted,
+          attachment,
+        ) {
+          persisted = attachment;
+          return chatMessage(
+            id: 7,
+            content: content,
+            peerId: peerId,
+            msgId: msgId,
+            attachment: attachment,
+            encrypted: encrypted,
+          );
+        };
+    nodeApi = fake;
+
+    await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+    await tester.pump();
+    await tester.pump();
+
+    fake.deliverEvent(
+      const SwarmEventJson(
+        eventType: 'broadcast',
+        peerId: 'peer-abc',
+        content: '',
+        msgId: 'broadcast-attachment',
+        attachment: liveAttachment,
+        encrypted: false,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(persisted?.fileId, 'abc123');
+    expect(find.text('[file] notes.txt (2 KiB)'), findsOneWidget);
+  });
+
   test('an attachment-only reply quotes the canonical Rust chip', () async {
     const attachment = MobileAttachment(
       fileId: 'abc123',
@@ -612,13 +678,14 @@ void main() {
     // The fake mirrors `mobile_api::reply_draft` so these assertions cover the
     // ChatMessage → NodeApi field mapping; the rule itself has Rust unit tests.
     final fake = FakeNodeApi()
-      ..replyDraftOverride = (msgId, nickname, peerId, content, att) => ReplyRef(
-        msgId: msgId ?? '',
-        sender: nickname ?? 'Me',
-        preview: att == null
-            ? content
-            : '${content.trim()} ${att.chip}'.trim(),
-      );
+      ..replyDraftOverride = (msgId, nickname, peerId, content, att) =>
+          ReplyRef(
+            msgId: msgId ?? '',
+            sender: nickname ?? 'Me',
+            preview: att == null
+                ? content
+                : '${content.trim()} ${att.chip}'.trim(),
+          );
     nodeApi = fake;
     final fileOnly = await replyDraftFor(
       chatMessage(
@@ -657,30 +724,37 @@ void main() {
     );
   });
 
-  test('a reply to our own message freezes the self nickname as sender', () async {
-    // Rust resolves our outgoing rows' senderNickname to the installed self
-    // nickname, and the TUI captures that same `[nickname]` tag in its reply
-    // snapshot. Flutter must not freeze the generic "Me" label instead.
-    final fake = FakeNodeApi()
-      ..replyDraftOverride = (msgId, nickname, peerId, content, att) =>
-          ReplyRef(msgId: msgId ?? '', sender: nickname ?? 'Me', preview: content);
-    nodeApi = fake;
-    final draft = await replyDraftFor(
-      chatMessage(
-        id: 1,
-        content: 'my earlier note',
-        peerId: null,
-        msgId: 'own-1',
-        senderNickname: 'Alice (abc)',
-      ),
-    );
-    expect(draft?.sender, 'Alice (abc)');
-    // Rows without a resolved nickname still fall back to "Me".
-    expect(
-      (await replyDraftFor(chatMessage(id: 2, msgId: 'own-2')))?.sender,
-      'Me',
-    );
-  });
+  test(
+    'a reply to our own message freezes the self nickname as sender',
+    () async {
+      // Rust resolves our outgoing rows' senderNickname to the installed self
+      // nickname, and the TUI captures that same `[nickname]` tag in its reply
+      // snapshot. Flutter must not freeze the generic "Me" label instead.
+      final fake = FakeNodeApi()
+        ..replyDraftOverride = (msgId, nickname, peerId, content, att) =>
+            ReplyRef(
+              msgId: msgId ?? '',
+              sender: nickname ?? 'Me',
+              preview: content,
+            );
+      nodeApi = fake;
+      final draft = await replyDraftFor(
+        chatMessage(
+          id: 1,
+          content: 'my earlier note',
+          peerId: null,
+          msgId: 'own-1',
+          senderNickname: 'Alice (abc)',
+        ),
+      );
+      expect(draft?.sender, 'Alice (abc)');
+      // Rows without a resolved nickname still fall back to "Me".
+      expect(
+        (await replyDraftFor(chatMessage(id: 2, msgId: 'own-2')))?.sender,
+        'Me',
+      );
+    },
+  );
 
   testWidgets('a reply bubble renders the canonical quoted header', (
     tester,
@@ -743,6 +817,7 @@ void main() {
           msgId,
           replyTo,
           encrypted,
+          attachment,
         ) {
           seenMsgId = msgId;
           seenReply = replyTo;
@@ -927,7 +1002,11 @@ void main() {
     fake.saveOutgoingDmOverride = (peerId, content, replyTo) =>
         chatMessage(id: 2, content: content, msgId: 'dm-2', replyTo: replyTo);
     fake.replyDraftOverride = (msgId, nickname, peerId, content, attachment) =>
-        ReplyRef(msgId: msgId ?? '', sender: nickname ?? 'Me', preview: content);
+        ReplyRef(
+          msgId: msgId ?? '',
+          sender: nickname ?? 'Me',
+          preview: content,
+        );
     nodeApi = fake;
     startEventPolling();
 
@@ -991,7 +1070,11 @@ void main() {
         chatMessage(id: 1, msgId: 'dm-1', senderNickname: 'Alice'),
       ];
     fake.replyDraftOverride = (msgId, nickname, peerId, content, attachment) =>
-        ReplyRef(msgId: msgId ?? '', sender: nickname ?? 'Me', preview: content);
+        ReplyRef(
+          msgId: msgId ?? '',
+          sender: nickname ?? 'Me',
+          preview: content,
+        );
     nodeApi = fake;
     startEventPolling();
 
@@ -1112,6 +1195,57 @@ void main() {
     expect(find.text('group mine'), findsNothing);
   });
 
+  testWidgets('a live DM carries its attachment into the chat', (tester) async {
+    MobileAttachment? persisted;
+    final fake = FakeNodeApi()..loadDmMessagesOverride = (_, _) => [];
+    fake.saveIncomingMessageOverride =
+        (
+          content,
+          peerId,
+          isDirect,
+          nickname,
+          latency,
+          msgId,
+          replyTo,
+          encrypted,
+          attachment,
+        ) {
+          persisted = attachment;
+          return chatMessage(
+            id: 9,
+            content: content,
+            peerId: peerId,
+            msgId: msgId,
+            sent: false,
+            attachment: attachment,
+            encrypted: encrypted,
+          );
+        };
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pumpAndSettle();
+
+    fake.deliverEvent(
+      const SwarmEventJson(
+        eventType: 'dm',
+        peerId: 'peer-abc',
+        content: '',
+        msgId: 'dm-attachment',
+        attachment: liveAttachment,
+        encrypted: false,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(persisted?.fileId, 'abc123');
+    expect(find.text('[file] notes.txt (2 KiB)'), findsOneWidget);
+  });
+
   testWidgets('a sealed live DM keeps its lock flag when persisted', (
     tester,
   ) async {
@@ -1127,6 +1261,7 @@ void main() {
           msgId,
           replyTo,
           encrypted,
+          attachment,
         ) {
           persistedEncrypted = encrypted;
           return chatMessage(

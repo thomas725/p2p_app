@@ -18,6 +18,7 @@ import 'package:p2p_app_flutter/src/util/reply.dart';
 
 /// How long an incoming "is typing" indicator stays visible without a refresh.
 const _typingTtl = Duration(seconds: 3);
+
 /// Minimum gap between outgoing "started typing" signals in one conversation.
 const _typingThrottle = Duration(milliseconds: 700);
 
@@ -133,7 +134,9 @@ class _DmChatScreenState extends State<DmChatScreen>
         // A live DM can be appended while the fetch is in flight. Merge by id
         // so those rows are not wiped by the older history snapshot.
         final historyIds = msgs.map((m) => m.id).toSet();
-        final live = _messages.where((m) => !historyIds.contains(m.id)).toList();
+        final live = _messages
+            .where((m) => !historyIds.contains(m.id))
+            .toList();
         _messages
           ..clear()
           ..addAll(msgs)
@@ -204,6 +207,7 @@ class _DmChatScreenState extends State<DmChatScreen>
       origin: const ChatMessageOrigin(isBroadcast: true, sent: false),
       msgId: event.msgId,
       replyTo: event.replyTo,
+      attachment: event.attachment,
       createdAt: '',
       senderNickname: event.nickname,
       encrypted: event.encrypted,
@@ -213,8 +217,7 @@ class _DmChatScreenState extends State<DmChatScreen>
       reactions: const [],
     );
     setState(() {
-      if (msg.msgId == null ||
-          !_broadcasts.any((m) => m.msgId == msg.msgId)) {
+      if (msg.msgId == null || !_broadcasts.any((m) => m.msgId == msg.msgId)) {
         _broadcasts.add(msg);
       }
     });
@@ -351,6 +354,7 @@ class _DmChatScreenState extends State<DmChatScreen>
         latency: event.latency,
         msgId: event.msgId,
         replyTo: event.replyTo,
+        attachment: event.attachment,
         encrypted: event.encrypted,
       );
       if (!mounted) return;

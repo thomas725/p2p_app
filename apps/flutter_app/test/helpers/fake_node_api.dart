@@ -47,7 +47,8 @@ class FakeNodeApi implements NodeApi {
     String? peerId,
     String content,
     MobileAttachment? attachment,
-  )? replyDraftOverride;
+  )?
+  replyDraftOverride;
 
   /// Recorded calls (method name + arguments), for assertions.
   final List<({String method, Object? argument})> calls = [];
@@ -371,6 +372,7 @@ class FakeNodeApi implements NodeApi {
     String? msgId,
     ReplyRef? replyTo,
     required bool encrypted,
+    MobileAttachment? attachment,
   }) async {
     _record('saveIncomingMessage', content);
     final override = saveIncomingMessageOverride;
@@ -386,13 +388,14 @@ class FakeNodeApi implements NodeApi {
       msgId,
       replyTo,
       encrypted,
+      attachment,
     );
   }
 
   /// Builds the persisted incoming message for [saveIncomingMessage] when set;
   /// otherwise the call throws. The callback receives the raw arguments so a
-  /// test can assert how the live event's `latency`, `msgId`, `replyTo` and
-  /// `encrypted` flag were threaded through.
+  /// test can assert how the live event's `latency`, `msgId`, `replyTo`,
+  /// `attachment` and `encrypted` flag were threaded through.
   ChatMessage Function(
     String content,
     String peerId,
@@ -402,6 +405,7 @@ class FakeNodeApi implements NodeApi {
     String? msgId,
     ReplyRef? replyTo,
     bool encrypted,
+    MobileAttachment? attachment,
   )?
   saveIncomingMessageOverride;
 

@@ -299,6 +299,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Incoming attachment descriptors survive Flutter/web persistence | 2026-11-27 | [`archive/2026-11-27_incoming_attachment_descriptors.md`](archive/2026-11-27_incoming_attachment_descriptors.md) |
 | Rust-owned share re-advertising | 2026-11-27 | [`archive/2026-11-27_rust_owned_share_readvertise.md`](archive/2026-11-27_rust_owned_share_readvertise.md) |
 | TUI private-share grant editor | 2026-11-27 | [`archive/2026-11-27_tui_share_grant_editor.md`](archive/2026-11-27_tui_share_grant_editor.md) |
 | Canonical notification focus keys | 2026-11-27 | [`archive/2026-11-27_notification_focus_key.md`](archive/2026-11-27_notification_focus_key.md) |

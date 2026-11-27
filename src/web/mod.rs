@@ -833,7 +833,7 @@ mod tests {
 
     #[test]
     #[serial(db)]
-    fn save_incoming_message_frame_carries_msg_id_and_canonical_reply_to() {
+    fn save_incoming_message_frame_carries_canonical_reply_to_and_attachment() {
         let _guard = db_lock();
         let dir = tempfile::tempdir().expect("tempdir");
         let db_path = dir
@@ -863,7 +863,10 @@ mod tests {
                 r#"{"id": 14, "method": "saveIncomingMessage", "params": {
                     "content": "reply body", "peerId": "peer-reply", "isDirect": false,
                     "latency": "5ms", "msgId": "incoming-9", "encrypted": true,
-                    "replyTo": {"msgId": "old-9", "sender": "Alice\nInjected", "preview": "earlier\ntext"}
+                    "replyTo": {"msgId": "old-9", "sender": "Alice\nInjected", "preview": "earlier\ntext"},
+                    "attachment": {"fileId": "abc123", "name": "notes.txt", "size": 2048,
+                                    "sizeLabel": "2 KiB", "chip": "[file] notes.txt (2 KiB)",
+                                    "mime": "text/plain"}
                 }}"#,
             )
             .await;
@@ -873,7 +876,7 @@ mod tests {
                     .expect("history")
                     .into_iter()
                     .find(|m| m.msg_id.as_deref() == Some("incoming-9"))
-                    .map(|m| (m.msg_id, m.reply_to_json, m.encrypted))
+                    .map(|m| (m.msg_id, m.reply_to_json, m.attachment_json, m.encrypted))
             })
             .await
             .expect("read task");
@@ -886,7 +889,12 @@ mod tests {
         assert_eq!(response["ok"]["replyTo"]["msgId"], "old-9");
         assert_eq!(response["ok"]["replyTo"]["sender"], "Alice Injected");
         assert_eq!(response["ok"]["replyTo"]["preview"], "earlier text");
-        let (msg_id, reply_json, encrypted) =
+        assert_eq!(response["ok"]["attachment"]["fileId"], "abc123");
+        assert_eq!(
+            response["ok"]["attachment"]["chip"],
+            "[file] notes.txt (2 KiB)"
+        );
+        let (msg_id, reply_json, attachment_json, encrypted) =
             persisted.expect("row saved through the web dispatch");
         assert_eq!(msg_id.as_deref(), Some("incoming-9"));
         assert_eq!(encrypted, 1, "the US-042 flag must be persisted");
@@ -898,6 +906,12 @@ mod tests {
                 "earlier text"
             ))
         );
+        let attachment = crate::files::attachment_from_json(
+            &attachment_json.expect("attachment descriptor persisted"),
+        )
+        .expect("valid canonical attachment");
+        assert_eq!(attachment.file_id, "abc123");
+        assert_eq!(attachment.size, 2048);
     }
 
     #[test]

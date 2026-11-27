@@ -59,6 +59,11 @@ in [`backlog.md`](backlog.md). The code is the authority.
   `[file] name (size)` string from `files::file_chip`, reused verbatim by the Flutter reply
   preview for attachment-only rows. `ChatMessage.attachment` and
   `MobileGroupMessage.attachment` added (regen once).
+- Live broadcast/DM events carry the descriptor as `SwarmEventJson.attachment`.
+  The frontends echo that Rust-built object into `saveIncomingMessage`; Rust converts it with
+  `From<MobileAttachment> for files::MessageAttachment` before persistence. This is also the
+  conversion used by `reply_draft`, so the live bubble, reply quote and reloaded row all use the
+  same chip and size. `content` may be empty for an attachment-only row.
 - `store_send_attachment(Option<String>)`, `save_outgoing_broadcast|dm|group`
   take `attachment_path: Option<String>`; `attachment_file_path(file_id: &str)` →
   content-addressed blob path. `api/mod.rs` wrappers mirror them.
@@ -74,9 +79,16 @@ in [`backlog.md`](backlog.md). The code is the authority.
   `attachment.sizeLabel`), `MessageChatBody` / `BroadcastChat` thread
   `onOpenAttachment`. Broadcast/DM/Group screens pass pick-and-send
   (`content: ''` + path) and open-with-snackbar handlers.
+- Incoming events thread `event.attachment` through every `NodeApi` transport
+  into `saveIncomingMessage`. `HomeScreen` handles broadcast and DM persistence;
+  `DmChatScreen` handles its own DM save and the read-only broadcast context
+  mirror. Web uses the same camelCase `attachment` object Rust emits on the
+  event, so no Dart byte math or descriptor construction is involved.
 - Tests: `test/widget/attachment_chip_test.dart` (chip render, tap opens,
-  selection-mode tap is inert); full Rust (clippy + `--all-features`) and
-  Flutter (analyze + test) suites green.
+  selection-mode tap is inert), live broadcast/DM attachment regressions in
+  `messages_test.dart`, and `http_node_api_test.dart` event/save round-trip.
+  Full Rust (clippy + available feature set) and Flutter (analyze + test)
+  suites are green.
 
 ## Versioned file shares / folder sync (share lane) — 2026-11-22
 

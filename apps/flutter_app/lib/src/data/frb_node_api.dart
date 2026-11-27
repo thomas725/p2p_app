@@ -194,6 +194,7 @@ class FrbNodeApi implements NodeApi {
     String? msgId,
     ReplyRef? replyTo,
     required bool encrypted,
+    MobileAttachment? attachment,
   }) => bridge.saveIncomingMessage(
     params: bridge.SaveIncomingMessageParams(
       content: content,
@@ -203,6 +204,7 @@ class FrbNodeApi implements NodeApi {
       latency: latency,
       msgId: msgId,
       replyTo: replyTo,
+      attachment: attachment,
       encrypted: encrypted,
     ),
   );
@@ -519,12 +521,12 @@ class FrbNodeApi implements NodeApi {
     required String content,
     MobileAttachment? attachment,
   }) async => mobile.replyDraft(
-        msgId: msgId,
-        senderNickname: senderNickname,
-        peerId: peerId,
-        content: content,
-        attachment: attachment,
-      );
+    msgId: msgId,
+    senderNickname: senderNickname,
+    peerId: peerId,
+    content: content,
+    attachment: attachment,
+  );
 
   @override
   Future<bool> isAtBottom({

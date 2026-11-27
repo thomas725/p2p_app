@@ -505,28 +505,61 @@ void main() {
       );
     });
 
-    test('call_media events preserve decoded PCM audio on the web transport', () {
+    test('live attachment descriptors are parsed and echoed on save', () async {
+      final descriptor = chatMessageJson(withAttachment: true)['attachment'];
       final event = HttpNodeApi.eventFromJson({
-        'eventType': 'call_media',
-        'peerId': 'peer-a',
-        'audio': [0, 128, -128, 32767, -32768],
+        'eventType': 'broadcast',
+        'peerId': 'peer-x',
+        'content': '',
+        'attachment': descriptor,
       });
-      expect(event.eventType, 'call_media');
-      expect(event.audio, isA<Int16List>());
-      expect(event.audio, [0, 128, -128, 32767, -32768]);
+      expect(event.attachment?.fileId, 'abc123');
+      expect(event.attachment?.sizeLabel, '2 KiB');
+      expect(event.attachment?.chip, '[file] notes.txt (2 KiB)');
 
-      // Events without audio (including a null from Rust) stay null, so the
-      // call screen's `_acceptPeerAudio` still no-ops for non-media events.
-      expect(
-        HttpNodeApi.eventFromJson({'eventType': 'peer_connected'}).audio,
-        isNull,
+      final fake = FakeRemoteTransport();
+      fake.onSend = (frame) {
+        final request = fake.frame(fake.sentFrames.length - 1);
+        fake.respond(request, ok: chatMessageJson(withAttachment: true));
+      };
+      final api = HttpNodeApi(connect: () async => fake);
+      await api.saveIncomingMessage(
+        content: '',
+        peerId: 'peer-x',
+        isDirect: false,
+        encrypted: false,
+        attachment: event.attachment,
       );
-      expect(
-        HttpNodeApi.eventFromJson({'eventType': 'call_media', 'audio': null})
-            .audio,
-        isNull,
-      );
+      expect(fake.frame(0)['params']['attachment'], descriptor);
     });
+
+    test(
+      'call_media events preserve decoded PCM audio on the web transport',
+      () {
+        final event = HttpNodeApi.eventFromJson({
+          'eventType': 'call_media',
+          'peerId': 'peer-a',
+          'audio': [0, 128, -128, 32767, -32768],
+        });
+        expect(event.eventType, 'call_media');
+        expect(event.audio, isA<Int16List>());
+        expect(event.audio, [0, 128, -128, 32767, -32768]);
+
+        // Events without audio (including a null from Rust) stay null, so the
+        // call screen's `_acceptPeerAudio` still no-ops for non-media events.
+        expect(
+          HttpNodeApi.eventFromJson({'eventType': 'peer_connected'}).audio,
+          isNull,
+        );
+        expect(
+          HttpNodeApi.eventFromJson({
+            'eventType': 'call_media',
+            'audio': null,
+          }).audio,
+          isNull,
+        );
+      },
+    );
 
     test(
       'getContactsWithStats parses rows, devices, and stat counts',
@@ -791,128 +824,133 @@ void main() {
       ],
     };
 
-    test('list/get/create parse the Rust DTOs and forward camelCase params',
-        () async {
-      final fake = FakeRemoteTransport();
-      fake.onSend = (frame) {
-        final request = fake.frame(fake.sentFrames.length - 1);
-        switch (request['method']) {
-          case 'listShares':
-          case 'createShare':
-            fake.respond(request, ok: [shareJson]);
-          case 'getShare':
-            fake.respond(request, ok: shareJson);
-          default:
-            fail('unexpected method ${request['method']}');
-        }
-      };
-      final api = HttpNodeApi(connect: () async => fake);
+    test(
+      'list/get/create parse the Rust DTOs and forward camelCase params',
+      () async {
+        final fake = FakeRemoteTransport();
+        fake.onSend = (frame) {
+          final request = fake.frame(fake.sentFrames.length - 1);
+          switch (request['method']) {
+            case 'listShares':
+            case 'createShare':
+              fake.respond(request, ok: [shareJson]);
+            case 'getShare':
+              fake.respond(request, ok: shareJson);
+            default:
+              fail('unexpected method ${request['method']}');
+          }
+        };
+        final api = HttpNodeApi(connect: () async => fake);
 
-      final listed = await api.listShares();
-      expect(listed.single, isA<MobileShare>());
-      expect(listed.single.shareId, 'share-1');
-      expect(listed.single.revision.toInt(), 4);
+        final listed = await api.listShares();
+        expect(listed.single, isA<MobileShare>());
+        expect(listed.single.shareId, 'share-1');
+        expect(listed.single.revision.toInt(), 4);
 
-      final one = await api.getShare('share-1');
-      expect(one?.name, 'Photos');
-      expect(fake.frame(1)['params'], {'shareId': 'share-1'});
+        final one = await api.getShare('share-1');
+        expect(one?.name, 'Photos');
+        expect(fake.frame(1)['params'], {'shareId': 'share-1'});
 
-      // The server answers createShare with one object, not a list.
-      fake.onSend = (frame) {
-        final request = fake.frame(fake.sentFrames.length - 1);
-        fake.respond(request, ok: shareJson);
-      };
-      final created = await api.createShare(
-        params: CreateShareParams(
-          name: 'Photos',
-          kind: 'private',
-          publicWrite: false,
-        ),
-      );
-      expect(created.shareId, 'share-1');
-      expect(fake.frame(2)['params'], {
-        'name': 'Photos',
-        'kind': 'private',
-        'publicWrite': false,
-      });
-    });
+        // The server answers createShare with one object, not a list.
+        fake.onSend = (frame) {
+          final request = fake.frame(fake.sentFrames.length - 1);
+          fake.respond(request, ok: shareJson);
+        };
+        final created = await api.createShare(
+          params: CreateShareParams(
+            name: 'Photos',
+            kind: 'private',
+            publicWrite: false,
+          ),
+        );
+        expect(created.shareId, 'share-1');
+        expect(fake.frame(2)['params'], {
+          'name': 'Photos',
+          'kind': 'private',
+          'publicWrite': false,
+        });
+      },
+    );
 
-    test('setShareVisibility sends camelCase params and parses the row', () async {
-      final fake = FakeRemoteTransport();
-      fake.onSend = (frame) {
-        final request = fake.frame(fake.sentFrames.length - 1);
-        expect(request['method'], 'setShareVisibility');
-        fake.respond(request, ok: {
-          ...shareJson,
+    test(
+      'setShareVisibility sends camelCase params and parses the row',
+      () async {
+        final fake = FakeRemoteTransport();
+        fake.onSend = (frame) {
+          final request = fake.frame(fake.sentFrames.length - 1);
+          expect(request['method'], 'setShareVisibility');
+          fake.respond(
+            request,
+            ok: {...shareJson, 'kind': 'public', 'publicWrite': true},
+          );
+        };
+        final api = HttpNodeApi(connect: () async => fake);
+
+        final updated = await api.setShareVisibility(
+          shareId: 'share-1',
+          kind: 'public',
+          publicWrite: true,
+        );
+        expect(updated.kind, 'public');
+        expect(updated.publicWrite, isTrue);
+        expect(fake.frame(0)['params'], {
+          'shareId': 'share-1',
           'kind': 'public',
           'publicWrite': true,
         });
-      };
-      final api = HttpNodeApi(connect: () async => fake);
+      },
+    );
 
-      final updated = await api.setShareVisibility(
-        shareId: 'share-1',
-        kind: 'public',
-        publicWrite: true,
-      );
-      expect(updated.kind, 'public');
-      expect(updated.publicWrite, isTrue);
-      expect(fake.frame(0)['params'], {
-        'shareId': 'share-1',
-        'kind': 'public',
-        'publicWrite': true,
-      });
-    });
+    test(
+      'manifest/readvertise/publish shapes round-trip through JSON',
+      () async {
+        final fake = FakeRemoteTransport();
+        fake.onSend = (frame) {
+          final request = fake.frame(fake.sentFrames.length - 1);
+          switch (request['method']) {
+            case 'loadShareManifest':
+            case 'snapshotShare':
+              fake.respond(request, ok: manifestJson);
+            default:
+              fake.respond(request, ok: null);
+          }
+        };
+        final api = HttpNodeApi(connect: () async => fake);
 
-    test('manifest/readvertise/publish shapes round-trip through JSON', () async {
-      final fake = FakeRemoteTransport();
-      fake.onSend = (frame) {
-        final request = fake.frame(fake.sentFrames.length - 1);
-        switch (request['method']) {
-          case 'loadShareManifest':
-          case 'snapshotShare':
-            fake.respond(request, ok: manifestJson);
-          default:
-            fake.respond(request, ok: null);
-        }
-      };
-      final api = HttpNodeApi(connect: () async => fake);
+        final manifest = await api.loadShareManifest('share-1');
+        expect(manifest?.revision, BigInt.from(4));
+        expect(manifest?.entries.single.path, 'a.txt');
+        expect(manifest?.entries.single.size, BigInt.from(3));
 
-      final manifest = await api.loadShareManifest('share-1');
-      expect(manifest?.revision, BigInt.from(4));
-      expect(manifest?.entries.single.path, 'a.txt');
-      expect(manifest?.entries.single.size, BigInt.from(3));
+        await api.readvertiseShare(shareId: 'share-1', peerId: 'peer-2');
+        final readvertiseParams =
+            fake.frame(1)['params']! as Map<String, dynamic>;
+        expect(readvertiseParams, {'shareId': 'share-1', 'peerId': 'peer-2'});
 
-      await api.readvertiseShare(shareId: 'share-1', peerId: 'peer-2');
-      final readvertiseParams = fake.frame(1)['params']! as Map<String, dynamic>;
-      expect(readvertiseParams, {
-        'shareId': 'share-1',
-        'peerId': 'peer-2',
-      });
+        await api.publishShareSnapshot(
+          peerId: 'peer-1',
+          baseRevision: PlatformInt64Util.from(4),
+          manifest: manifest!,
+        );
+        final publishParams = fake.frame(2)['params']! as Map<String, dynamic>;
+        expect(publishParams['baseRevision'], 4);
+        expect(
+          (publishParams['manifest'] as Map)['entries'],
+          manifestJson['entries'],
+        );
+        expect(publishParams['manifest'], manifestJson);
 
-      await api.publishShareSnapshot(
-        peerId: 'peer-1',
-        baseRevision: PlatformInt64Util.from(4),
-        manifest: manifest!,
-      );
-      final publishParams = fake.frame(2)['params']! as Map<String, dynamic>;
-      expect(publishParams['baseRevision'], 4);
-      expect(
-        (publishParams['manifest'] as Map)['entries'],
-        manifestJson['entries'],
-      );
-      expect(publishParams['manifest'], manifestJson);
-
-      // An unused ShareEntry import is a compile-time guard here.
-      expect(
-        ShareEntry(
-          path: 'a.txt',
-          fileId: 'sha-a',
-          size: BigInt.from(3),
-          mime: 'text/plain',
-        ),
-        manifest.entries.single,
-      );
-    });
+        // An unused ShareEntry import is a compile-time guard here.
+        expect(
+          ShareEntry(
+            path: 'a.txt',
+            fileId: 'sha-a',
+            size: BigInt.from(3),
+            mime: 'text/plain',
+          ),
+          manifest.entries.single,
+        );
+      },
+    );
   });
 }
