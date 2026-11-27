@@ -582,35 +582,6 @@ fn ui_helpers(method: &str, params: Value) -> Result<Value, String> {
             let p: ThemeParams = parse(params)?;
             json(api::set_theme(p.dark, &p.accent_name))
         }
-        "locationMapUrl" => {
-            let p: LocationMapUrlParams = parse(params)?;
-            ok(api::location_map_url(p.latitude, p.longitude))
-        }
-        "buildLocationMessage" => {
-            let p: BuildLocationMessageParams = parse(params)?;
-            json(api::build_location_message(p.into()))
-        }
-        "isLocationMessage" => {
-            let p: IsLocationMessageParams = parse(params)?;
-            ok(api::is_location_message(&p.content))
-        }
-        "locationSessionActive" => {
-            let p: LocationSessionParams = parse(params)?;
-            json(api::location_session_active(
-                p.started_at,
-                &p.mode,
-                p.duration_secs,
-                p.now,
-            ))
-        }
-        "locationSendDue" => {
-            let p: LocationSendDueParams = parse(params)?;
-            ok(api::location_send_due(
-                p.last_sent_at,
-                p.now,
-                p.interval_secs,
-            ))
-        }
         "setNotificationSettings" => {
             let p: NotificationSettingsParams = parse(params)?;
             json(api::set_notification_settings(p.sound, p.desktop))
@@ -1311,6 +1282,35 @@ mod tests {
         )
         .expect("detected");
         assert_eq!(detected, json!(true));
+    }
+
+    #[test]
+    fn location_methods_are_not_duplicated_in_ui_helpers() {
+        // `dispatch` routes every location name to `location()`. A copy in
+        // `ui_helpers` would give one method two owners and let a future edit
+        // silently change which policy path a web client reaches.
+        for method in [
+            "locationMapUrl",
+            "buildLocationMessage",
+            "isLocationMessage",
+            "locationMessageUrl",
+            "locationSessionActive",
+            "locationSendDue",
+            "locationQueryDue",
+            "parseLocationTimeFilter",
+            "loadLocationTrack",
+            "locationGpx",
+            "locationTrackUrl",
+            "sendLocationToDevices",
+            "setLocationDefaults",
+        ] {
+            let err = ui_helpers(method, Value::Null)
+                .expect_err("location methods must stay out of ui_helpers");
+            assert!(
+                err.contains("not routed to ui_helpers"),
+                "{method}: unexpected error: {err}"
+            );
+        }
     }
 
     #[test]

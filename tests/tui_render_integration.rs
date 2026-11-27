@@ -3,6 +3,8 @@
 
 #[cfg(feature = "tui")]
 mod render_tests {
+    #[cfg(feature = "test-utils")]
+    use p2p_app::tui_render::settings_visual_lines;
     use p2p_app::tui_render_state::get_tab_content;
     use p2p_app::{
         TuiRenderState,
@@ -11,7 +13,7 @@ mod render_tests {
             render_input_section, render_log_content, render_peer_info_content,
             render_peers_content, render_popup, render_settings_content, render_shares_content,
             render_shortcuts, render_shortcuts_help_popup, render_status_bar, render_tabs,
-            settings_visual_lines, shortcuts_help_text, shortcuts_text,
+            shortcuts_help_text, shortcuts_text,
         },
         tui_tabs::TabContent,
     };

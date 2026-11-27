@@ -6,9 +6,9 @@
 |:----------------------|:----------|
 | Total Rust Files      |        73 |
 | Total Rust Lines      |    47,062 |
-| Total Rust Chars      | 1,793,151 |
+| Total Rust Chars      | 1,793,207 |
 | Avg Lines/Rust File   |       644 |
-| Avg Chars/Rust File   |    24,563 |
+| Avg Chars/Rust File   |    24,564 |
 | Total Dart Files      |        61 |
 | Total Dart Lines      |    27,162 |
 | Total Dart Chars      |   873,320 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 139 files, 75,284 lines, 2,706,051 characters
+**Grand Total:** 139 files, 75,284 lines, 2,706,107 characters
 
 ## Rust Source Files
 
@@ -97,10 +97,10 @@
 | src/tui_render          | peers.rs             |     5 |  5890 |   136 |        - |       - | TUI peers-table renderer                           |
 | src/tui_render          | settings.rs          |     5 | 16413 |   469 |        - |       - | TUI settings renderer                              |
 | src/tui_render          | shares.rs            |     4 |  8575 |   230 |        - |       - | TUI shares renderer                                |
-| src/web                 | methods.rs           |     5 | 46412 |  1441 |        - |       - | Web JSON method dispatch                           |
+| src/web                 | methods.rs           |     5 | 46468 |  1441 |        - |       - | Web JSON method dispatch                           |
 | src/web                 | mod.rs               |     9 | 70240 |  1824 |        - |       - | Web server (axum HTTP+WS)                          |
 
-**Total:** 73 files, 47,062 lines, 1,793,151 characters
+**Total:** 73 files, 47,062 lines, 1,793,207 characters
 
 ## Rust Test Files
 
@@ -126,7 +126,7 @@
 | tests  | tui_chat.rs                        |   741 | 23619 |     4 | TUI chat functionality tests          |
 | tests  | tui_helpers.rs                     |   437 | 13387 |     3 | TUI helpers tests                     |
 | tests  | tui_integration.rs                 |   520 | 16672 |     4 | TUI integration tests                 |
-| tests  | tui_render_integration.rs          |  2252 | 79910 |     5 | TUI render integration tests          |
+| tests  | tui_render_integration.rs          |  2254 | 79974 |     5 | TUI render integration tests          |
 | tests  | tui_state.rs                       |   269 |  8303 |     2 | TUI state tests                       |
 | tests  | tui_tasks.rs                       |   245 |  7811 |     7 | TUI task tests                        |
 | tests  | types.rs                           |   662 | 20583 |     3 | types module tests                    |
@@ -174,7 +174,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   425 | 12920 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 35,916 lines, 1,223,069 characters
+**Total:** 67 test files, 35,918 lines, 1,223,133 characters
 
 ## Dart Source Files
 
