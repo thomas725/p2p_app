@@ -69,9 +69,10 @@ indexes. This file keeps only instruction-type guidance for future tasks.
   `docs/archive/`). None urgent.
 - `cargo outdated` now prints rows again: the 2026-11-17 round moved diesel to
   2.4.0 (which widened `libsqlite3-sys` to `<0.41.0`), so the old resolution
-  error is gone. The 2026-11-22 round took the last compatible patches (`clap`,
-  `ratatui-textarea`, `unicode-width`). `cargo outdated --depth 1` reports 5
-  direct rows, none a security advisory: two deliberate pins
+  error is gone. The 2026-11-22 round took the compatible patches (`clap`,
+  `ratatui-textarea`, `unicode-width`); the 2026-11-27 sweep added `clap` 4.6.10
+  and `sha2` 0.11.2. `cargo outdated --depth 1` reports 5 direct rows, none a
+  security advisory: two deliberate pins
   (`libp2p-identity` =0.3.0 for a single `PeerId` type; dev-only
   `tokio-tungstenite` 0.29 in lockstep with axum's `ws` feature), `base64` held
   on libp2p's line, and two semver-incompatible majors. **No urgent rows**;

@@ -38,7 +38,7 @@ version; `Cargo.toml` is the authority on the *requirement*.
 |---|---|---|---|
 | `serde` | `1.0` | 1.0.229 | Derives for every wire and row type. Feature `derive`. |
 | `serde_json` | `1.0` | 1.0.154 | The JSON codec for the direct-message lane and the web server's request bodies. |
-| `sha2` | `0.11` | 0.11.1 | SHA-256 for content-addressed attachments: an attachment's `file_id` is the hex digest of its bytes. The lock also keeps `sha2 0.10.9` for `snow → libp2p-noise`, whose requirement has not moved. |
+| `sha2` | `0.11` | 0.11.2 | SHA-256 for content-addressed attachments: an attachment's `file_id` is the hex digest of its bytes. The lock also keeps `sha2 0.10.9` for `snow → libp2p-noise`, whose requirement has not moved. |
 
 ## Frontends
 
@@ -89,6 +89,9 @@ Everything else has been fixed upstream and pulled in. Recent rounds:
   `Url::origin()` on nested `blob:` URLs) and its companion
   `form_urlencoded 1.2.2 → 1.2.3`. Both are transitive (`multiaddr` and
   `hickory-proto`), so this was a lockfile-only change with no source edits.
+  The same day's compatibility sweep also took `clap 4.6.9 → 4.6.10`
+  (`clap_builder 4.6.7 → 4.6.10`) and `sha2 0.11.1 → 0.11.2`; those are
+  patch releases with no source or manifest change.
 - **2026-11-17** — `diesel 2.3.14 → 2.4.0` and `diesel_migrations 2.3.2 →
   2.4.0` (diesel widened the `libsqlite3-sys` range to `<0.41.0`), then
   `libsqlite3-sys 0.38.2 → 0.39.1` (RUSTSEC-2026-0459: C SQLite
@@ -122,7 +125,7 @@ That `sha2` bump needed **no source change**: `hash_bytes` in `src/files.rs`
 still compiles and the hex digest is byte-identical, which the existing
 `files::tests::hash_bytes_is_lowercase_hex_sha256` test pins down.
 
-The tree carries two `sha2` lines — our direct `0.11.1`, and `0.10.9` under
+The tree carries two `sha2` lines — our direct `0.11.2`, and `0.10.9` under
 `snow 0.10 → libp2p-noise`. That duplicate cannot be removed from this repo:
 `snow` 0.10 (still the newest release) requires `sha2 ^0.10`, while
 `libp2p-identity`/`ed25519-dalek` already require `^0.11`, and Cargo never
@@ -134,11 +137,13 @@ stack — so the repo stays on the newer line and the lock collapses to a single
 `cargo outdated` prints a normal table again now that diesel 2.4.0 accepts
 `libsqlite3-sys <0.41.0` — the old dependency-resolution error is gone. It
 exits 0 by default (`--exit-code N` changes that), which is another reason the
-daily job keeps it informational. The 2026-11-22 round took the last compatible
-patches — `clap 4.6.7 → 4.6.9` (with `clap_derive` and `syn`),
-`ratatui-textarea 0.9.3 → 0.9.4`, `unicode-width 0.2.2 → 0.2.3` — as lockfile-only
-bumps. No source change was needed. `cargo outdated --depth 1` now reports five
-direct rows (none is a security advisory):
+daily job keeps it informational. The 2026-11-22 round took the compatible
+patches `clap 4.6.7 → 4.6.9` (with `clap_derive` and `syn`),
+`ratatui-textarea 0.9.3 → 0.9.4`, `unicode-width 0.2.2 → 0.2.3`; the 2026-11-27
+sweep took the remaining compatible rows, `clap 4.6.9 → 4.6.10` and
+`sha2 0.11.1 → 0.11.2`. All were lockfile-only bumps with no source change.
+`cargo outdated --depth 1` now reports five direct rows (none is a security
+advisory):
 
 | Crate | Locked | Newer | Status |
 |---|---|---|---|

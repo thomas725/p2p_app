@@ -230,10 +230,13 @@ own archive entries.
 diesel 2.4.0 widened the SQLite range so `libsqlite3-sys 0.39.1` could land,
 alongside `libp2p-gossipsub 0.50.1` and `quinn-proto 0.11.19`. The 2026-11-27
 round took the transitive `url 2.5.8 → 2.5.9` patch for RUSTSEC-2026-0592.
+The same day's compatibility sweep took the remaining compatible patches,
+`clap 4.6.9 → 4.6.10` and `sha2 0.11.1 → 0.11.2`.
 
 `cargo outdated --depth 1` now prints a table again (diesel no longer blocks
-the probe) with five direct rows after the 2026-11-22 round took the last
-compatible patches (`clap`, `ratatui-textarea`, `unicode-width`). None is a
+the probe) with five direct rows after the 2026-11-22 and 2026-11-27 rounds
+took every compatible patch (`clap`, `ratatui-textarea`, `unicode-width`,
+`sha2`). None is a
 security advisory: two are deliberate pins (`libp2p-identity` 0.3.0, dev-only
 `tokio-tungstenite` 0.29), `base64` is held on libp2p's line, and two are
 semver-incompatible majors. Re-run `cargo outdated --depth 1` before assuming
@@ -310,6 +313,7 @@ here so they are not mistaken for unfinished work.
 | Peer blocklist / mute (US-054) | 2026-11-12 | [`archive/2026-11-12_peer_blocklist.md`](archive/2026-11-12_peer_blocklist.md) |
 | Manual peer address entry (US-053) | 2026-11-02 | `efa5e46` |
 | Connection quality indicators (US-052) | 2026-11-08 | [`archive/2026-11-08_connection_quality.md`](archive/2026-11-08_connection_quality.md) |
+| `clap` 4.6.10 + `sha2` 0.11.2 (compatible patches, no source change) | 2026-11-27 | `deps: take clap 4.6.10 and sha2 0.11.2` |
 | `sha2` 0.10 → 0.11.1 (attachment `file_id` digest, no source change) | 2026-11-01 | `deps: take sha2 0.11` |
 | `tower-http` 0.6 → 0.7 (web server static files + CORS) | 2026-10-31 | `deps: take tower-http 0.7` |
 | `libp2p` 0.57.0 → 0.57.1 (deliberate pin bump) | 2026-10-30 | `deps: move the libp2p pin to 0.57.1` |
