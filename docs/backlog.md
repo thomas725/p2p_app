@@ -271,6 +271,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| TUI modal-editor boundary + renderer parity | 2026-11-27 | [`archive/2026-11-27_tui_modal_editor_boundary.md`](archive/2026-11-27_tui_modal_editor_boundary.md) |
 | Key-driven TUI sessions + input/reply-preview fixes | 2026-11-27 | [`archive/2026-11-27_tui_key_driven_sessions.md`](archive/2026-11-27_tui_key_driven_sessions.md) |
 | `url` 2.5.9 + `form_urlencoded` 1.2.3 (RUSTSEC-2026-0592) | 2026-11-27 | `deps: take url 2.5.9` |
 | Reply snapshots canonicalized at every trust boundary | 2026-11-27 | [`archive/2026-11-27_reply_ref_boundary_canonicalization.md`](archive/2026-11-27_reply_ref_boundary_canonicalization.md) |

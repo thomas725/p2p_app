@@ -257,6 +257,14 @@ impl TuiRenderState {
         }
     }
 
+    /// True while a modal prompt owns the shared input. Mirrors
+    /// [`crate::InputMode::is_modal_editor`] so both renderers and input gates
+    /// agree on which modes keep the keyboard.
+    #[must_use]
+    pub const fn is_modal_editor(&self) -> bool {
+        self.input_mode.is_modal_editor()
+    }
+
     /// True while the shared text input captures a nickname edit (own, per-peer
     /// announced, or a peer's local display name).
     #[must_use]

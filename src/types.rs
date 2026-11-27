@@ -51,6 +51,28 @@ pub enum InputMode {
     AddingNetworkPeer,
 }
 
+impl InputMode {
+    /// True when a modal prompt owns the shared single-line input.
+    ///
+    /// `SearchingContacts` is deliberately excluded: it is an inline filter,
+    /// so bare Tab still cycles tabs and arrows still navigate the roster while
+    /// the query is being edited. Every other mode is a prompt that must keep
+    /// the keyboard until Enter commits or Esc cancels it.
+    #[must_use]
+    pub const fn is_modal_editor(self) -> bool {
+        matches!(
+            self,
+            Self::EditingNickname
+                | Self::EditingLocalNickname
+                | Self::EditingMessage
+                | Self::AddingReaction
+                | Self::CreatingGroup
+                | Self::DialingPeer
+                | Self::AddingNetworkPeer
+        )
+    }
+}
+
 /// Per-tab "keep scrolled to the newest message" toggles.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AutoScrollFlags {

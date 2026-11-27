@@ -377,6 +377,28 @@ fn test_receipt_no_timestamp() {
 }
 
 #[test]
+fn test_input_mode_modal_editor_boundary() {
+    use crate::InputMode;
+
+    assert!(!InputMode::Chat.is_modal_editor());
+    // Contacts search is an inline filter, not a modal prompt: Tab and arrows
+    // must keep their roster/tab meanings while the query is being typed.
+    assert!(!InputMode::SearchingContacts.is_modal_editor());
+
+    for mode in [
+        InputMode::EditingNickname,
+        InputMode::EditingLocalNickname,
+        InputMode::EditingMessage,
+        InputMode::AddingReaction,
+        InputMode::CreatingGroup,
+        InputMode::DialingPeer,
+        InputMode::AddingNetworkPeer,
+    ] {
+        assert!(mode.is_modal_editor(), "{mode:?} must own the keyboard");
+    }
+}
+
+#[test]
 fn test_message_event_empty_content() {
     let event = SwarmEvent::BroadcastMessage(MessageEvent {
         content: String::new(),

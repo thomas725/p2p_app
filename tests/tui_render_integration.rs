@@ -471,6 +471,32 @@ mod render_tests {
         assert!(!text.contains("Nickname"), "buffer: {text}");
     }
 
+    /// The group-name prompt must be visible in the library renderer too, even
+    /// though Groups has no ordinary chat input. Both renderers used to disagree
+    /// here: the live one showed the prompt, the library one a plain `Input`.
+    #[test]
+    fn test_render_input_section_creating_group_shows_prompt_and_text() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+        state.input_mode = p2p_app::InputMode::CreatingGroup;
+        state.input_text = "Team Rocket".to_string();
+
+        terminal
+            .draw(|f| {
+                render_input_section(f, Rect::new(0, 0, 80, 5), &state, &TabContent::Groups);
+            })
+            .unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("Create or Join Group"), "buffer: {text}");
+        assert!(text.contains("Team Rocket"), "buffer: {text}");
+    }
+
     /// Opening the Contacts search box relabels the shared input section and
     /// echoes the query, even though the Contacts tab has no chat input.
     #[test]

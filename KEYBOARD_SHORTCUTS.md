@@ -22,7 +22,10 @@ a **Help / controls** dialog describing the on-screen actions instead.
 Tabs are ordered: **Chat**, **Contacts**, **Groups**, group chats, DMs,
 Peer Info tabs, **Log**, **Settings**, **Shares**. Peer Info and DM tabs are
 transient — they are inserted, deduplicated by peer, and closed with `Ctrl+W`.
-Shares is a permanent suffix tab after Settings.
+Shares is a permanent suffix tab after Settings. While a modal prompt owns the
+input (nickname, message edit, reaction, group name, dial or network peer),
+`Tab` and `Shift+Tab` are no-ops so the prompt cannot be stranded on another
+tab. Contacts search is inline, not modal: Tab and arrows keep working there.
 
 ## Scrolling
 

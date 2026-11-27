@@ -3142,7 +3142,15 @@ fn test_network_peer_submission_reports_validation_errors() {
     state.chat_input.insert_str("/ip4/1.2.3.4/tcp/4001");
     handle_add_network_peer_submission(&mut state);
 
-    assert!(!state.is_adding_network_peer());
+    assert!(
+        state.is_adding_network_peer(),
+        "a rejected address stays in the prompt so it can be corrected"
+    );
+    assert_eq!(
+        state.chat_input.lines().join("\n"),
+        "/ip4/1.2.3.4/tcp/4001",
+        "the rejected text is preserved"
+    );
     assert_eq!(state.network_peers, Vec::new(), "nothing persisted");
     assert_eq!(
         p2p_app::network_config::list_network_peers()
@@ -4193,6 +4201,278 @@ fn test_contacts_search_peer_info_local_nickname_session() {
             .expect("peer1 row");
         assert_eq!(peer.peer_local_nickname.as_deref(), Some("Alice-1"));
         assert!(session.frame_text().await.contains("Alice-1"));
+        assert!(session.drain_commands().is_empty());
+    });
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
+
+// ── realistic Groups and Settings key sessions ─────────────────────────────
+
+fn seed_group_session_db() -> TempDir {
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("group-session.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+    dir
+}
+
+/// `g` → prompt owns navigation → invalid empty name → corrected name → Enter
+/// → group message → `BackTab` to the list → `d`/`y` leave. Every step crosses the
+/// real dispatch path and is checked against the DB and queued commands.
+#[test]
+#[serial]
+fn test_group_create_message_leave_session_through_real_keys() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = seed_group_session_db();
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let mut state = test_app_state();
+        state.active_tab = p2p_app::tui_tabs::FIXED_TAB_COUNT - 1; // Groups
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('g').await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.is_creating_group());
+            assert!(matches!(
+                s.dynamic_tabs.tab_index_to_content(s.active_tab),
+                TabContent::Groups
+            ));
+        }
+        let prompt_frame = session.frame_text().await;
+        assert!(
+            prompt_frame.contains("Create or Join Group"),
+            "group prompt title missing: {prompt_frame}"
+        );
+
+        // A modal prompt owns navigation; cycling tabs here would strand it on
+        // a tab with no visible input box. Ctrl+P must not open Peer Info.
+        assert!(!session.press_code(KeyCode::Tab).await);
+        assert!(!session.press_code(KeyCode::Up).await);
+        assert!(!session.press_ctrl_char('p').await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.is_creating_group());
+            assert_eq!(s.active_tab, p2p_app::tui_tabs::FIXED_TAB_COUNT - 1);
+            assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+        }
+
+        // Group names are validated in Rust: an all-whitespace draft must stay
+        // in the prompt with a hint, and the first correction key both clears
+        // the hint and edits the text.
+        assert!(!session.type_text("   ").await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.is_creating_group());
+            assert!(
+                s.popup
+                    .as_deref()
+                    .is_some_and(|hint| hint.contains("group name must not be empty"))
+            );
+        }
+        for _ in 0..3 {
+            assert!(!session.press_code(KeyCode::Backspace).await);
+        }
+        assert!(!session.type_text("Team Rocket").await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+
+        let groups = p2p_app::groups::list_groups().expect("list groups");
+        let group = groups
+            .iter()
+            .find(|group| group.display_name == "Team Rocket")
+            .expect("created group row");
+        let group_id = group.group_id.clone();
+        let commands = session.drain_commands();
+        assert!(commands.iter().any(|cmd| matches!(
+            cmd,
+            SwarmCommand::SubscribeGroup { group_id: id } if id == &group_id
+        )));
+        let s = session.state.lock().await;
+        assert!(!s.is_creating_group());
+        assert!(s.popup.is_none());
+        assert!(matches!(
+            s.dynamic_tabs.tab_index_to_content(s.active_tab),
+            TabContent::GroupChat(ref id) if id == &group_id
+        ));
+        drop(s);
+        let created_frame = session.frame_text().await;
+        assert!(
+            created_frame.contains("Team Rocket"),
+            "new group tab missing from frame: {created_frame}"
+        );
+
+        assert!(!session.type_text("hello group").await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+        let commands = session.drain_commands();
+        assert!(commands.iter().any(|cmd| matches!(
+            cmd,
+            SwarmCommand::PublishGroup { group_id: id, content, .. }
+                if id == &group_id && content == "hello group"
+        )));
+        let rows = p2p_app::groups::load_group_messages(&group_id, 20).expect("load messages");
+        assert!(
+            rows.iter().any(|row| row.content == "hello group"),
+            "group message persisted"
+        );
+        assert!(
+            session.frame_text().await.contains("hello group"),
+            "group message rendered"
+        );
+
+        // Leave is armed from the group list, not the chat composer.
+        assert!(!session.press_code(KeyCode::BackTab).await);
+        assert!(!session.press_char('d').await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.group_leave_prompt.is_some(), "leave prompt armed");
+        }
+        assert!(!session.press_char('y').await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.group_leave_prompt.is_none());
+            assert_eq!(
+                s.dynamic_tabs.group_tab_count(),
+                0,
+                "the left group's tab is closed"
+            );
+            assert!(matches!(
+                s.dynamic_tabs.tab_index_to_content(s.active_tab),
+                TabContent::Groups
+            ));
+        }
+        assert!(
+            p2p_app::groups::find_group(&group_id)
+                .expect("lookup")
+                .is_none(),
+            "leave deletes the local group row"
+        );
+        let commands = session.drain_commands();
+        assert_eq!(
+            commands.len(),
+            1,
+            "leave should queue only the unsubscribe command: {commands:?}"
+        );
+        assert!(matches!(
+            &commands[0],
+            SwarmCommand::UnsubscribeGroup { group_id: id } if id == &group_id
+        ));
+    });
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
+
+fn seed_settings_session_db() -> TempDir {
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("settings-session.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+    dir
+}
+
+/// `d` → multiaddr → Enter dials; `b` → invalid address → correction → Enter
+/// persists; a second `b` adds another row and `Up`/`x` removes the highlighted
+/// one. Prompts keep the keyboard and rejected text stays editable.
+#[test]
+#[serial]
+fn test_settings_dial_and_network_peer_session_through_real_keys() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = seed_settings_session_db();
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let mut state = test_app_state();
+        state.active_tab = settings_tab_index(&state);
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('d').await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.is_dialing_peer());
+        }
+        assert!(
+            session.frame_text().await.contains("Dial peer address"),
+            "dial prompt title missing"
+        );
+        assert!(!session.press_code(KeyCode::Tab).await);
+        assert!(!session.press_code(KeyCode::Down).await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.is_dialing_peer());
+            assert_eq!(s.active_tab, settings_tab_index(&s));
+        }
+        assert!(!session.type_text("/ip4/127.0.0.1/tcp/1234").await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+        let commands = session.drain_commands();
+        assert!(commands.iter().any(|cmd| matches!(
+            cmd,
+            SwarmCommand::Dial { address } if address == "/ip4/127.0.0.1/tcp/1234"
+        )));
+        {
+            let s = session.state.lock().await;
+            assert!(!s.is_dialing_peer());
+        }
+
+        assert!(!session.press_char('b').await);
+        assert!(
+            session
+                .frame_text()
+                .await
+                .contains("Add bootstrap multiaddr"),
+            "network peer prompt title missing"
+        );
+        assert!(!session.type_text("not-an-address").await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+        {
+            let s = session.state.lock().await;
+            assert!(
+                s.is_adding_network_peer(),
+                "invalid address keeps the prompt open"
+            );
+            assert_eq!(s.chat_input.lines().join("\n"), "not-an-address");
+            assert!(
+                s.popup
+                    .as_deref()
+                    .is_some_and(|hint| hint.starts_with("Network peer not saved:"))
+            );
+        }
+        for _ in 0.."not-an-address".chars().count() {
+            assert!(!session.press_code(KeyCode::Backspace).await);
+        }
+        assert!(!session.type_text("/ip4/1.2.3.4/tcp/4001").await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+        {
+            let s = session.state.lock().await;
+            assert!(!s.is_adding_network_peer());
+            assert!(s.popup.is_none());
+            assert_eq!(s.network_peers.len(), 1);
+            assert_eq!(s.network_peer_selection, 0);
+        }
+
+        assert!(!session.press_char('b').await);
+        assert!(!session.type_text("/ip4/5.6.7.8/tcp/4001").await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+        {
+            let s = session.state.lock().await;
+            assert_eq!(s.network_peers.len(), 2);
+            assert_eq!(s.network_peer_selection, 1);
+        }
+        assert!(!session.press_code(KeyCode::Up).await);
+        {
+            let s = session.state.lock().await;
+            assert_eq!(s.network_peer_selection, 0, "Up moves the highlight");
+        }
+        assert!(!session.press_char('x').await);
+        let stored = p2p_app::network_config::list_network_peers().expect("list peers");
+        assert_eq!(stored.len(), 1);
+        assert_eq!(stored[0].multiaddr, "/ip4/5.6.7.8/tcp/4001");
+        let frame = session.frame_text().await;
+        assert!(frame.contains("/ip4/5.6.7.8/tcp/4001"));
+        assert!(!frame.contains("/ip4/1.2.3.4/tcp/4001"));
         assert!(session.drain_commands().is_empty());
     });
     p2p_app::db::release_db_lock();

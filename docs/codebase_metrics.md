@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        71 |
-| Total Rust Lines      |    41,162 |
-| Total Rust Chars      | 1,560,298 |
-| Avg Lines/Rust File   |       579 |
-| Avg Chars/Rust File   |    21,976 |
+| Total Rust Lines      |    41,192 |
+| Total Rust Chars      | 1,561,503 |
+| Avg Lines/Rust File   |       580 |
+| Avg Chars/Rust File   |    21,993 |
 | Total Dart Files      |        50 |
 | Total Dart Lines      |    22,610 |
 | Total Dart Chars      |   726,445 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       153 |
 | Avg Chars/Kotlin File |     5,524 |
 
-**Grand Total:** 125 files, 64,384 lines, 2,308,842 characters
+**Grand Total:** 125 files, 64,414 lines, 2,310,047 characters
 
 ## Rust Source Files
 
@@ -53,7 +53,7 @@
 | src                     | mobile_api.rs        |     4 | 36782 |  1049 |        - |       - | Mobile FRB API surface                             |
 | src                     | mobile_node.rs       |     5 | 96442 |  2565 |        - |       - | Mobile node lifecycle & swarm                      |
 | src                     | mod.rs               |     5 | 45231 |  1300 |        - |       - | FRB API surface                                    |
-| src                     | mod.rs               |     4 | 12881 |   330 |        - |       - | TUI render chrome & dispatch                       |
+| src                     | mod.rs               |     4 | 12789 |   325 |        - |       - | TUI render chrome & dispatch                       |
 | src                     | mod.rs               |     7 | 64763 |  1689 |        - |       - | Web server (axum HTTP+WS)                          |
 | src                     | net_diag.rs          |     4 | 21449 |   596 |        - |       - | Source file                                        |
 | src                     | network.rs           |     3 |  2655 |    84 |        - |       - | Network size classification                        |
@@ -74,9 +74,9 @@
 | src                     | swarm_handler.rs     |     7 | 100607 |  2620 |        - |       - | Network event translation                          |
 | src                     | theme.rs             |     4 |  7223 |   234 |        - |       - | Source file                                        |
 | src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities                   |
-| src                     | tui_render_state.rs  |     4 | 26478 |   706 |        - |       - | TUI render state & tab content                     |
+| src                     | tui_render_state.rs  |     4 | 26786 |   714 |        - |       - | TUI render state & tab content                     |
 | src                     | tui_tabs.rs          |     6 | 12023 |   348 |        - |       - | Tab management & navigation                        |
-| src                     | types.rs             |     2 | 18507 |   485 |        - |       - | Event & command type defs                          |
+| src                     | types.rs             |     4 | 19291 |   507 |        - |       - | Event & command type defs                          |
 | src/bin                 | p2p_chat.rs          |     7 |  6917 |   192 |        - |       - | CLI chat application                               |
 | src/bin                 | p2p_chat_server.rs   |     4 |  4836 |   138 |        - |       - | Headless node + web server entry point             |
 | src/bin                 | p2p_chat_tui.rs      |     6 |  9871 |   277 |        - |       - | Main TUI application entry point                   |
@@ -84,13 +84,13 @@
 | src/bin/tui             | click_handlers.rs    |     7 | 25366 |   604 |        - |       - | Click handlers & index mapping                     |
 | src/bin/tui             | command_processor.rs |     6 | 31877 |   867 |        - |       - | Event routing & state updates                      |
 | src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)                    |
-| src/bin/tui             | input_processor.rs   |     7 | 76468 |  1964 |        - |       - | Input event routing & processing                   |
+| src/bin/tui             | input_processor.rs   |     7 | 76614 |  1969 |        - |       - | Input event routing & processing                   |
 | src/bin/tui             | key_probe.rs         |     6 |  6272 |   172 |        - |       - | Keyboard enhancement probe                         |
 | src/bin/tui             | main_loop.rs         |     6 | 15979 |   400 |        - |       - | Task orchestration & async                         |
 | src/bin/tui             | message_handlers.rs  |     4 | 17117 |   522 |        - |       - | Message sending logic                              |
 | src/bin/tui             | scroll_handlers.rs   |     6 | 18157 |   482 |        - |       - | Scroll & hover-aware navigation                    |
-| src/bin/tui             | state.rs             |     8 | 66192 |  1560 |        - |       - | Shared application state                           |
-| src/bin/tui/render_loop | layout.rs            |     5 |  3379 |    94 |        - |       - | UI layout component rendering                      |
+| src/bin/tui             | state.rs             |     8 | 66465 |  1568 |        - |       - | Shared application state                           |
+| src/bin/tui/render_loop | layout.rs            |     5 |  3165 |    86 |        - |       - | UI layout component rendering                      |
 | src/bin/tui/render_loop | mod.rs               |     6 | 15726 |   400 |        - |       - | Render loop orchestration (60 FPS)                 |
 | src/generated           | columns.rs           |     1 |  4561 |   108 |        - |       - | Auto-generated column definitions                  |
 | src/generated           | mod.rs               |     0 |   488 |    11 |        - |       - | Module declarations                                |
@@ -98,7 +98,7 @@
 | src/generated           | models_queryable.rs  |     1 | 14539 |   397 |        - |       - | Queryable data models                              |
 | src/generated           | schema.rs            |     2 |  9786 |   330 |        - |       - | Database schema (Diesel)                           |
 
-**Total:** 71 files, 41,162 lines, 1,560,298 characters
+**Total:** 71 files, 41,192 lines, 1,561,503 characters
 
 ## Rust Test Files
 
@@ -125,7 +125,7 @@
 | tests  | tui_chat.rs                        |   741 | 23619 |     4 | TUI chat functionality tests          |
 | tests  | tui_helpers.rs                     |   437 | 13387 |     3 | TUI helpers tests                     |
 | tests  | tui_integration.rs                 |   520 | 16672 |     4 | TUI integration tests                 |
-| tests  | tui_render_integration.rs          |  1991 | 69322 |     5 | TUI render integration tests          |
+| tests  | tui_render_integration.rs          |  2017 | 70390 |     5 | TUI render integration tests          |
 | tests  | tui_state.rs                       |   269 |  8303 |     2 | TUI state tests                       |
 | tests  | tui_tasks.rs                       |   245 |  7811 |     7 | TUI task tests                        |
 | tests  | types.rs                           |   662 | 20583 |     3 | types module tests                    |
@@ -133,7 +133,7 @@
 | unit   | unit_bin_tui_click_handlers.rs     |   866 | 32143 |     4 | Unit tests for TUI click handlers     |
 | unit   | unit_bin_tui_command_processor.rs  |  1559 | 53296 |     5 | Unit tests for TUI command processor  |
 | unit   | unit_bin_tui_event_source.rs       |    44 |  1352 |     2 | Unit tests for TUI event source       |
-| unit   | unit_bin_tui_input_processor.rs    |  4200 | 146750 |     5 | Unit tests for TUI input processor    |
+| unit   | unit_bin_tui_input_processor.rs    |  4480 | 157601 |     5 | Unit tests for TUI input processor    |
 | unit   | unit_bin_tui_main_loop.rs          |   233 |  7007 |     3 | Unit tests for TUI main loop          |
 | unit   | unit_bin_tui_message_handlers.rs   |   467 | 15073 |     5 | Unit tests for TUI message handlers   |
 | unit   | unit_bin_tui_render_loop_layout.rs |    98 |  3437 |     2 | Test file                             |
@@ -170,9 +170,9 @@
 | unit   | unit_tui_render_state.rs           |   365 | 11174 |     2 | Unit tests for TUI render state       |
 | unit   | unit_tui_tabs.rs                   |   340 | 10961 |     3 | Unit tests for TUI tabs               |
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
-| unit   | unit_types.rs                      |   400 | 12098 |     3 | Unit tests for types module           |
+| unit   | unit_types.rs                      |   422 | 12805 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 30,691 lines, 1,034,530 characters
+**Total:** 67 test files, 31,019 lines, 1,047,156 characters
 
 ## Dart Source Files
 

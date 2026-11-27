@@ -152,6 +152,8 @@ pub fn render_input_section(
             "Add {} multiaddr",
             state.network_peer_kind.as_deref().unwrap_or("network peer")
         )
+    } else if state.is_creating_group() {
+        "Create or Join Group".to_string()
     } else if state.is_searching_contacts() {
         "Search Contacts".to_string()
     } else if state.is_editing_nickname() {
@@ -169,14 +171,7 @@ pub fn render_input_section(
 
     let input_block = Block::default().title(title).borders(Borders::ALL);
 
-    if tab_content.is_input_enabled()
-        || state.is_editing_nickname()
-        || state.is_editing_message()
-        || state.is_adding_reaction()
-        || state.is_searching_contacts()
-        || state.is_dialing_peer()
-        || state.is_adding_network_peer()
-    {
+    if tab_content.is_input_enabled() || state.is_modal_editor() || state.is_searching_contacts() {
         let inner_area = input_block.inner(area);
         f.render_widget(input_block, area);
         let input = Paragraph::new(state.input_text.as_str());

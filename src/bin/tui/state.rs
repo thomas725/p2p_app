@@ -387,6 +387,14 @@ fn short_preview(text: &str) -> String {
 }
 
 impl AppState {
+    /// True while a modal prompt owns the shared input. See
+    /// [`p2p_app::InputMode::is_modal_editor`] for why Contacts search is not
+    /// included.
+    #[must_use]
+    pub const fn is_modal_editor(&self) -> bool {
+        self.input_mode.is_modal_editor()
+    }
+
     /// True while the shared text input is capturing a nickname edit (either
     /// this install's own nickname, a per-peer announced nickname, or a peer's
     /// local display name).

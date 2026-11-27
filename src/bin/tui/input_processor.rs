@@ -47,13 +47,7 @@ const fn popup_dismissal_feeds_editor(
 ) -> bool {
     use crossterm::event::KeyCode;
 
-    let editor_active = state.is_editing_nickname()
-        || state.is_editing_message()
-        || state.is_adding_reaction()
-        || state.is_creating_group()
-        || state.is_dialing_peer()
-        || state.is_adding_network_peer();
-    editor_active
+    state.is_modal_editor()
         && matches!(
             key_event.code,
             KeyCode::Char(_) | KeyCode::Backspace | KeyCode::Delete
@@ -910,10 +904,7 @@ async fn handle_enter_key(
             p2plog_debug(format!("Opened DM with peer: {peer_id}"));
         }
     } else if matches!(tab_content, p2p_app::tui_tabs::TabContent::Groups) {
-        if state.is_creating_group() {
-            let name = state.chat_input.lines().join("\n");
-            create_or_join_group(state, swarm_cmd_tx, &name).await;
-        } else if let Some(group) = state.group_summaries.get(state.group_selection) {
+        if let Some(group) = state.group_summaries.get(state.group_selection) {
             let group_id = group.group.group_id.clone();
             let display_name = group.group.display_name.clone();
             super::click_handlers::open_group_chat(state, &group_id, &display_name);
@@ -1043,15 +1034,19 @@ fn handle_settings_shortcut(c: char, s: &mut super::state::AppState) {
 fn handle_add_network_peer_submission(s: &mut super::state::AppState) {
     let kind = s.network_peer_kind;
     let address = s.chat_input.lines().join("\n").trim().to_string();
-    s.cancel_add_network_peer();
     let Some(kind) = kind else {
         return;
     };
     if address.is_empty() {
+        s.cancel_add_network_peer();
         return;
     }
     match p2p_app::network_config::add_network_peer(kind.as_str(), &address) {
         Ok(peer) => {
+            // Only a successful submit closes the prompt. A rejected address
+            // keeps the text so the next correction key can edit it, matching
+            // the nickname and group-name prompts.
+            s.cancel_add_network_peer();
             p2plog_debug(format!(
                 "Saved {} network peer: {}",
                 peer.kind, peer.multiaddr
@@ -1326,7 +1321,7 @@ fn handle_contacts_tab_key(
     is_ctrl: bool,
     s: &mut super::state::AppState,
 ) {
-    if is_ctrl || s.is_editing_nickname() || s.is_editing_message() {
+    if is_ctrl || s.is_modal_editor() {
         return;
     }
     match key_event.code {
@@ -1431,7 +1426,7 @@ async fn handle_key_dispatch(
             if !is_ctrl && on_contacts && handle_contacts_search_edit(key_event, s) => {}
         crossterm::event::KeyCode::Char(_)
             if !is_ctrl
-                && !s.is_editing_nickname()
+                && !s.is_modal_editor()
                 && (on_contacts || on_peer_info)
                 && handle_contacts_action_key(
                     key_event,
@@ -1444,6 +1439,7 @@ async fn handle_key_dispatch(
                 .await => {}
         crossterm::event::KeyCode::Char(_)
             if !is_ctrl
+                && !s.is_modal_editor()
                 && (on_peer_info
                     || matches!(
                         &tab,
@@ -1456,7 +1452,7 @@ async fn handle_key_dispatch(
         // every keystroke, so typing never re-sorts) and anything else is a
         // column-sort shortcut; `e`/`i`/`c` were handled above.
         crossterm::event::KeyCode::Char(_) | crossterm::event::KeyCode::Backspace
-            if on_contacts && !s.is_editing_nickname() =>
+            if on_contacts && !s.is_modal_editor() =>
         {
             handle_contacts_tab_key(key_event, is_ctrl, s);
         }
@@ -1480,7 +1476,7 @@ async fn handle_global_navigation(
     on_direct: bool,
     s: &mut super::state::AppState,
 ) -> bool {
-    let editing = s.is_editing_nickname() || s.is_editing_message() || s.is_adding_reaction();
+    let editing = s.is_modal_editor();
     match key_event.code {
         // Ctrl+P is universal: it opens the active tab's Peer Info target when
         // there is one and is consumed everywhere (never literal 'p' text).
@@ -1495,7 +1491,9 @@ async fn handle_global_navigation(
             return true;
         }
         crossterm::event::KeyCode::BackTab => {
-            handle_navigation_key(key_event.code, s).await;
+            if !editing {
+                handle_navigation_key(key_event.code, s).await;
+            }
             return true;
         }
         // Tab carries two meanings: bare Tab cycles tabs on every terminal (a
@@ -1504,6 +1502,12 @@ async fn handle_global_navigation(
         // always free to cycle). Tab+CONTROL is the CSI-u spelling of Ctrl+I on
         // terminals that send it as an explicitly-modified Tab; it is a no-op.
         crossterm::event::KeyCode::Tab => {
+            if editing {
+                // A prompt keeps the keyboard: cycling tabs here would leave
+                // the prompt armed on a different tab, where Enter can commit
+                // it with no visible input box.
+                return true;
+            }
             if is_ctrl {
                 p2plog_debug("Ctrl+I (Tab+CONTROL) ignored: no-op on this tab".to_string());
             } else {
@@ -1517,7 +1521,9 @@ async fn handle_global_navigation(
         | crossterm::event::KeyCode::PageDown
         | crossterm::event::KeyCode::Home
         | crossterm::event::KeyCode::End => {
-            handle_scroll_key(key_event.code, s).await;
+            if !editing {
+                handle_scroll_key(key_event.code, s).await;
+            }
             return true;
         }
         crossterm::event::KeyCode::F(12) => {
@@ -1639,6 +1645,9 @@ async fn handle_enter_dispatch(
         confirm_edit_message(s);
     } else if s.is_adding_reaction() {
         confirm_reaction(s, swarm_cmd_tx).await;
+    } else if s.is_creating_group() {
+        let name = s.chat_input.lines().join("\n");
+        create_or_join_group(s, swarm_cmd_tx, &name).await;
     } else if s.is_dialing_peer() {
         handle_dial_peer_submission(s, swarm_cmd_tx).await;
     } else if s.is_adding_network_peer() {
@@ -1655,6 +1664,9 @@ fn handle_tab_specific_shortcut(
     s: &mut super::state::AppState,
     tab: &p2p_app::tui_tabs::TabContent,
 ) -> bool {
+    if s.is_modal_editor() {
+        return false;
+    }
     match code {
         crossterm::event::KeyCode::Char('n')
             if !s.is_editing_nickname()
@@ -1711,14 +1723,7 @@ fn handle_default_input(
     dm_peer_id: Option<&str>,
     input_enabled: bool,
 ) {
-    if input_enabled
-        || s.is_editing_nickname()
-        || s.is_editing_message()
-        || s.is_adding_reaction()
-        || s.is_creating_group()
-        || s.is_dialing_peer()
-        || s.is_adding_network_peer()
-    {
+    if input_enabled || s.is_modal_editor() {
         s.chat_input.input(key_event);
         if input_enabled
             && s.input_mode == p2p_app::InputMode::Chat
@@ -1748,7 +1753,7 @@ async fn handle_contacts_action_key(
     s: &mut super::state::AppState,
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
 ) -> bool {
-    if is_ctrl || s.is_editing_nickname() || s.is_editing_message() {
+    if is_ctrl || s.is_modal_editor() {
         return false;
     }
     match key_event.code {
