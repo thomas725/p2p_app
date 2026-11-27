@@ -98,10 +98,10 @@ cpal = { version = "0.18", optional = true }
 # ORM mapper we use to access our SQLite database
 diesel = { version = "^2.3", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
 # feature "chrono" used for TIMESTAMP columns
-# by default we dynamically link to SQLite installed in your system.
-# to instead bundle SQLite, you could uncomment the next line:
+# Enables `sqlite_bundled` via the `dep:libsqlite3-sys` feature mapping below.
+# Bundling is on in the default build (default -> web -> mobile -> sqlite_bundled);
+# builds that disable `default`/`mobile` link the system SQLite instead.
 libsqlite3-sys = { version = "0.39", features = ["bundled"], optional = true }
-#libsqlite3-sys = "0.35.0"
 
 # for embedding the migration sql scripts and update the database found during runtime to reflect the expected structure
 diesel_migrations = { version = "^2.3" }

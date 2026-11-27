@@ -169,7 +169,7 @@ checklist is in [`AGENTS.md`](AGENTS.md) ("FRB regeneration protocol").
 ```
 src/
 ├── lib.rs                     # crate root; module wiring
-├── behavior.rs                # libp2p behaviours: gossipsub, 4 request_response lanes, mdns, ping
+├── behavior.rs                # libp2p behaviours: gossipsub, 8 request_response lanes, mdns, ping
 ├── swarm_handler.rs           # libp2p events -> app events; inbound persistence
 ├── db.rs                      # SQLite connection, multi-instance lock, ensure_columns
 ├── messages.rs                # message + receipt persistence, per-peer stats

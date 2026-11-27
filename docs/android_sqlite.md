@@ -6,18 +6,21 @@ using a SQLite provided by Android, and how would we switch to Android-provided 
 
 ## Current setup (the "embedded" SQLite)
 
-- `Cargo.toml:54` — `sqlite_bundled = ["dep:libp2p", "dep:libsqlite3-sys"]`; the direct dep at
-  `Cargo.toml:94` is `libsqlite3-sys = { version = "0.38", features = ["bundled"], optional = true }`.
-- `Cargo.toml:58` — `mobile = ["basic", "sqlite_bundled", "quic", "flutter_rust_bridge", "attachment-gc"]`, so every
-  `--features mobile` build activates `libsqlite3-sys/bundled` **globally for the crate graph**.
+- `Cargo.toml` — `sqlite_bundled = ["dep:libp2p", "dep:libsqlite3-sys"]`; the
+  direct dep is `libsqlite3-sys = { version = "0.39", features = ["bundled"], optional = true }`
+  (resolved to 0.39.1 in `Cargo.lock`).
+- `Cargo.toml` — `mobile` includes `basic`, `sqlite_bundled`, `quic`, `kad`, `relay`,
+  `nat`, `flutter_rust_bridge` and `attachment-gc`, so every `--features mobile`
+  build activates `libsqlite3-sys/bundled` **globally for the crate graph**.
 - `apps/flutter_app/build_rust_android.sh` — the mobile build is plain `cargo build --lib --features mobile`
   per NDK target (`aarch64/armv7/x86_64-linux-android`), then the cdylib lands in `jniLibs`.
-- `libsqlite3-sys 0.38` semantics (from its `build.rs`/`Cargo.toml.orig`):
-  - **Without** `bundled` (default, `min_sqlite_version_3_34_1`): locates a **system** SQLite via
-    `pkg-config`/`vcpkg` and links it. This is what the desktop build does (default features ≠ mobile).
+- `libsqlite3-sys 0.39` semantics (from its `build.rs`/`Cargo.toml.orig`):
+  - **Without** `bundled`: locates a **system** SQLite via `pkg-config`/`vcpkg` and
+    links it. Only builds that disable `default`/`mobile` take this path.
   - **With** `bundled`: compiles the shipped amalgamation `sqlite3.c` directly into the linking crate.
-- The bundled amalgamation in 0.38.2 is **SQLite 3.53.2** (verified in `sqlite3/sqlite3.h`), compiled per-ABI
-  by the `cc` crate using the NDK clang that `build_rust_android.sh` exports.
+- The bundled amalgamation in the locked 0.39.1 is **SQLite 3.54.1** (verified in
+  `sqlite3/sqlite3.h`), compiled per-ABI by the `cc` crate using the NDK clang
+  that `build_rust_android.sh` exports.
 - DB access on Android flows: Flutter calls FRB → `mobile_node::start_node(db_path)` (`src/mobile_node.rs:41-80`)
   → `init_mobile_database(path)` → the diesel code in `src/db.rs` running embedded migrations against the file.
 
@@ -33,16 +36,17 @@ using a SQLite provided by Android, and how would we switch to Android-provided 
    `android.database.sqlite.SQLiteDatabase` (and the `sqlite3` program on the shell user).
    That is a JNI wrapper around the private native library, reachable only from Kotlin/Java.
 3. **Version pinning for diesel.** The SQLite backend uses `returning_clauses_for_sqlite_3_35`
-   (`Cargo.toml:90`) — `INSERT … RETURNING`, which needs SQLite ≥ 3.35. Android's platform SQLite
+   in `Cargo.toml` — `INSERT … RETURNING`, which needs SQLite ≥ 3.35. Android's platform SQLite
    version varies per device/ROM (≈3.32 on Android 12, 3.39 on 13, 3.44 on 14, 3.46+ on 15); old
-   devices would break diesel's generated queries. The bundle pins a known-new engine (3.53.2) on
+   devices would break diesel's generated queries. The bundle pins a known-new engine (3.54.1) on
    every device, which also keeps migration behavior deterministic.
 4. **Schema/engine consistency.** Diesel runs embedded migrations against the file; a heterogeneous
    set of platform engines would produce per-device behavior differences on top of the same schema.
 
 That's also why the earlier `sqlite-bundled` restructure was rejected in backlog item 7 and the
-`sqlite_bundled` feature already scopes the bundling to mobile correctly (it stays off for the host
-build, which keeps using the system SQLite via pkg-config).
+`sqlite_bundled` feature is the single switch for bundling. Note that the default desktop build also
+bundles SQLite: `default` includes `web`, which implies `mobile` and therefore `sqlite_bundled`.
+Only builds that disable `default`/`mobile` link the system SQLite via `pkg-config`.
 
 ## Paths to "use Android-provided SQLite"
 

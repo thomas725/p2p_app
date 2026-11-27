@@ -522,8 +522,10 @@ live.
 
 Call signaling and the μ-law **media transport** are implemented (Rust owns the
 session; the in-call overlay shows mic state and the decoded-frame count).
-No device-level microphone/speaker adapter ships yet. See
-[docs/backlog.md](docs/backlog.md) (US-044).
+An opt-in desktop microphone/speaker adapter lives in
+`src/bin/tui/call_audio.rs` behind the `tui-audio` Cargo feature (not in
+`default` or `tui`, so normal builds need no host audio libraries); Android's
+device adapters are separate. See [docs/backlog.md](docs/backlog.md) (US-044).
 
 ## DM tab layout
 

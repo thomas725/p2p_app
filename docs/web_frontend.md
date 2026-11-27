@@ -90,10 +90,11 @@ curl -u p2p:"$P2P_WEB_PASSWORD" http://127.0.0.1:8080/api/status
 
 ## Rust touch points
 
-- `Cargo.toml`: `web = ["dep:axum", "dep:tower-http", "dep:base64", "dep:subtle"]` (added to
-  `default`), `[[bin]] p2p_chat_server` (`required-features = ["web"]`). `base64` and
-  `subtle` were already in the tree; they are the Basic decoding and the constant-time
-  comparison for the auth gate.
+- `Cargo.toml`: `web` pulls in `dep:axum`, `dep:tower-http`, `dep:base64`,
+  `dep:subtle`, `tokio/signal`, `dep:futures-util` and `mobile` (and is itself in
+  `default`); `[[bin]] p2p_chat_server` declares
+  `required-features = ["web"]`. `base64` and `subtle` were already in the tree;
+  they are the Basic decoding and the constant-time comparison for the auth gate.
 - Wire structs gain `Serialize` (+ `Deserialize` for sort inputs) — no FRB impact
   (`rust_input` is `api,mobile_api,mobile_node`; new fns stay `pub(crate)`).
 - `files::store_outgoing_bytes` (upload handler), `mobile_node::save_outgoing_*_with_attachment`

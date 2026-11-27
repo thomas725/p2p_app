@@ -381,8 +381,9 @@ API sets the path per thread with `db::set_db_url`.
 |---|---|
 | `default` | `mdns`, `kad`, `relay`, `nat`, `tracing`, `quic`, `tui`, `attachment-gc`, `web` |
 | `web` | the axum server; **implies `mobile`** |
-| `mobile` | FRB surface, bundled sqlite; implies `basic`, `sqlite_bundled`, `quic`, `attachment-gc` |
+| `mobile` | FRB surface, bundled sqlite; implies `basic`, `sqlite_bundled`, `quic`, `kad`, `relay`, `nat`, `attachment-gc` |
 | `tui` | ratatui + crossterm + ratatui-textarea |
+| `tui-audio` | opt-in `cpal` microphone/speaker adapter for the TUI calls overlay (not in `default`/`tui`) |
 | `basic` | libp2p only |
 | `sqlite_bundled` | compile sqlite in (required for Android) |
 | `attachment-gc` | sweep orphaned attachment blobs at startup; disabling it means the store never deletes anything |
