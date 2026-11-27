@@ -5,7 +5,6 @@ import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/screens/dm_chat.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
-import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 
 /// Full-screen peer detail page (name origin, activity, message stats), with a
 /// shortcut to open the DM chat for the peer and — when [onEditLocalNickname]
@@ -45,7 +44,10 @@ class PeerInfoScreen extends StatefulWidget {
   /// Persists a per-peer local nickname and returns the refreshed record (or
   /// null when the peer is no longer in the roster). Optional: when null, no
   /// nickname-edit action is rendered.
-  final Future<MobilePeerRecord?> Function(MobilePeerRecord peer, String nickname)?
+  final Future<MobilePeerRecord?> Function(
+    MobilePeerRecord peer,
+    String nickname,
+  )?
   onEditLocalNickname;
 
   /// Loads the live ping-based connection quality (round-trip time + loss) for
@@ -111,7 +113,9 @@ class _PeerInfoScreenState extends State<PeerInfoScreen> {
       setState(() => _blocked = blocked);
     } catch (e) {
       // Blocklist state is an extra, never a reason to fail the page.
-      debugPrint('Failed to load blocklist state for ${widget.peer.peerId}: $e');
+      debugPrint(
+        'Failed to load blocklist state for ${widget.peer.peerId}: $e',
+      );
     }
   }
 
@@ -159,7 +163,8 @@ class _PeerInfoScreenState extends State<PeerInfoScreen> {
 
   MobilePeerRecord get _peer => _refreshed ?? widget.peer;
 
-  String get _displayName => _refreshed?.displayName ?? _localNickname ?? widget.peer.displayName;
+  String get _displayName =>
+      _refreshed?.displayName ?? _localNickname ?? widget.peer.displayName;
 
   String? get _effectiveLocalNickname =>
       _refreshed?.localNickname ?? _localNickname ?? widget.peer.localNickname;
@@ -335,9 +340,9 @@ class _PeerInfoScreenState extends State<PeerInfoScreen> {
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
                   const SizedBox(height: 4),
-                  _infoRow('First seen', formatSeenTimestamp(peer.firstSeen)),
+                  _infoRow('First seen', peer.firstSeen),
                   const SizedBox(height: 8),
-                  _infoRow('Last seen', formatSeenTimestamp(peer.lastSeen)),
+                  _infoRow('Last seen', peer.lastSeen),
                   if (widget.loadBlocked != null ||
                       widget.toggleBlock != null) ...[
                     const SizedBox(height: 8),

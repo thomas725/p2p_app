@@ -6,7 +6,27 @@ fn test_format_peer_datetime() {
     let dt = NaiveDateTime::parse_from_str("2024-01-01 12:00:00", "%Y-%m-%d %H:%M:%S")
         .expect("valid datetime literal");
     let formatted = format_peer_datetime(dt);
-    assert!(formatted.contains("2024"));
+    assert_eq!(formatted, "2024-01-01 12:00:00");
+}
+
+#[test]
+fn flutter_seen_timestamps_stay_rust_formatted() {
+    // `firstSeen`/`lastSeen` arrive as display-ready strings from Rust. Guard
+    // the three Dart files that used to reformat them, so a future edit cannot
+    // silently reintroduce a second display authority.
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    for relative in [
+        "apps/flutter_app/lib/src/util/ui_utils.dart",
+        "apps/flutter_app/lib/src/screens/contact_list.dart",
+        "apps/flutter_app/lib/src/screens/peer_info.dart",
+    ] {
+        let source =
+            std::fs::read_to_string(root.join(relative)).expect("Dart source file is readable");
+        assert!(
+            !source.contains("formatSeenTimestamp"),
+            "{relative} must not reformat Rust-timestamped seen values",
+        );
+    }
 }
 
 #[test]

@@ -10,17 +10,17 @@
 | Avg Lines/Rust File   |       582 |
 | Avg Chars/Rust File   |    22,071 |
 | Total Dart Files      |        50 |
-| Total Dart Lines      |    22,613 |
-| Total Dart Chars      |   726,654 |
+| Total Dart Lines      |    22,609 |
+| Total Dart Chars      |   726,080 |
 | Avg Lines/Dart File   |       452 |
-| Avg Chars/Dart File   |    14,533 |
+| Avg Chars/Dart File   |    14,521 |
 | Total Kotlin Files    |         4 |
 | Total Kotlin Lines    |       612 |
 | Total Kotlin Chars    |    22,099 |
 | Avg Lines/Kotlin File |       153 |
 | Avg Chars/Kotlin File |     5,524 |
 
-**Grand Total:** 125 files, 64,551 lines, 2,315,830 characters
+**Grand Total:** 125 files, 64,547 lines, 2,315,256 characters
 
 ## Rust Source Files
 
@@ -153,7 +153,7 @@
 | unit   | unit_files.rs                      |   538 | 20323 |     4 | files module tests                    |
 | unit   | unit_groups.rs                     |   649 | 23459 |     5 | Unit tests for groups module          |
 | unit   | unit_identity.rs                   |   747 | 29217 |     4 | identity module tests                 |
-| unit   | unit_lib.rs                        |   278 |  7955 |     3 | Unit tests for library re-exports/api |
+| unit   | unit_lib.rs                        |   298 |  8790 |     3 | Unit tests for library re-exports/api |
 | unit   | unit_logging.rs                    |   205 |  5217 |     4 | Unit tests for logging module         |
 | unit   | unit_messages.rs                   |   685 | 25897 |     4 | Unit tests for messages module        |
 | unit   | unit_net_diag.rs                   |   483 | 15776 |     3 | Test file                             |
@@ -172,7 +172,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   422 | 12805 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 31,761 lines, 1,072,697 characters
+**Total:** 67 test files, 31,781 lines, 1,073,532 characters
 
 ## Dart Source Files
 
@@ -200,7 +200,7 @@
 | lib/src/rust | shares.dart                      |     5 |  3924 |   145 |        - |       - | Dart source file                 |
 | lib/src/rust | theme.dart                       |     5 |  1851 |    68 |        - |       - | Dart source file                 |
 | lib          | call_screen.dart                 |    17 | 15735 |   485 |        - |       - | Call overlay screen              |
-| lib          | contact_list.dart                |    15 | 14857 |   429 |        - |       - | Contacts roster screen           |
+| lib          | contact_list.dart                |    15 | 14716 |   428 |        - |       - | Contacts roster screen           |
 | lib          | dm_chat.dart                     |     8 | 20306 |   577 |        - |       - | Direct-message chat screen       |
 | lib          | group_chat.dart                  |     8 | 12394 |   366 |        - |       - | Group chat screen                |
 | lib          | group_list.dart                  |    17 |  7931 |   235 |        - |       - | Group list screen                |
@@ -208,7 +208,7 @@
 | lib          | log_tab.dart                     |    10 |  3493 |   123 |        - |       - | Log tab screen                   |
 | lib          | messages.dart                    |    15 | 45590 |  1328 |        - |       - | Shared chat widgets              |
 | lib          | nav_bar.dart                     |     3 |  1252 |    34 |        - |       - | Tab navigation bar               |
-| lib          | peer_info.dart                   |    11 | 17257 |   500 |        - |       - | Peer Info screen                 |
+| lib          | peer_info.dart                   |    11 | 17194 |   505 |        - |       - | Peer Info screen                 |
 | lib          | settings.dart                    |    16 | 41440 |  1208 |        - |       - | Settings screen                  |
 | lib          | share_discovery.dart             |    15 |  9090 |   270 |        - |       - | Dart source file                 |
 | lib          | share_list.dart                  |    17 | 18042 |   546 |        - |       - | Dart source file                 |
@@ -227,9 +227,9 @@
 | lib          | notifications_platform_web.dart  |     3 |  3244 |    83 |        - |       - | Dart source file                 |
 | lib          | reply.dart                       |     3 |  3273 |    73 |        - |       - | Dart source file                 |
 | lib          | theme.dart                       |     2 |  1821 |    49 |        - |       - | Dart source file                 |
-| lib          | ui_utils.dart                    |     2 |  1603 |    37 |        - |       - | Shared formatting & env helpers  |
+| lib          | ui_utils.dart                    |     2 |  1233 |    29 |        - |       - | Shared formatting & env helpers  |
 
-**Total:** 50 files, 22,613 lines, 726,654 characters
+**Total:** 50 files, 22,609 lines, 726,080 characters
 
 ## Dart Test Files
 
@@ -245,11 +245,11 @@
 | unit    | notifications_test.dart          |    99 |  3572 |     3 | Dart test file                        |
 | widget  | attachment_chip_test.dart        |    91 |  2630 |     7 | Attachment chip widget tests          |
 | widget  | call_screen_test.dart            |   593 | 18895 |    12 | Call screen widget tests              |
-| widget  | contact_list_test.dart           |   661 | 22484 |     7 | Contacts roster widget tests          |
+| widget  | contact_list_test.dart           |   673 | 22593 |     7 | Contacts roster widget tests          |
 | widget  | device_binding_test.dart         |    72 |  1990 |     5 | Device-binding prompt tests           |
 | widget  | group_list_test.dart             |   233 |  7128 |     5 | Group list widget tests               |
 | widget  | messages_test.dart               |  1423 | 42116 |    10 | Chat widget tests                     |
-| widget  | peer_info_test.dart              |   306 |  9464 |     6 | Peer Info widget tests                |
+| widget  | peer_info_test.dart              |   344 | 10585 |     6 | Peer Info widget tests                |
 | widget  | settings_network_peers_test.dart |   128 |  4028 |     3 | Dart test file                        |
 | widget  | settings_test.dart               |   426 | 13105 |     6 | Settings widget tests                 |
 | widget  | share_discovery_test.dart        |   231 |  7265 |     4 | Dart test file                        |
@@ -258,7 +258,7 @@
 | widget  | share_publish_test.dart          |   292 |  8500 |     6 | Dart test file                        |
 | test    | widget_test.dart                 |    21 |   624 |     2 | Widget smoke tests                    |
 
-**Total:** 22 test files, 7,427 lines, 232,230 characters
+**Total:** 22 test files, 7,477 lines, 233,460 characters
 
 ## Kotlin Source Files
 

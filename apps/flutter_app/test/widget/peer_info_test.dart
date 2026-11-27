@@ -16,10 +16,12 @@ MobilePeerRecord peer({
   String id = 'peer-abc',
   String? localNickname,
   String? nickname,
+  String firstSeen = '',
+  String lastSeen = '',
 }) => MobilePeerRecord(
   peerId: id,
-  firstSeen: '',
-  lastSeen: '',
+  firstSeen: firstSeen,
+  lastSeen: lastSeen,
   displayName: localNickname ?? nickname ?? 'Alice',
   localNickname: localNickname,
   nickname: nickname,
@@ -47,8 +49,9 @@ MobileContactRow contact({int dm = 3, int broadcast = 7}) => MobileContactRow(
 );
 
 void main() {
-  testWidgets('call button renders and invokes onCall with the peer',
-      (tester) async {
+  testWidgets('call button renders and invokes onCall with the peer', (
+    tester,
+  ) async {
     MobilePeerRecord? called;
     await tester.pumpWidget(
       MaterialApp(
@@ -190,6 +193,42 @@ void main() {
     expect(find.text('Broadcasts sent'), findsNothing);
   });
 
+  testWidgets('seen timestamps render verbatim from Rust', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PeerInfoScreen(
+          peer: peer(
+            firstSeen: '2026-11-20 10:00:00',
+            lastSeen: '2026-11-21 09:00:00',
+          ),
+          serviceRunning: true,
+        ),
+      ),
+    );
+    expect(find.text('First seen'), findsOneWidget);
+    expect(find.text('2026-11-20 10:00:00'), findsOneWidget);
+    expect(find.text('Last seen'), findsOneWidget);
+    expect(find.text('2026-11-21 09:00:00'), findsOneWidget);
+  });
+
+  testWidgets('unrecognized seen strings are passed through untouched', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PeerInfoScreen(
+          peer: peer(
+            firstSeen: 'raw-first',
+            lastSeen: '2026-11-21T09:00:00.123Z',
+          ),
+          serviceRunning: true,
+        ),
+      ),
+    );
+    expect(find.text('raw-first'), findsOneWidget);
+    expect(find.text('2026-11-21T09:00:00.123Z'), findsOneWidget);
+  });
+
   testWidgets('renders the connection-quality card with Rust labels', (
     tester,
   ) async {
@@ -302,5 +341,4 @@ void main() {
     expect(find.text('no'), findsOneWidget);
     expect(find.text('Blocklist error: Exception: bad id'), findsOneWidget);
   });
-
 }

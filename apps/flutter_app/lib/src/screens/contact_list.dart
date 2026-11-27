@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
-import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 
 /// Test-only seam for [ContactListState]: replaces the FFI-backed `sortContacts`
 /// call so widget tests can exercise sorting without a loaded Rust library.
@@ -229,8 +228,8 @@ class ContactListState extends State<ContactList> {
         ),
         DataCell(Text('${_dmCount(c)}')),
         DataCell(Text('${_broadcastCount(c)}')),
-        DataCell(Text(formatSeenTimestamp(c.lastSeen))),
-        DataCell(Text(formatSeenTimestamp(c.firstSeen))),
+        DataCell(Text(c.lastSeen)),
+        DataCell(Text(c.firstSeen)),
         DataCell(_actionButtons('${c.contactId}.best', c, c.deviceRows.first)),
       ],
     );
@@ -252,8 +251,8 @@ class ContactListState extends State<ContactList> {
         ),
         const DataCell(Text(_kDeviceStatPlaceholder)),
         const DataCell(Text(_kDeviceStatPlaceholder)),
-        DataCell(Text(formatSeenTimestamp(d.lastSeen))),
-        DataCell(Text(formatSeenTimestamp(d.firstSeen))),
+        DataCell(Text(d.lastSeen)),
+        DataCell(Text(d.firstSeen)),
         DataCell(_actionButtons(d.peerId, c, d)),
       ],
     );

@@ -228,8 +228,8 @@ void main() {
     tester,
   ) async {
     final rows = [
-      contact(id: 'zulu', name: 'Zulu', lastSeen: '2026-08-03T10:00:00'),
-      contact(id: 'alpha', name: 'Alpha', lastSeen: '2026-08-01T10:00:00'),
+      contact(id: 'zulu', name: 'Zulu', lastSeen: '2026-08-03 10:00:00'),
+      contact(id: 'alpha', name: 'Alpha', lastSeen: '2026-08-01 10:00:00'),
       contact(id: 'same', name: 'Same', lastSeen: 'junk'),
     ];
     final calls = <(int, bool, List<String>)>[];
@@ -262,34 +262,39 @@ void main() {
     expect(calls.last.$3, ['zulu', 'alpha', 'same']);
   });
 
-  testWidgets(
-    'last/first-seen timestamps render T→space, truncated to seconds',
-    (tester) async {
-      final rows = [
-        contact(
-          id: 'alpha',
-          name: 'Alpha',
-          firstSeen: '2026-08-01T10:00:00.000Z',
-          lastSeen: '2026-08-28T15:26:41.123Z',
-        ),
-      ];
-      await tester.pumpWidget(_app(rows: rows, sortOverride: _sortLikeRust));
-      await tester.pump();
-
-      // Truncated to the second, T replaced by a space, trailing Z dropped.
-      expect(find.text('2026-08-28 15:26:41'), findsOneWidget);
-      expect(find.text('2026-08-01 10:00:00'), findsOneWidget);
-      expect(find.textContaining('T15'), findsNothing);
-      expect(find.textContaining('.123Z'), findsNothing);
-    },
-  );
-
-  testWidgets('empty last-seen renders as unknown', (tester) async {
-    final rows = [contact(id: 'alpha', name: 'Alpha')];
+  testWidgets('seen timestamps render verbatim from Rust', (tester) async {
+    final rows = [
+      contact(
+        id: 'alpha',
+        name: 'Alpha',
+        firstSeen: '2026-08-01 10:00:00',
+        lastSeen: '2026-08-28 15:26:41',
+      ),
+    ];
     await tester.pumpWidget(_app(rows: rows, sortOverride: _sortLikeRust));
     await tester.pump();
 
-    expect(find.text('unknown'), findsNWidgets(2)); // first + last seen
+    // Rust already formats these for display; Dart must not parse or reformat.
+    expect(find.text('2026-08-28 15:26:41'), findsOneWidget);
+    expect(find.text('2026-08-01 10:00:00'), findsOneWidget);
+  });
+
+  testWidgets('unrecognized seen strings are passed through untouched', (
+    tester,
+  ) async {
+    final rows = [
+      contact(
+        id: 'alpha',
+        name: 'Alpha',
+        firstSeen: 'raw-first',
+        lastSeen: '2026-08-28T15:26:41.123Z',
+      ),
+    ];
+    await tester.pumpWidget(_app(rows: rows, sortOverride: _sortLikeRust));
+    await tester.pump();
+
+    expect(find.text('raw-first'), findsOneWidget);
+    expect(find.text('2026-08-28T15:26:41.123Z'), findsOneWidget);
   });
 
   testWidgets('multi-device contact shows a device-count ×N suffix', (
@@ -316,21 +321,21 @@ void main() {
           name: 'Multi',
           dm: 3,
           broadcast: 2,
-          lastSeen: '2026-08-28T15:26:41',
-          firstSeen: '2026-08-01T10:00:00',
+          lastSeen: '2026-08-28 15:26:41',
+          firstSeen: '2026-08-01 10:00:00',
           deviceCount: 2,
           devices: [
             MobileContactDevice(
               peerId: 'multi-laptop',
               displayName: 'Laptop',
-              firstSeen: '2026-08-01T10:00:00',
-              lastSeen: '2026-08-28T15:26:41',
+              firstSeen: '2026-08-01 10:00:00',
+              lastSeen: '2026-08-28 15:26:41',
             ),
             MobileContactDevice(
               peerId: 'multi-phone',
               displayName: 'Phone',
-              firstSeen: '2026-08-02T10:00:00',
-              lastSeen: '2026-08-28T15:26:42',
+              firstSeen: '2026-08-02 10:00:00',
+              lastSeen: '2026-08-28 15:26:42',
             ),
           ],
         ),
@@ -448,7 +453,10 @@ void main() {
 
   testWidgets('no link button renders without onLinkDevice', (tester) async {
     await tester.pumpWidget(
-      _app(rows: [contact(id: 'solo', name: 'Solo')], sortOverride: _sortLikeRust),
+      _app(
+        rows: [contact(id: 'solo', name: 'Solo')],
+        sortOverride: _sortLikeRust,
+      ),
     );
     await tester.pump();
     expect(find.byKey(const Key('link-solo')), findsNothing);
@@ -456,7 +464,10 @@ void main() {
 
   testWidgets('no call button renders without onCallDevice', (tester) async {
     await tester.pumpWidget(
-      _app(rows: [contact(id: 'solo', name: 'Solo')], sortOverride: _sortLikeRust),
+      _app(
+        rows: [contact(id: 'solo', name: 'Solo')],
+        sortOverride: _sortLikeRust,
+      ),
     );
     await tester.pump();
     expect(find.byKey(const Key('call-solo')), findsNothing);
@@ -540,34 +551,35 @@ void main() {
     expect(find.text('Multi \u00d72'), findsNothing);
   });
 
-  testWidgets('search filters before the Rust sort (no rows invented or lost)', (
-    tester,
-  ) async {
-    // Record what the widget hands to the Rust sort: it must be exactly the
-    // filtered subset, so the sort never sees (or returns) a hidden contact.
-    final seen = <List<String>>[];
-    List<ContactSortInput> recordingSort(
-      List<ContactSortInput> rows,
-      int column,
-      bool ascending,
-    ) {
-      seen.add([for (final r in rows) r.contactId]);
-      return _sortLikeRust(rows, column, ascending);
-    }
+  testWidgets(
+    'search filters before the Rust sort (no rows invented or lost)',
+    (tester) async {
+      // Record what the widget hands to the Rust sort: it must be exactly the
+      // filtered subset, so the sort never sees (or returns) a hidden contact.
+      final seen = <List<String>>[];
+      List<ContactSortInput> recordingSort(
+        List<ContactSortInput> rows,
+        int column,
+        bool ascending,
+      ) {
+        seen.add([for (final r in rows) r.contactId]);
+        return _sortLikeRust(rows, column, ascending);
+      }
 
-    final rows = [
-      contact(id: 'alpha', name: 'Alpha'),
-      contact(id: 'beta', name: 'Beta'),
-    ];
-    await tester.pumpWidget(_app(rows: rows, sortOverride: recordingSort));
-    await tester.pump();
-    expect(seen.last, ['alpha', 'beta']);
+      final rows = [
+        contact(id: 'alpha', name: 'Alpha'),
+        contact(id: 'beta', name: 'Beta'),
+      ];
+      await tester.pumpWidget(_app(rows: rows, sortOverride: recordingSort));
+      await tester.pump();
+      expect(seen.last, ['alpha', 'beta']);
 
-    await tester.enterText(find.byKey(const Key('contacts-search')), 'alpha');
-    await tester.pump();
-    await tester.pump();
-    expect(seen.last, ['alpha']);
-  });
+      await tester.enterText(find.byKey(const Key('contacts-search')), 'alpha');
+      await tester.pump();
+      await tester.pump();
+      expect(seen.last, ['alpha']);
+    },
+  );
 
   testWidgets('no-match search shows an empty hint and keeps the total', (
     tester,
