@@ -37,6 +37,7 @@ fn push_outgoing_broadcast_to_state(
     trim_history(&mut state.messages, MAX_MESSAGE_HISTORY);
     trim_history(&mut state.message_ids, MAX_MESSAGE_HISTORY);
     trim_history(&mut state.message_db_ids, MAX_MESSAGE_HISTORY);
+    state.invalidate_rendered_selection(&p2p_app::tui_tabs::TabContent::Chat);
     state.message_db_ids.len().saturating_sub(1)
 }
 
@@ -105,6 +106,8 @@ fn push_outgoing_dm_to_state(state: &mut AppState, dm: OutgoingDm<'_>) -> usize 
         trim_history(ids, MAX_DM_HISTORY);
     }
     state
+        .invalidate_rendered_selection(&p2p_app::tui_tabs::TabContent::Direct(peer_id.to_string()));
+    state
         .dm_message_db_ids
         .get(peer_id)
         .map_or(0, VecDeque::len)
@@ -157,6 +160,7 @@ fn push_outgoing_group_message_to_state(state: &mut AppState, group: OutgoingGro
         .or_default()
         .push_back(None);
     trim_history(msgs, MAX_MESSAGE_HISTORY);
+    let scroll_len = msgs.len();
     if let Some(ids) = state.group_message_ids.get_mut(group_id) {
         trim_history(ids, MAX_MESSAGE_HISTORY);
     }
@@ -166,10 +170,12 @@ fn push_outgoing_group_message_to_state(state: &mut AppState, group: OutgoingGro
     if let Some(ids) = state.group_message_peer_ids.get_mut(group_id) {
         trim_history(ids, MAX_MESSAGE_HISTORY);
     }
-    state.group_scroll_state.insert(group_id.to_string(), {
-        let len = msgs.len();
-        (len, true)
-    });
+    state.invalidate_rendered_selection(&p2p_app::tui_tabs::TabContent::GroupChat(
+        group_id.to_string(),
+    ));
+    state
+        .group_scroll_state
+        .insert(group_id.to_string(), (scroll_len, true));
     // Sending our own message jumps to the tail, so anything previously
     // counted as unread in this group has now been seen.
     state.group_unread_count.remove(group_id);
@@ -372,6 +378,8 @@ async fn send_dm_message(
     });
     if let Some(id) = sent_id {
         attach_sent_db_id(state.dm_message_db_ids.get_mut(&peer_id), row_idx, id);
+        state
+            .invalidate_rendered_selection(&p2p_app::tui_tabs::TabContent::Direct(peer_id.clone()));
     }
 }
 
@@ -428,11 +436,16 @@ async fn send_group_message(
     // Group outgoing rows are inserted with `sent = 1` already; just capture
     // the id so the local-only Delete binding can find the row (US-005).
     match p2p_app::groups::save_outgoing_group_message(&group_id, &text, meta) {
-        Ok(saved) => attach_sent_db_id(
-            state.group_message_db_ids.get_mut(&group_id),
-            row_idx,
-            saved.id,
-        ),
+        Ok(saved) => {
+            attach_sent_db_id(
+                state.group_message_db_ids.get_mut(&group_id),
+                row_idx,
+                saved.id,
+            );
+            state.invalidate_rendered_selection(&p2p_app::tui_tabs::TabContent::GroupChat(
+                group_id.clone(),
+            ));
+        }
         Err(e) => p2plog_debug(format!("Failed to save group message: {e}")),
     }
 }
@@ -502,6 +515,7 @@ async fn send_broadcast_message(
     });
     if let Some(id) = sent_id {
         attach_sent_db_id(Some(&mut state.message_db_ids), row_idx, id);
+        state.invalidate_rendered_selection(&p2p_app::tui_tabs::TabContent::Chat);
     }
     // Our own message is by definition on screen, so advance the shared
     // watermark too (matches Flutter's send path).

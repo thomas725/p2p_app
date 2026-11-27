@@ -1,7 +1,7 @@
 use super::state::AppState;
 use p2p_app::{
     DisplayMessage, WHEEL_SCROLL_LINES, get_tui_logs, p2plog_debug,
-    tui_helpers::key_code_to_scroll_action,
+    tui_helpers::key_code_to_scroll_action, tui_tabs::TabContent,
 };
 
 /// Handles tab navigation (Tab and `BackTab` keys)
@@ -107,6 +107,92 @@ const fn dm_pane_first_row(state: &AppState) -> usize {
         .saturating_add(3)
         .saturating_div(2)
         .saturating_add(1)
+}
+
+/// Bring the explicit message cursor into view after a keyboard move.
+///
+/// Bare arrows still scroll the hovered section; only `Ctrl+Up`/`Ctrl+Down`
+/// move the cursor and call this. It reuses the same line-count and
+/// visible-window math as the scroll handlers, so the row the renderer
+/// highlights is exactly the row that was scrolled into view. Reaching the
+/// bottom re-engages auto-scroll and clears that conversation's unread marker,
+/// matching the arrow/`End` paths.
+pub(super) fn reveal_message_selection(state: &mut AppState, tab: &TabContent) {
+    let Some(index) = state.message_selection_index(tab) else {
+        return;
+    };
+    match tab {
+        TabContent::Chat => {
+            let counts = display_line_counts(state.messages.iter());
+            let height = state.chat_area_height.max(1);
+            let (offset, auto) = p2p_app::reveal_list_item_offset(
+                &counts,
+                height,
+                state.chat_scroll_offset,
+                state.auto_scroll.chat,
+                index,
+            );
+            let reengaged = auto && !state.auto_scroll.chat;
+            state.chat_scroll_offset = offset;
+            state.auto_scroll.chat = auto;
+            if reengaged {
+                state.mark_broadcast_viewed();
+            }
+        }
+        TabContent::Direct(peer_id) => {
+            let Some(msgs) = state.dm_messages.get(peer_id) else {
+                return;
+            };
+            let counts = string_line_counts(msgs.iter());
+            let height = dm_pane_visible_lines(state).max(1);
+            let (current_offset, current_auto) = state
+                .dm_scroll_state
+                .get(peer_id)
+                .copied()
+                .unwrap_or((0, true));
+            let (offset, auto) = p2p_app::reveal_list_item_offset(
+                &counts,
+                height,
+                current_offset,
+                current_auto,
+                index,
+            );
+            let reengaged = auto && !current_auto;
+            state
+                .dm_scroll_state
+                .insert(peer_id.clone(), (offset, auto));
+            if reengaged {
+                state.dm_unread_count.remove(peer_id);
+            }
+        }
+        TabContent::GroupChat(group_id) => {
+            let Some(msgs) = state.group_messages.get(group_id) else {
+                return;
+            };
+            let counts = string_line_counts(msgs.iter());
+            let height = state.chat_area_height.max(1);
+            let (current_offset, current_auto) = state
+                .group_scroll_state
+                .get(group_id)
+                .copied()
+                .unwrap_or((0, true));
+            let (offset, auto) = p2p_app::reveal_list_item_offset(
+                &counts,
+                height,
+                current_offset,
+                current_auto,
+                index,
+            );
+            let reengaged = auto && !current_auto;
+            state
+                .group_scroll_state
+                .insert(group_id.clone(), (offset, auto));
+            if reengaged {
+                state.group_unread_count.remove(group_id);
+            }
+        }
+        _ => {}
+    }
 }
 
 /// Handle scroll key for broadcast section of DM tab

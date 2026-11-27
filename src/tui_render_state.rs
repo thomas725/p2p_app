@@ -85,6 +85,10 @@ pub struct TuiRenderState {
     pub popup: Option<String>,
     /// Canonical quoted header of the active conversation's reply draft.
     pub reply_preview: Option<String>,
+    /// Explicitly selected transcript row of the active conversation, resolved
+    /// against the current transcript. `None` means the verbs fall back to the
+    /// newest row and no row is highlighted.
+    pub message_selection_index: Option<usize>,
     /// Known groups with member counts (for the Groups list tab)
     pub group_summaries: Vec<crate::groups::GroupSummary>,
     /// Group messages per group: formatted display strings
@@ -228,6 +232,7 @@ impl TuiRenderState {
             kitty_keyboard_active: false,
             popup: None,
             reply_preview: None,
+            message_selection_index: None,
             chat_scroll_offset: 0,
             auto_scroll: crate::AutoScrollFlags {
                 chat: true,
@@ -533,6 +538,28 @@ pub fn calc_visible_list_items(
     )
 }
 
+/// Translate a transcript's global selected row into the relative index
+/// ratatui's `ListState` expects. `None` when no row is selected or the chosen
+/// row is scrolled out of the visible window.
+#[must_use]
+pub const fn selected_visible_index(
+    selected: Option<usize>,
+    effective_offset: usize,
+    visible: usize,
+) -> Option<usize> {
+    match selected {
+        Some(index) if index >= effective_offset => {
+            let relative = index.saturating_sub(effective_offset);
+            if relative < visible {
+                Some(relative)
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
 fn calc_visible_impl<F>(
     messages: &[String],
     auto_scroll: bool,
@@ -543,60 +570,104 @@ fn calc_visible_impl<F>(
 where
     F: Fn(&str) -> usize,
 {
-    let total_items = messages.len();
-    if total_items == 0 {
-        return (0, 0);
-    }
-
-    if auto_scroll {
-        let (visible, _offset) = calc_auto_scroll(messages, usable_height, get_lines);
-        (visible, total_items.saturating_sub(visible))
-    } else {
-        let visible = calc_manual_scroll(messages, scroll_offset, usable_height, get_lines);
-        (visible, scroll_offset)
-    }
+    let line_counts: Vec<usize> = messages.iter().map(|m| get_lines(m)).collect();
+    calc_visible_counts(&line_counts, auto_scroll, scroll_offset, usable_height)
 }
 
-fn calc_auto_scroll<F>(messages: &[String], usable_height: usize, get_lines: F) -> (usize, usize)
-where
-    F: Fn(&str) -> usize,
-{
-    let mut used: usize = 0;
-    let mut count: usize = 0;
-    for msg in messages.iter().rev() {
-        let msg_lines = get_lines(msg);
-        if used > 0 && used.saturating_add(msg_lines) > usable_height {
-            break;
-        }
-        used = used.saturating_add(msg_lines);
-        count = count.saturating_add(1);
-    }
-    (count, 0)
-}
-
-fn calc_manual_scroll<F>(
-    messages: &[String],
+/// Shared `(visible, effective_offset)` window math over per-item line counts.
+///
+/// Both the string-based and `List`-based renderers funnel through this, so a
+/// revealed cursor and the frame that highlights it cannot disagree on which
+/// rows are on screen.
+fn calc_visible_counts(
+    line_counts: &[usize],
+    auto_scroll: bool,
     scroll_offset: usize,
     usable_height: usize,
-    get_lines: F,
-) -> usize
-where
-    F: Fn(&str) -> usize,
-{
-    if scroll_offset >= messages.len() {
-        return MIN_VISIBLE;
+) -> (usize, usize) {
+    let total = line_counts.len();
+    if total == 0 {
+        return (0, 0);
     }
-    let mut used: usize = 0;
-    let mut count: usize = 0;
-    for msg in messages.iter().skip(scroll_offset) {
-        let msg_lines = get_lines(msg);
-        if used > 0 && used.saturating_add(msg_lines) > usable_height {
+    let mut used = 0usize;
+    let mut visible = 0usize;
+    if auto_scroll {
+        for &lines in line_counts.iter().rev() {
+            if used > 0 && used.saturating_add(lines) > usable_height {
+                break;
+            }
+            used = used.saturating_add(lines);
+            visible = visible.saturating_add(1);
+        }
+        (visible, total.saturating_sub(visible))
+    } else {
+        for &lines in line_counts.iter().skip(scroll_offset) {
+            if used > 0 && used.saturating_add(lines) > usable_height {
+                break;
+            }
+            used = used.saturating_add(lines);
+            visible = visible.saturating_add(1);
+        }
+        (visible.max(MIN_VISIBLE), scroll_offset)
+    }
+}
+
+/// New `(scroll_offset, auto_scroll)` that brings `target` into view.
+///
+/// Bare arrow scrolling never calls this: it is only used after the keyboard
+/// cursor moves outside the visible window. Moving up pins the target at the
+/// top; moving down walks back from it to find the smallest window that still
+/// fits, re-engaging auto-scroll when that window is the newest one.
+#[must_use]
+pub fn reveal_list_item_offset(
+    line_counts: &[usize],
+    usable_height: usize,
+    current_offset: usize,
+    auto_scroll: bool,
+    target: usize,
+) -> (usize, bool) {
+    let total = line_counts.len();
+    if total == 0 {
+        return (current_offset, auto_scroll);
+    }
+    let target = target.min(total.saturating_sub(1));
+    let (visible, effective_offset) =
+        calc_visible_counts(line_counts, auto_scroll, current_offset, usable_height);
+    if target >= effective_offset && target < effective_offset.saturating_add(visible) {
+        return (current_offset, auto_scroll);
+    }
+    if target < effective_offset {
+        return (target, false);
+    }
+    let mut used = 0usize;
+    let mut start = target;
+    // Walk backwards over the target's *prefix*, not the transcript tail:
+    // `distance` is how far an earlier item sits from the target. Iterating the
+    // tail would sum unrelated newer rows and could leave the target outside
+    // the window when messages have uneven heights.
+    for (distance, lines) in line_counts
+        .iter()
+        .take(target.saturating_add(1))
+        .rev()
+        .copied()
+        .enumerate()
+    {
+        if used > 0 && used.saturating_add(lines) > usable_height {
             break;
         }
-        used = used.saturating_add(msg_lines);
-        count = count.saturating_add(1);
+        used = used.saturating_add(lines);
+        start = target.saturating_sub(distance);
     }
-    count.max(MIN_VISIBLE)
+    // Compare against the renderer's actual bottom window, not
+    // `max_list_scroll_offset`: with uneven message heights the largest legal
+    // offset can show fewer rows than the auto-scrolled tail. Reaching the
+    // tail must re-engage auto-scroll so the next message still follows.
+    let (_, bottom_offset) = calc_visible_counts(line_counts, true, 0, usable_height);
+    if start >= bottom_offset {
+        (bottom_offset, true)
+    } else {
+        (start, false)
+    }
 }
 
 /// Return a checkmark prefix (`"v "`) if any peer has acknowledged the given

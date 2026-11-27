@@ -180,7 +180,7 @@ pub use tui_render::{render_chat_content, render_frame, render_tab_content, rend
 pub use tui_render_state::{
     TuiRenderState, broadcast_receipt_prefix, calc_visible_list_items, calc_visible_strings,
     count_lines, dm_receipt_prefix, get_tab_content, list_item_lines, max_list_scroll_offset,
-    row_to_visible_index,
+    reveal_list_item_offset, row_to_visible_index,
 };
 #[cfg(feature = "tui")]
 pub use tui_tabs::{DmTab, DynamicTabs, TabContent};

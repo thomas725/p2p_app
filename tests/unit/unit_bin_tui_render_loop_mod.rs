@@ -1,6 +1,6 @@
 use super::*;
 use crate::tui::state::AppState;
-use p2p_app::{DisplayMessage, PeerRecord};
+use p2p_app::{DisplayMessage, PeerRecord, tui_tabs::TabContent};
 use serial_test::serial;
 use std::collections::{HashMap, VecDeque};
 
@@ -122,6 +122,31 @@ fn test_app_state_to_render_state_messages() {
     assert_eq!(rs.messages[0], "hello");
     assert_eq!(rs.messages[1], "world");
     assert_eq!(rs.message_ids.len(), 2);
+}
+
+#[test]
+fn test_app_state_to_render_state_message_selection_index() {
+    let mut state = app_state();
+    state.messages.push_back(DisplayMessage {
+        text: "older".to_string(),
+        sender_peer_id: Some("p1".to_string()),
+    });
+    state.messages.push_back(DisplayMessage {
+        text: "newer".to_string(),
+        sender_peer_id: Some("p1".to_string()),
+    });
+    state.message_ids.push_back(Some("m1".to_string()));
+    state.message_ids.push_back(Some("m2".to_string()));
+    assert!(state.select_message(&TabContent::Chat, 0));
+
+    let rs = app_state_to_render_state(&state);
+    assert_eq!(rs.message_selection_index, Some(0));
+
+    state.clear_message_selection(&TabContent::Chat);
+    assert_eq!(
+        app_state_to_render_state(&state).message_selection_index,
+        None
+    );
 }
 
 #[test]

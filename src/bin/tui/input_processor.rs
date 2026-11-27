@@ -8,13 +8,23 @@ use super::click_handlers::{handle_mouse_left_click, load_dm_messages};
 use super::scroll_handlers::{handle_mouse_scroll, handle_navigation_key, handle_scroll_key};
 
 fn update_dm_transcript_labels(
-    dm_messages: &mut std::collections::HashMap<String, std::collections::VecDeque<String>>,
+    state: &mut super::state::AppState,
     peer_id: &str,
     old_nick: &str,
     new_nick: &str,
 ) {
-    if let Some(dm_msgs) = dm_messages.get_mut(peer_id) {
-        p2p_app::tui_helpers::relabel_dm_transcript(dm_msgs, old_nick, new_nick);
+    let from = format!("[{old_nick}] ");
+    let changed = state.dm_messages.get_mut(peer_id).is_some_and(|dm_msgs| {
+        let changed = dm_msgs.iter().any(|line| line.contains(&from));
+        if changed {
+            p2p_app::tui_helpers::relabel_dm_transcript(dm_msgs, old_nick, new_nick);
+        }
+        changed
+    });
+    if changed {
+        state.invalidate_rendered_selection(&p2p_app::tui_tabs::TabContent::Direct(
+            peer_id.to_string(),
+        ));
     }
 }
 
@@ -192,12 +202,7 @@ async fn handle_nickname_submission(
                 reply_to: None,
             })
             .await;
-        update_dm_transcript_labels(
-            &mut state.dm_messages,
-            &peer_id,
-            &old_nickname,
-            &new_nickname,
-        );
+        update_dm_transcript_labels(state, &peer_id, &old_nickname, &new_nickname);
         p2plog_debug(format!("Updated per-peer nickname to: {new_nickname}"));
     } else {
         state.own_nickname.clone_from(&new_nickname);
@@ -224,12 +229,7 @@ async fn handle_nickname_submission(
             if state.self_nicknames_for_peers.contains_key(&peer_id) {
                 continue;
             }
-            update_dm_transcript_labels(
-                &mut state.dm_messages,
-                &peer_id,
-                &old_nickname,
-                &new_nickname,
-            );
+            update_dm_transcript_labels(state, &peer_id, &old_nickname, &new_nickname);
         }
         p2plog_debug(format!("Updated broadcast nickname to: {new_nickname}"));
     }
@@ -324,13 +324,14 @@ async fn confirm_group_leave(state: &SharedState, swarm_cmd_tx: &mpsc::Sender<Sw
     }
 }
 
-/// `Delete` arms the local-only deletion prompt for the newest sent message in
-/// the active chat. Incoming rows and live events have no DB id, so they are
-/// skipped; with nothing deletable we explain that in a popup instead.
+/// `Delete` arms the local-only deletion prompt for the targeted sent message
+/// in the active chat. With an explicit cursor only that row qualifies; with
+/// none we keep the historical newest-sent fallback. Incoming rows and live
+/// events have no DB id, so they are skipped with an explanatory popup.
 fn arm_delete_prompt(s: &mut super::state::AppState, tab: &p2p_app::tui_tabs::TabContent) {
     use p2p_app::tui_tabs::TabContent;
 
-    let Some((id, preview)) = s.last_sent_message(tab) else {
+    let Some((id, preview)) = s.target_sent_message(tab) else {
         s.popup = Some("No sent message to delete in this conversation".to_string());
         return;
     };
@@ -373,15 +374,16 @@ async fn confirm_delete_message(state: &SharedState) {
     }
 }
 
-/// `Ctrl+E` opens the local-edit editor on the newest sent message in the
-/// active chat. Incoming rows and live events have no DB id, so they are
-/// skipped; with nothing editable we explain that in a popup. The pre-fill is
-/// the persisted body, never the rendered transcript line, so file chips,
+/// `Ctrl+E` opens the local-edit editor on the targeted sent message in the
+/// active chat. With an explicit cursor only that row qualifies; with none we
+/// keep the historical newest-sent fallback. Incoming rows and live events
+/// have no DB id, so they are skipped with an explanatory popup. The pre-fill
+/// is the persisted body, never the rendered transcript line, so file chips,
 /// quote headers and the edit marker cannot leak into the stored text.
 fn arm_edit_prompt(s: &mut super::state::AppState, tab: &p2p_app::tui_tabs::TabContent) {
     use p2p_app::tui_tabs::TabContent;
 
-    let Some((id, fallback)) = s.last_sent_message_raw(tab) else {
+    let Some((id, fallback)) = s.target_sent_message_raw(tab) else {
         s.popup = Some("No sent message to edit in this conversation".to_string());
         return;
     };
@@ -419,10 +421,10 @@ fn open_attachment(path: &str) -> Result<(), String> {
         .map_err(|e| format!("Could not open attachment '{path}': {e}"))
 }
 
-/// Resolve and launch the newest downloaded attachment in `tab`, surfacing a
+/// Resolve and launch the targeted downloaded attachment in `tab`, surfacing a
 /// popup when there is nothing to open or the platform opener cannot start.
-fn open_newest_attachment(s: &mut super::state::AppState, tab: &p2p_app::tui_tabs::TabContent) {
-    let Some(path) = s.newest_attachment_path(tab) else {
+fn open_target_attachment(s: &mut super::state::AppState, tab: &p2p_app::tui_tabs::TabContent) {
+    let Some(path) = s.target_attachment_path(tab) else {
         s.popup = Some("No downloaded attachment in this conversation".to_string());
         return;
     };
@@ -533,8 +535,8 @@ async fn commit_reaction(
     p2plog_debug(format!("{action} reaction {emoji} on {}", prompt.msg_id));
 }
 
-/// Apply the emoji typed in the shared editor as a reaction on the newest
-/// message of the active chat (US-008).
+/// Apply the emoji typed in the shared editor as a reaction on the targeted
+/// message (newest if none selected) of the active chat (US-008).
 async fn confirm_reaction(
     s: &mut super::state::AppState,
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
@@ -783,6 +785,8 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
         let tab = s.dynamic_tabs.tab_index_to_content(s.active_tab);
         if s.clear_reply(&tab) {
             p2plog_debug("Cleared reply draft".to_string());
+        } else if s.clear_message_selection(&tab) {
+            p2plog_debug("Cleared message selection".to_string());
         } else {
             s.switch_to_tab(0);
             s.chat_scroll_offset = 0;
@@ -1401,6 +1405,9 @@ async fn handle_key_dispatch(
     };
     let input_enabled = tab.is_input_enabled();
 
+    if handle_message_selection_key(&key_event, is_ctrl, &tab, s) {
+        return;
+    }
     if handle_global_navigation(&key_event, is_ctrl, on_direct, s).await {
         return;
     }
@@ -1473,6 +1480,41 @@ async fn handle_key_dispatch(
     }
 }
 
+/// Move the explicit transcript cursor on chat tabs (`Ctrl+Up`/`Ctrl+Down`).
+///
+/// Bare arrows still scroll the hovered section; the modifier is what selects a
+/// message. Modal editors keep their own caret, so the chord is only active in
+/// plain chat mode. The key is consumed on chat tabs even with an empty
+/// transcript, keeping it away from the generic scroll handler.
+fn handle_message_selection_key(
+    key_event: &crossterm::event::KeyEvent,
+    is_ctrl: bool,
+    tab: &p2p_app::tui_tabs::TabContent,
+    s: &mut super::state::AppState,
+) -> bool {
+    use crossterm::event::KeyCode;
+    use p2p_app::tui_tabs::TabContent;
+
+    if !is_ctrl
+        || s.is_modal_editor()
+        || !matches!(
+            tab,
+            TabContent::Chat | TabContent::Direct(_) | TabContent::GroupChat(_)
+        )
+    {
+        return false;
+    }
+    let delta = match key_event.code {
+        KeyCode::Up => -1,
+        KeyCode::Down => 1,
+        _ => return false,
+    };
+    s.move_message_selection(tab, delta);
+    super::scroll_handlers::reveal_message_selection(s, tab);
+    p2plog_debug("Moved message selection".to_string());
+    true
+}
+
 /// Terminal-level keys: the Peer Info control chords, tab cycling, scrolling
 /// and F12's mouse-capture toggle. Returns `true` when the key was consumed.
 async fn handle_global_navigation(
@@ -1541,8 +1583,9 @@ async fn handle_global_navigation(
 }
 
 /// `Ctrl+C` clipboard ownership, shared by chat tabs and the Log tab so the
-/// policy lives in one place: copy the newest rendered message on a chat tab
-/// (the same row `Ctrl+R`/`Ctrl+Y` target), or every log line on the Log tab —
+/// policy lives in one place: copy the targeted rendered message on a chat tab
+/// (newest if none selected, the same row `Ctrl+R`/`Ctrl+Y` target), or every
+/// log line on the Log tab —
 /// Flutter's "Copy All". Raw mode delivers `Ctrl+C` as a key event, not SIGINT,
 /// and the render loop emits queued sequences after the frame so stdout stays
 /// single-threaded. Returns `true` when the key was consumed.
@@ -1568,9 +1611,9 @@ fn handle_clipboard_shortcut(
         TabContent::Chat | TabContent::Direct(_) | TabContent::GroupChat(_)
             if s.input_mode == p2p_app::InputMode::Chat =>
         {
-            if let Some(line) = s.newest_message_line(tab) {
+            if let Some(line) = s.target_message_line(tab) {
                 s.pending_clipboard.push(line);
-                p2plog_debug("Copied newest message to clipboard".to_string());
+                p2plog_debug("Copied message to clipboard".to_string());
             }
             true
         }
@@ -1599,23 +1642,26 @@ fn handle_chat_action_shortcut(
         return false;
     }
     match code {
-        // `Ctrl+R` captures the newest replyable message in a chat as this
-        // conversation's reply draft; `Esc` clears it, and sending consumes it.
+        // `Ctrl+R` captures the selected replyable row (newest if none
+        // selected) as this conversation's reply draft; `Esc` clears it, and
+        // sending consumes it.
         crossterm::event::KeyCode::Char('r') if is_ctrl => {
             if let Some(reply) = s.begin_reply(tab) {
                 p2plog_debug(format!("Replying to {}", reply.msg_id));
             }
         }
-        // `Delete` arms local-only deletion of the newest sent message in a
-        // chat. Text editors and the Contacts/Settings/Groups tabs don't own a
-        // message queue, so the key is a no-op there.
+        // `Delete` arms local-only deletion of the selected sent row (newest
+        // sent if none selected). Text editors and the Contacts/Settings/Groups
+        // tabs don't own a message queue, so the key is a no-op there.
         crossterm::event::KeyCode::Delete => arm_delete_prompt(s, tab),
-        // `Ctrl+E` opens the local-edit editor for the newest sent message in a
-        // chat. A bare printable key would swallow the letter while composing.
+        // `Ctrl+E` opens the local-edit editor for the selected sent row
+        // (newest sent if none selected). A bare printable key would swallow
+        // the letter while composing.
         crossterm::event::KeyCode::Char('e') if is_ctrl => arm_edit_prompt(s, tab),
-        // `Ctrl+Y` opens the shared emoji editor for a reaction on the newest
-        // message in a chat (US-008). Any message with a stable wire id can be
-        // reacted to, incoming rows included, unlike local edit/delete.
+        // `Ctrl+Y` opens the shared emoji editor for a reaction on the selected
+        // row (newest if none selected) in a chat (US-008). Any message with a
+        // stable wire id can be reacted to, incoming rows included, unlike
+        // local edit/delete.
         crossterm::event::KeyCode::Char('y') if is_ctrl => {
             if s.begin_reaction(tab) {
                 p2plog_debug("Reaction editor opened".to_string());
@@ -1623,10 +1669,11 @@ fn handle_chat_action_shortcut(
                 s.popup = Some("No message to react to in this conversation".to_string());
             }
         }
-        // `Ctrl+O` opens the newest downloaded attachment in a chat, matching
-        // Flutter's tappable attachment chip. Bare `o` is a Settings toggle, so
-        // the modifier keeps the chat composer untouched.
-        crossterm::event::KeyCode::Char('o') if is_ctrl => open_newest_attachment(s, tab),
+        // `Ctrl+O` opens the selected row's downloaded attachment (the newest
+        // row carrying one when no cursor is armed), matching Flutter's
+        // tappable attachment chip. Bare `o` is a Settings toggle, so the
+        // modifier keeps the chat composer untouched.
+        crossterm::event::KeyCode::Char('o') if is_ctrl => open_target_attachment(s, tab),
         // `Ctrl+C` is owned by `handle_clipboard_shortcut`, which runs first so
         // it can also serve the Log tab without this function's chat-only guard.
         _ => return false,

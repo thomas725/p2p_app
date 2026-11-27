@@ -771,11 +771,16 @@ mod render_tests {
             "Tab / Shift+Tab",
             "Ctrl+W",
             "PgUp/PgDn",
+            "Ctrl+Up/Down  Message cursor (clamped; Esc clears)",
+            "selected row (newest if none selected)",
+            "DM: cursor targets the bottom DM pane",
             "Enter  Send",
-            "Del -> delete newest sent message",
-            "Ctrl+O -> open newest downloaded attachment",
-            "Ctrl+C -> copy newest message (OSC 52)",
+            "Del -> delete sent (local)",
+            "Ctrl+O -> open attachment",
+            "Ctrl+C -> copy (OSC 52)",
             "Ctrl+C copy all logs",
+            "Ctrl+P -> newest/sender target (unchanged by selection)",
+            "Esc unwinds one layer: prompt -> reply draft -> message selection -> Chat",
             "Ctrl+I (kitty) / Ctrl+P",
             "Settings: Ctrl+P -> connected peer / bound device",
             "click a peer row for its Peer Info",
@@ -801,7 +806,9 @@ mod render_tests {
 
     #[test]
     fn test_render_shortcuts_help_popup_library() {
-        let mut terminal = create_test_terminal();
+        // The help popup is intentionally taller than the standard 80x24 test
+        // terminal; use a larger viewport so every section is rendered.
+        let mut terminal = Terminal::new(TestBackend::new(160, 40)).unwrap();
         let help = shortcuts_help_text().to_string();
 
         terminal
@@ -815,6 +822,14 @@ mod render_tests {
             .map(ratatui::buffer::Cell::symbol)
             .collect::<String>();
         assert!(text.contains("Keyboard shortcuts"), "buffer: {text}");
+        assert!(
+            text.contains("Message cursor (clamped; Esc clears)"),
+            "buffer: {text}"
+        );
+        assert!(
+            text.contains("selected row (newest if none selected)"),
+            "buffer: {text}"
+        );
         assert!(text.contains("Contacts:"), "buffer: {text}");
     }
 

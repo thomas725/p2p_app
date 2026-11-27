@@ -38,7 +38,8 @@ pub enum InputMode {
     EditingLocalNickname,
     /// Capturing a replacement body for a sent message edited locally (US-005).
     EditingMessage,
-    /// Capturing an emoji token to react with on the newest message (US-008).
+    /// Capturing an emoji token to react with on the selected row (newest if
+    /// none selected) (US-008).
     AddingReaction,
     /// Capturing a group name for create/join on the Groups tab.
     CreatingGroup,

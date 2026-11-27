@@ -119,10 +119,16 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
             .dm_message_db_ids
             .entry(peer_id.to_string())
             .or_default();
+        let original_len = ids.len();
         while ids.len() < msg_count {
             ids.push_back(None);
         }
         trim_history(ids, MAX_DM_HISTORY);
+        if ids.len() != original_len {
+            state.invalidate_rendered_selection(&p2p_app::tui_tabs::TabContent::Direct(
+                peer_id.to_string(),
+            ));
+        }
         if !state.dm_scroll_state.contains_key(peer_id) {
             state
                 .dm_scroll_state
@@ -148,6 +154,9 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
         state
             .dm_message_db_ids
             .insert(peer_id.to_string(), message_db_ids);
+        state.invalidate_rendered_selection(&p2p_app::tui_tabs::TabContent::Direct(
+            peer_id.to_string(),
+        ));
         let msg_count = db_messages.len();
         state
             .dm_scroll_state
@@ -237,6 +246,9 @@ pub fn load_group_messages_for(state: &mut AppState, group_id: &str) {
         state
             .group_message_peer_ids
             .insert(group_id.to_string(), peer_ids);
+        state.invalidate_rendered_selection(&p2p_app::tui_tabs::TabContent::GroupChat(
+            group_id.to_string(),
+        ));
         let msg_count = db_messages.len();
         state
             .group_scroll_state

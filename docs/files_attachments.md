@@ -42,10 +42,13 @@ UI and creation/binding/publishing screens are still open work in
   `send_message(state, tx, text, attachment, tab_content)`; DB-reload chips via
   `render_stored_body` in `click_handlers.rs` and `state.rs`; `FileReceived` event
   already logged the landed path. Opening a received file is `Ctrl+O` in any chat
-  tab: `AppState::newest_attachment_path` walks the aligned wire ids newest-first,
-  resolves `attachment_json` through `messages::`/`groups::attachment_json_for_msg_id`
-  and `files::file_path`, then launches the OS default handler — the TUI equivalent
-  of Flutter's tappable `_AttachmentChip`.
+  tab: `AppState::target_attachment_path` resolves `attachment_json` through
+  `messages::`/`groups::attachment_json_for_msg_id` and `files::file_path`, then
+  launches the OS default handler — the TUI equivalent of Flutter's tappable
+  `_AttachmentChip`. It acts on the selected row (newest if none selected): with
+  a message cursor armed only that row can open a file, while without one the
+  aligned wire ids are scanned backwards for the newest row that actually
+  carries a downloaded attachment. No wire or DB shape changed.
 
 ## Mobile (FRB) surface
 

@@ -363,3 +363,53 @@ fn test_max_list_scroll_offset_zero_usable_height() {
     // Even with no room, one item is always kept visible.
     assert_eq!(max_list_scroll_offset(&[1, 1, 1, 1], 0), 3);
 }
+
+#[test]
+fn test_selected_visible_index_relative_to_window() {
+    assert_eq!(selected_visible_index(None, 0, 4), None);
+    assert_eq!(selected_visible_index(Some(1), 2, 2), None);
+    assert_eq!(selected_visible_index(Some(2), 2, 2), Some(0));
+    assert_eq!(selected_visible_index(Some(3), 2, 2), Some(1));
+    assert_eq!(selected_visible_index(Some(4), 2, 2), None);
+}
+
+#[test]
+fn test_reveal_list_item_offset_keeps_visible_target() {
+    let counts = [1; 10];
+    assert_eq!(reveal_list_item_offset(&counts, 4, 3, false, 4), (3, false));
+}
+
+#[test]
+fn test_reveal_list_item_offset_pins_target_above_window() {
+    let counts = [1; 10];
+    assert_eq!(reveal_list_item_offset(&counts, 4, 5, false, 2), (2, false));
+}
+
+#[test]
+fn test_reveal_list_item_offset_walks_target_below_window_to_bottom() {
+    let counts = [1; 10];
+    assert_eq!(reveal_list_item_offset(&counts, 4, 0, false, 8), (5, false));
+    assert_eq!(reveal_list_item_offset(&counts, 4, 0, false, 9), (6, true));
+}
+
+#[test]
+fn test_reveal_list_item_offset_uses_actual_bottom_window_for_uneven_items() {
+    // A 3-line item makes `max_list_scroll_offset` (2) disagree with the
+    // renderer's bottom window (1). Following the cursor to the newest row must
+    // land on that real bottom window so auto-scroll re-engages.
+    let counts = [3, 1, 1, 1];
+    assert_eq!(reveal_list_item_offset(&counts, 4, 0, false, 3), (1, true));
+}
+
+#[test]
+fn test_reveal_list_item_offset_walks_target_prefix_with_tall_first_item() {
+    // A 4-line first item leaves only three rows for the rest; walking the
+    // target's prefix (not the transcript tail) must expose item 2 at offset 1.
+    let counts = [4, 1, 1, 1, 1, 1];
+    assert_eq!(reveal_list_item_offset(&counts, 4, 0, false, 2), (1, false));
+}
+
+#[test]
+fn test_reveal_list_item_offset_empty_transcript_is_inert() {
+    assert_eq!(reveal_list_item_offset(&[], 4, 7, false, 9), (7, false));
+}

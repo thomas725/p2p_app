@@ -76,9 +76,8 @@ where
 
 #[test]
 fn test_update_dm_transcript_labels_changes_nick() {
-    let mut dm_messages: std::collections::HashMap<String, std::collections::VecDeque<String>> =
-        std::collections::HashMap::new();
-    dm_messages.insert(
+    let mut state = test_app_state();
+    state.dm_messages.insert(
         "peer1".to_string(),
         std::collections::VecDeque::from(vec![
             "[OldNick] hello".to_string(),
@@ -86,8 +85,8 @@ fn test_update_dm_transcript_labels_changes_nick() {
             "[Other] hi".to_string(),
         ]),
     );
-    update_dm_transcript_labels(&mut dm_messages, "peer1", "OldNick", "NewNick");
-    let msgs = dm_messages.get("peer1").unwrap();
+    update_dm_transcript_labels(&mut state, "peer1", "OldNick", "NewNick");
+    let msgs = state.dm_messages.get("peer1").unwrap();
     assert_eq!(msgs[0], "[NewNick] hello");
     assert_eq!(msgs[1], "[NewNick] how are you");
     assert_eq!(msgs[2], "[Other] hi");
@@ -95,20 +94,19 @@ fn test_update_dm_transcript_labels_changes_nick() {
 
 #[test]
 fn test_update_dm_transcript_labels_no_match_does_nothing() {
-    let mut dm_messages: std::collections::HashMap<String, std::collections::VecDeque<String>> =
-        std::collections::HashMap::new();
-    dm_messages.insert(
+    let mut state = test_app_state();
+    state.dm_messages.insert(
         "peer1".to_string(),
         std::collections::VecDeque::from(vec!["[Other] hello".to_string()]),
     );
-    update_dm_transcript_labels(&mut dm_messages, "peer1", "OldNick", "NewNick");
-    assert_eq!(dm_messages.get("peer1").unwrap()[0], "[Other] hello");
+    update_dm_transcript_labels(&mut state, "peer1", "OldNick", "NewNick");
+    assert_eq!(state.dm_messages.get("peer1").unwrap()[0], "[Other] hello");
 }
 
 #[test]
 fn test_update_dm_transcript_labels_unknown_peer() {
-    let mut dm_messages = std::collections::HashMap::new();
-    update_dm_transcript_labels(&mut dm_messages, "unknown", "Old", "New");
+    let mut state = test_app_state();
+    update_dm_transcript_labels(&mut state, "unknown", "Old", "New");
     // no panic, no crash
 }
 
@@ -4907,4 +4905,332 @@ fn test_settings_dial_and_network_peer_session_through_real_keys() {
     });
     p2p_app::db::release_db_lock();
     p2p_app::db::reset_db_url();
+}
+
+// ── real-key message selection sessions ────────────────────────────────────
+
+/// DM transcript with aligned wire/DB ids so every targeted verb has a stable
+/// anchor. No rows are seeded: the edit/delete helpers only arm their prompts
+/// here, and fall back to the rendered line when no DB body exists.
+fn selection_dm_state() -> AppState {
+    let mut state = app_state_with_dm_messages("cursor-peer", 0);
+    let peer = "cursor-peer";
+    state.dm_messages.insert(
+        peer.to_string(),
+        std::collections::VecDeque::from(vec![
+            "12:00 [Alice] oldest body".to_string(),
+            "12:01 [Me] middle body".to_string(),
+            "12:02 [Me] newest body".to_string(),
+        ]),
+    );
+    state.dm_message_ids.insert(
+        peer.to_string(),
+        std::collections::VecDeque::from(vec![
+            Some("oldest-wire".to_string()),
+            Some("middle-wire".to_string()),
+            Some("newest-wire".to_string()),
+        ]),
+    );
+    state.dm_message_db_ids.insert(
+        peer.to_string(),
+        std::collections::VecDeque::from(vec![None, Some(11), Some(13)]),
+    );
+    state.dm_scroll_state.insert(peer.to_string(), (0, true));
+    state.chat_area_height = 8;
+    focus_dm_tab(&mut state);
+    state
+}
+
+#[tokio::test]
+async fn test_message_cursor_moves_clamps_and_highlights_through_real_keys() {
+    let mut session = KeySession::new(selection_dm_state());
+    let dm = TabContent::Direct("cursor-peer".to_string());
+
+    // With no cursor the newest row is only the *fallback target*, never a
+    // highlighted selection.
+    {
+        let s = session.state.lock().await;
+        assert_eq!(s.message_selection_index(&dm), None);
+        assert_eq!(
+            s.target_message_line(&dm).as_deref(),
+            Some("12:02 [Me] newest body")
+        );
+    }
+
+    // Bare arrows scroll the hovered section but never arm a message.
+    assert!(!session.press_code(KeyCode::Up).await);
+    {
+        let s = session.state.lock().await;
+        assert_eq!(s.message_selection_index(&dm), None);
+    }
+
+    let ctrl_up = KeyEvent::new(KeyCode::Up, KeyModifiers::CONTROL);
+    assert!(!session.press_key(ctrl_up).await);
+    assert_eq!(
+        session.state.lock().await.message_selection_index(&dm),
+        Some(1)
+    );
+    assert!(!session.press_key(ctrl_up).await);
+    assert_eq!(
+        session.state.lock().await.message_selection_index(&dm),
+        Some(0)
+    );
+    // Clamped at the oldest row: no wrap to the newest one.
+    assert!(!session.press_key(ctrl_up).await);
+    assert_eq!(
+        session.state.lock().await.message_selection_index(&dm),
+        Some(0)
+    );
+
+    let highlighted = session.frame_highlighted_lines().await;
+    assert!(
+        highlighted.iter().any(|line| line.contains("oldest body")),
+        "the cursor row is not highlighted: {highlighted:?}"
+    );
+    assert!(
+        highlighted.iter().all(|line| !line.contains("middle body")),
+        "an unselected row inherited the highlight: {highlighted:?}"
+    );
+
+    let ctrl_down = KeyEvent::new(KeyCode::Down, KeyModifiers::CONTROL);
+    for _ in 0..5 {
+        assert!(!session.press_key(ctrl_down).await);
+    }
+    assert_eq!(
+        session.state.lock().await.message_selection_index(&dm),
+        Some(2)
+    );
+    let highlighted = session.frame_highlighted_lines().await;
+    assert!(
+        highlighted.iter().any(|line| line.contains("newest body")),
+        "the clamped newest row is not highlighted: {highlighted:?}"
+    );
+    assert!(session.drain_commands().is_empty());
+}
+
+#[test]
+#[serial]
+fn test_targeted_verbs_use_the_selected_row_through_real_keys() {
+    with_local_delete_db(|| {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        rt.block_on(async {
+            let mut session = KeySession::new(selection_dm_state());
+            let dm = TabContent::Direct("cursor-peer".to_string());
+
+            // Arm the middle (DB-backed) row. Every verb below must target it,
+            // not the newest row that the pre-selection fallback would pick.
+            assert!(
+                !session
+                    .press_key(KeyEvent::new(KeyCode::Up, KeyModifiers::CONTROL))
+                    .await
+            );
+            assert_eq!(
+                session.state.lock().await.message_selection_index(&dm),
+                Some(1)
+            );
+
+            assert!(!session.press_ctrl_char('c').await);
+            {
+                let s = session.state.lock().await;
+                assert_eq!(
+                    s.pending_clipboard,
+                    vec!["12:01 [Me] middle body".to_string()]
+                );
+            }
+
+            assert!(!session.press_ctrl_char('r').await);
+            {
+                let s = session.state.lock().await;
+                let reply = s.reply_draft(&dm).expect("reply draft");
+                assert_eq!(reply.msg_id, "middle-wire");
+            }
+            assert!(!session.press_code(KeyCode::Esc).await);
+            {
+                let s = session.state.lock().await;
+                assert!(s.reply_draft(&dm).is_none());
+                assert_eq!(s.message_selection_index(&dm), Some(1));
+            }
+
+            assert!(!session.press_ctrl_char('y').await);
+            {
+                let s = session.state.lock().await;
+                assert_eq!(
+                    s.adding_reaction.as_ref().map(|p| p.msg_id.as_str()),
+                    Some("middle-wire")
+                );
+            }
+            assert!(!session.press_code(KeyCode::Esc).await);
+
+            assert!(!session.press_ctrl_char('e').await);
+            {
+                let s = session.state.lock().await;
+                assert_eq!(
+                    s.editing_message.as_ref().map(|p| p.message_id),
+                    Some(11),
+                    "the selected sent row is edited"
+                );
+            }
+            assert!(!session.press_code(KeyCode::Esc).await);
+
+            assert!(!session.press_code(KeyCode::Delete).await);
+            {
+                let s = session.state.lock().await;
+                assert_eq!(
+                    s.delete_message_prompt.as_ref().map(|p| p.message_id),
+                    Some(11),
+                    "the selected sent row is deleted"
+                );
+            }
+            assert!(!session.press_code(KeyCode::Esc).await);
+
+            assert!(!session.press_ctrl_char('o').await);
+            {
+                let s = session.state.lock().await;
+                assert_eq!(
+                    s.popup.as_deref(),
+                    Some("No downloaded attachment in this conversation")
+                );
+            }
+            assert!(!session.press_code(KeyCode::Esc).await);
+
+            {
+                let s = session.state.lock().await;
+                assert_eq!(s.message_selection_index(&dm), Some(1));
+                assert!(s.popup.is_none());
+            }
+            assert!(session.drain_commands().is_empty());
+        });
+    });
+}
+
+#[tokio::test]
+async fn test_esc_unwinds_only_the_active_conversation_one_layer_at_a_time() {
+    let mut state = selection_dm_state();
+    state.messages.push_back(p2p_app::DisplayMessage {
+        text: "12:03 [Alice] broadcast body".to_string(),
+        sender_peer_id: Some("alice".to_string()),
+    });
+    state
+        .message_ids
+        .push_back(Some("broadcast-wire".to_string()));
+    state.message_db_ids.push_back(None);
+    let chat = TabContent::Chat;
+    let dm = TabContent::Direct("cursor-peer".to_string());
+    assert!(state.begin_reply(&chat).is_some());
+    assert!(state.begin_reply(&dm).is_some());
+    assert!(state.select_message(&dm, 0));
+    let mut session = KeySession::new(state);
+
+    assert!(!session.press_code(KeyCode::Esc).await);
+    {
+        let s = session.state.lock().await;
+        assert!(s.reply_draft(&chat).is_some(), "other draft survives");
+        assert!(s.reply_draft(&dm).is_none());
+        assert_eq!(s.message_selection_index(&dm), Some(0));
+    }
+    assert!(!session.press_code(KeyCode::Esc).await);
+    {
+        let s = session.state.lock().await;
+        assert!(s.reply_draft(&chat).is_some());
+        assert_eq!(s.message_selection_index(&dm), None);
+    }
+    assert!(!session.press_code(KeyCode::Esc).await);
+    {
+        let s = session.state.lock().await;
+        assert!(matches!(
+            s.dynamic_tabs.tab_index_to_content(s.active_tab),
+            TabContent::Chat
+        ));
+        assert!(s.reply_draft(&chat).is_some());
+    }
+    assert!(!session.press_code(KeyCode::Esc).await);
+    assert!(session.state.lock().await.reply_draft(&chat).is_none());
+    assert!(session.drain_commands().is_empty());
+}
+
+#[tokio::test]
+async fn test_stale_rendered_selection_still_consumes_one_esc_layer() {
+    let mut state = selection_dm_state();
+    let dm = TabContent::Direct("cursor-peer".to_string());
+    state.message_selection.insert(
+        "dm:cursor-peer".to_string(),
+        crate::tui::state::MessageSelection::Rendered {
+            text: "12:00 [Alice] oldest body".to_string(),
+            occurrence: 0,
+            loaded_len: 99,
+        },
+    );
+    assert_eq!(state.message_selection_index(&dm), None);
+    let active = state.active_tab;
+    let mut session = KeySession::new(state);
+
+    assert!(!session.press_code(KeyCode::Esc).await);
+    let s = session.state.lock().await;
+    assert!(
+        !s.message_selection.contains_key("dm:cursor-peer"),
+        "the stale anchor is dropped"
+    );
+    assert_eq!(
+        s.active_tab, active,
+        "Esc stops here instead of leaving the tab"
+    );
+    assert_eq!(s.message_selection_index(&dm), None);
+}
+
+#[tokio::test]
+async fn test_group_message_cursor_highlights_row_through_real_keys() {
+    let mut state = test_app_state();
+    let group_id = "g-selection";
+    let group_tab = state
+        .dynamic_tabs
+        .add_group_tab(group_id.to_string(), "Group".to_string());
+    state.active_tab = group_tab;
+    state.group_messages.insert(
+        group_id.to_string(),
+        std::collections::VecDeque::from(vec![
+            "12:00 [Alice] group oldest".to_string(),
+            "12:01 [Me] group middle".to_string(),
+            "12:02 [Me] group newest".to_string(),
+        ]),
+    );
+    state.group_message_ids.insert(
+        group_id.to_string(),
+        std::collections::VecDeque::from(vec![
+            Some("group-oldest".to_string()),
+            Some("group-middle".to_string()),
+            Some("group-newest".to_string()),
+        ]),
+    );
+    state.group_message_db_ids.insert(
+        group_id.to_string(),
+        std::collections::VecDeque::from(vec![None, None, None]),
+    );
+    state
+        .group_scroll_state
+        .insert(group_id.to_string(), (0, true));
+    state.chat_area_height = 8;
+    let mut session = KeySession::new(state);
+    let group = TabContent::GroupChat(group_id.to_string());
+
+    assert!(
+        !session
+            .press_key(KeyEvent::new(KeyCode::Up, KeyModifiers::CONTROL))
+            .await
+    );
+    assert_eq!(
+        session.state.lock().await.message_selection_index(&group),
+        Some(1)
+    );
+    let highlighted = session.frame_highlighted_lines().await;
+    assert!(
+        highlighted.iter().any(|line| line.contains("group middle")),
+        "the group cursor row is not highlighted: {highlighted:?}"
+    );
+    assert!(
+        highlighted
+            .iter()
+            .all(|line| !line.contains("group newest")),
+        "an unselected group row inherited the highlight: {highlighted:?}"
+    );
+    assert!(session.drain_commands().is_empty());
 }

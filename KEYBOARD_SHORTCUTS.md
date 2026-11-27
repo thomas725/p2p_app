@@ -41,6 +41,7 @@ follows the selection.
 | Key/Action | Behavior |
 |------------|----------|
 | `↑` / `↓` | Scroll the hovered message section one line; move the list selection one row |
+| `Ctrl+Up` / `Ctrl+Down` | Move the message cursor on Chat / DM / Group chat; clamped at both ends |
 | `PgUp` / `PgDn` | Page-scroll the hovered message section; page the list selection |
 | `Home` | Jump to the first message / list row in the focused section |
 | `End` | Jump to the newest message / last list row (re-enters auto-scroll in a conversation) |
@@ -54,6 +55,14 @@ Which message section that is, per tab:
 | DM / Direct | broadcast messages (top half) and the conversation (bottom half) — the pointer picks |
 | Group chat | the group's messages |
 | Log | the log lines |
+
+Bare arrows and the wheel only scroll — they never arm a message selection.
+`Ctrl+Up`/`Ctrl+Down` arm and move an explicit message cursor on the Chat,
+DM/Direct and Group-chat tabs; it is clamped at both ends, and moving it brings
+the row into view. On a DM tab the cursor targets the bottom DM transcript only:
+bare arrow/wheel scrolling stays hover-aware across the top broadcast pane and
+the bottom DM pane. `Esc` clears the active conversation's cursor before
+returning to Chat; each conversation keeps its own cursor.
 
 Peer Info has no scrollable content and ignores the wheel. On Contacts, Groups,
 Settings and Shares, `↑`/`↓`, `PgUp`/`PgDn`, `Home`/`End` and the wheel move the
@@ -89,73 +98,88 @@ Flutter's "N new" jump button in DM and group chats.
 | `Ctrl+P` in **Chat** / **Group chat** | Open the newest known sender's Peer Info |
 | `Ctrl+P` in **Settings** | Open the first connected peer's Peer Info, or the first bound device when nobody is connected |
 | `Ctrl+P` in **Log** | Nothing — log lines have no sender |
-| `Ctrl+R` in **Chat** / **DM** / **Group chat** | Quote the newest message in that conversation |
-| `Ctrl+Y` in **Chat** / **DM** / **Group chat** | Add or remove an emoji reaction on the newest message in that conversation |
+| `Ctrl+Up` / `Ctrl+Down` in **Chat** / **DM** / **Group chat** | Move the message cursor (clamped at both ends) |
+| `Ctrl+R` in **Chat** / **DM** / **Group chat** | Quote the selected row (newest if none selected) |
+| `Ctrl+Y` in **Chat** / **DM** / **Group chat** | Add or remove an emoji reaction on the selected row (newest if none selected) |
 | `1`–`6` in the reaction prompt | Apply the matching quick-reaction emoji (`👍`, `❤️`, `😂`, `🎉`, `😮`, `😢`) |
-| `Ctrl+C` in **Chat** / **DM** / **Group chat** | Copy the newest message's rendered line to the terminal clipboard |
+| `Ctrl+C` in **Chat** / **DM** / **Group chat** | Copy the selected row's rendered line (newest if none selected) to the clipboard |
 | `Ctrl+C` in **Log** | Copy all log lines to the terminal clipboard (same as Flutter's "Copy All") |
-| `Ctrl+O` in **Chat** / **DM** / **Group chat** | Open the newest downloaded attachment with the system default app |
-| `Esc` in **Chat** / **DM** / **Group chat** | Clear the pending reply draft |
-| `Delete` in **Chat** / **DM** / **Group chat** | Hide your most recent sent message in that conversation (local only) |
-| `Ctrl+E` in **Chat** / **DM** / **Group chat** | Edit your most recent sent message in that conversation (local only) |
+| `Ctrl+O` in **Chat** / **DM** / **Group chat** | Open the selected row's attachment; with no cursor, the newest row with an attachment |
+| `Esc` in **Chat** / **DM** / **Group chat** | Clear the active conversation's reply draft, then that conversation's message selection, one press per layer |
+| `Delete` in **Chat** / **DM** / **Group chat** | Hide your selected sent row (newest sent if none selected), local only |
+| `Ctrl+E` in **Chat** / **DM** / **Group chat** | Edit your selected sent row (newest sent if none selected), local only |
+
+`Ctrl+R`, `Ctrl+Y`, `Ctrl+C`, `Ctrl+O`, `Delete` and `Ctrl+E` all act on the
+selected row (newest if none selected). On a DM tab that row is always from the
+bottom DM transcript; the top broadcast pane keeps its hover-based bare scroll.
+`Ctrl+P` is deliberately outside this slice — it stays newest/sender-targeted
+(newest known sender on Chat/Group, the DM partner on a DM tab), so it never
+follows the cursor. A selected anchor that goes stale (its row is trimmed or
+deleted locally) makes the verbs fall back to the newest row rather than aiming
+at whatever inherited the old index.
 
 ### Reply / quote
 
-`Ctrl+R` captures the newest message that has a stable wire id into a draft for
-the current conversation. The input title shows the quoted line, and the next
-message you send carries it as an immutable snapshot (`sender` + short preview)
-alongside the source id. The quote renders as a `↳` header above the body in all
-three frontends, even if the original row was later deleted locally. `Esc`
-clears the draft without sending; switching tabs keeps drafts separate.
+`Ctrl+R` captures the selected row (newest if none selected) that has a stable
+wire id into a draft for the current conversation. If a cursor is armed, that
+row must itself carry an id — no older row is substituted. The input title shows
+the quoted line, and the next message you send carries it as an immutable
+snapshot (`sender` + short preview) alongside the source id. The quote renders
+as a `↳` header above the body in all three frontends, even if the original row
+was later deleted locally. `Esc` clears the active conversation's draft without
+sending; a second `Esc` clears that conversation's message cursor. Switching
+tabs keeps drafts and cursors separate — each conversation has its own.
 
 ### Reactions
 
-`Ctrl+Y` opens a prompt to react to the newest message with a stable wire id in
-the current conversation. Press `1`–`6` for the quick palette (`👍`, `❤️`, `😂`,
-`🎉`, `😮`, `😢`), or type any valid token and press `Enter` for a custom one;
-applying the same emoji again removes it. The palette is Rust-owned and shared
-with Flutter's reaction menu. The reaction is stored locally and fanned out to
-the message's recipients over the swarm, so it appears as a chip after the
-message body in the TUI and Flutter. `Esc` cancels without saving. Only the
-newest message can be reacted to from the TUI; Flutter's per-message chips can
-target any message.
+`Ctrl+Y` opens a prompt to react to the selected row (newest if none selected)
+with a stable wire id in the current conversation. Press `1`–`6` for the quick
+palette (`👍`, `❤️`, `😂`, `🎉`, `😮`, `😢`), or type any valid token and press
+`Enter` for a custom one; applying the same emoji again removes it. The palette
+is Rust-owned and shared with Flutter's reaction menu. The reaction is stored
+locally and fanned out to the message's recipients over the swarm, so it appears
+as a chip after the message body in the TUI and Flutter. `Esc` cancels the
+prompt; a second `Esc` clears the active conversation's cursor.
+`Ctrl+Up`/`Ctrl+Down` can now target any row with a wire id; Flutter's
+per-message chips still target any message.
 
 ### Clipboard
 
-`Ctrl+C` copies the full rendered line of the newest message in the current
-conversation (time, sender tag and body, including continuation lines) to the
-terminal clipboard via OSC 52. Raw mode means this arrives as a key event, not
-SIGINT. The sequence is emitted after the frame, so it never corrupts the
-screen. OSC 52 support depends on the terminal (kitty, iTerm2, WezTerm,
-Alacritty, foot and modern xterm work; tmux needs clipboard passthrough
-enabled). This is the TUI's counterpart to Flutter's per-message copy action —
-just limited to the newest message, like the other "newest message" shortcuts.
+`Ctrl+C` copies the full rendered line of the selected row (newest if none
+selected) in the current conversation (time, sender tag and body, including
+continuation lines) to the terminal clipboard via OSC 52. Raw mode means this
+arrives as a key event, not SIGINT. The sequence is emitted after the frame, so
+it never corrupts the screen. OSC 52 support depends on the terminal (kitty,
+iTerm2, WezTerm, Alacritty, foot and modern xterm work; tmux needs clipboard
+passthrough enabled). This is the TUI's counterpart to Flutter's per-message
+copy action; with `Ctrl+Up`/`Ctrl+Down` it can target any row.
 On the **Log** tab the same key copies every buffered log line joined with
 newlines, matching Flutter's "Copy All"; an empty buffer is a no-op.
 
 ### Local message deletion
 
-`Delete` scans the open conversation backwards for the newest message you sent
-and opens a confirmation. `y` / `Enter` confirms; `Esc`, `n`, or any other key
-cancels. Confirming writes a local tombstone and removes the line from this
-install only — no retraction is sent, so other peers keep their copy. Incoming
-messages cannot be deleted; if the conversation has no sent row, a short
-explanation appears instead.
+`Delete` targets the selected row (newest sent if none selected) and opens a
+confirmation when that row is one you sent. `y` / `Enter` confirms; `Esc`, `n`,
+or any other key cancels. Confirming writes a local tombstone and removes the
+line from this install only — no retraction is sent, so other peers keep their
+copy. Incoming rows cannot be deleted even when selected; if no sent row is
+targeted, a short explanation appears instead.
 
 The delete prompt sits below the device-binding and group-leave prompts but
 above the call overlay and ordinary popup in the input precedence chain.
 
 ### Local message editing
 
-`Ctrl+E` scans the open conversation backwards for the newest message you sent
-and opens a single-line editor pre-filled with the stored body (display-only
+`Ctrl+E` targets the selected row (newest sent if none selected) and opens a
+single-line editor pre-filled with that row's stored body (display-only
 decorations such as file chips and the edit marker are not included). Enter
 saves, Esc cancels. Saving replaces the body in this install's history, stamps
 `edited_at` and appends the canonical `(edited)` marker after the rendered body;
 the line keeps its timestamp, sender tag and quoted header, and the marker
 survives a reload. Peers are not notified, so they keep the original text.
-Incoming rows cannot be edited; if there is no sent row, a short explanation
-appears instead. A bare `e` still types normally in the composer.
+Incoming rows cannot be edited even when selected; if no sent row is targeted,
+a short explanation appears instead. A bare `e` still types normally in the
+composer.
 
 ## Contacts tab
 
@@ -250,15 +274,20 @@ of the history.
 | `Shift+Enter` | Insert a newline |
 | `Ctrl+I` | Open the DM partner's Peer Info — **kitty-keyboard terminals only** (WezTerm) |
 | `Ctrl+P` | Open the DM partner's Peer Info — **works on every terminal** |
-| `Ctrl+R` | Quote the newest DM in this conversation (Esc clears) |
-| `Ctrl+Y` | Add or remove an emoji reaction on the newest DM in this conversation |
-| `Ctrl+C` | Copy the newest DM's rendered line to the terminal clipboard (OSC 52) |
-| `Delete` | Hide your most recent sent DM locally (with confirmation) |
-| `Ctrl+E` | Edit your most recent sent DM locally (Enter saves, Esc cancels) |
+| `Ctrl+Up` / `Ctrl+Down` | Move the DM message cursor (bottom pane only, clamped at both ends) |
+| `Ctrl+R` | Quote the selected DM (newest if none selected); Esc clears this DM's draft |
+| `Ctrl+Y` | React to the selected DM (newest if none selected) |
+| `Ctrl+C` | Copy the selected DM's rendered line (newest if none selected) |
+| `Delete` | Hide your selected sent DM (newest sent if none selected), local only |
+| `Ctrl+E` | Edit your selected sent DM (newest sent if none selected), local only |
 
 `Ctrl+I` collapses to the same byte as `Tab` on terminals without the kitty
 keyboard protocol (Konsole), so bare `Tab` would stop cycling tabs. `Ctrl+P`
-is the universal fallback; use it if `Ctrl+I` does nothing.
+is the universal fallback; use it if `Ctrl+I` does nothing. It stays
+newest/partner-targeted by design and is outside the message-selection slice.
+The `Ctrl+Up`/`Ctrl+Down` cursor targets only the bottom DM transcript — bare
+arrows and the wheel still scroll whichever pane the pointer hovers (top
+broadcast or bottom DM) and never move the cursor.
 
 ## Settings tab
 
@@ -322,7 +351,7 @@ an action whose result arrives asynchronously.
 |-----|--------|
 | `Enter` | Send the message / save a local message edit / save the nickname / confirm the group prompt |
 | `Shift+Enter` | New line in a multi-line message |
-| `Esc` | Cancel the edit in progress, or return to the Chat tab |
+| `Esc` | Cancel the edit in progress, or unwind one layer (see the chain below) |
 | `/file <path>` | Attach a local file and send it (see below) |
 
 ### Attaching a file
@@ -336,13 +365,14 @@ lane. Both frontends render the result as a chip:
 
 ### Opening a received file
 
-`Ctrl+O` in **Chat** / **DM** / **Group chat** opens the newest downloaded
-attachment in that conversation with the system default app (`xdg-open` on
-Linux, `open` on macOS, `start` on Windows) — the TUI equivalent of tapping the
-chip in Flutter. It resolves the descriptor from the persisted message row, so
-a file must have finished downloading and the row must still exist; otherwise a
-short "No downloaded attachment" popup appears. A failed launch reports the
-error in the same popup.
+`Ctrl+O` in **Chat** / **DM** / **Group chat** opens the attachment on the
+selected row (newest row with an attachment if none selected) with the system
+default app (`xdg-open` on Linux, `open` on macOS, `start` on Windows) — the TUI
+equivalent of tapping the chip in Flutter. With a cursor armed, only that row
+qualifies: an unrelated file is never opened. It resolves the descriptor from
+the persisted message row, so a file must have finished downloading and the row
+must still exist; otherwise a short "No downloaded attachment" popup appears. A
+failed launch reports the error in the same popup.
 
 ## UI control
 
@@ -366,9 +396,10 @@ message deletion — followed by a live call overlay. Otherwise it cancels the
 innermost active layer: dismiss the popup → cancel a local message edit →
 cancel a reaction → clear the Contacts search → cancel a nickname edit →
 cancel the group create/join prompt → cancel a peer dial → cancel network-peer
-entry → clear a reply draft → return to the Chat tab. A second `Esc` is needed
-for the next layer; for example, dismissing a network-peer validation popup
-leaves the rejected address open for correction.
+entry → clear the active conversation's reply draft → clear that conversation's
+message selection → return to the Chat tab. A second `Esc` is needed for the
+next layer; for example, dismissing a network-peer validation popup leaves the
+rejected address open for correction.
 
 ### Device-binding prompt
 
@@ -433,6 +464,7 @@ No device-level microphone/speaker adapter ships yet. See
 
 - Press `?` for the compact table; this file remains the full reference.
 - `End` returns you to live mode when catching up on messages.
+- `Ctrl+Up`/`Ctrl+Down` arms the active conversation's message cursor; `Esc` clears that cursor before taking you back to Chat.
 - `Home` takes you to the very first message — that can be a long way back.
 - On a DM tab the pointer picks the pane that scrolls: hover the top half for
   broadcasts, the bottom half for the conversation.

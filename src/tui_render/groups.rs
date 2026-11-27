@@ -2,7 +2,9 @@
 
 use crate::tui_helpers::peer_table_visible_range;
 use crate::tui_render::{bordered_block, render_unread_banner};
-use crate::tui_render_state::{TuiRenderState, calc_visible_list_items, reaction_suffix};
+use crate::tui_render_state::{
+    TuiRenderState, calc_visible_list_items, reaction_suffix, selected_visible_index,
+};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -98,6 +100,8 @@ pub fn render_group_chat_content(
         let (visible, effective_offset) =
             calc_visible_list_items(msgs, auto_scroll, scroll_offset, usable_height);
 
+        let selected =
+            selected_visible_index(state.message_selection_index, effective_offset, visible);
         let items: Vec<ListItem> = msgs
             .iter()
             .skip(effective_offset)
@@ -115,8 +119,12 @@ pub fn render_group_chat_content(
             })
             .collect();
 
-        let list = List::new(items).block(bordered_block(title));
-        f.render_widget(list, area);
+        let list = List::new(items)
+            .block(bordered_block(title))
+            .highlight_style(Style::default().bg(state.palette.selection_bg()));
+        let mut list_state = ListState::default();
+        list_state.select(selected);
+        f.render_stateful_widget(list, area, &mut list_state);
     } else {
         let para = Paragraph::new("No messages in this group yet").block(bordered_block(title));
         f.render_widget(para, area);

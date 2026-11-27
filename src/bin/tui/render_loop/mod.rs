@@ -189,6 +189,7 @@ pub(super) fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderS
         kitty_keyboard_active: state.env.kitty_keyboard_active,
         popup: render_popup_text(state),
         reply_preview,
+        message_selection_index: state.message_selection_index(&active_tab_content),
         chat_scroll_offset: state.chat_scroll_offset,
         auto_scroll: state.auto_scroll,
         chat_unread_count: state.chat_unread_count,

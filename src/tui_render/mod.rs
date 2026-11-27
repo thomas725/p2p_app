@@ -183,10 +183,12 @@ pub fn render_input_section(
 
 /// Shortcut hint line for the given tab.
 ///
-/// Bindings are documented only where they are active: Ctrl+P on every tab
-/// with a peer target (Contacts, Direct, Chat, Group, Settings), Ctrl+I
-/// (kitty) on a Direct/DM tab, `i` on Contacts, `n` (local nickname) on a Peer
-/// Info tab, `Del` on the three chat tabs.
+/// Bindings are documented only where they are active: Ctrl+Up/Down moves the
+/// message cursor on the three chat tabs (verbs then act on the selected row,
+/// newest if none selected), Ctrl+P on every tab with a peer target (Contacts,
+/// Direct, Chat, Group, Settings), Ctrl+I (kitty) on a Direct/DM tab, `i` on
+/// Contacts, `n` (local nickname) on a Peer Info tab, `Del` on the three chat
+/// tabs.
 #[must_use]
 pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
     match tab_content {
@@ -203,10 +205,10 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | n: nickname | Ctrl+P: peer info | d: dial | b/r: add bootstrap/relay | x: remove | l: LAN | t: theme | c: accent | s: sound | o: desktop alert | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) if kitty => {
-            "Tab: next | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+Up/Down: select | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) | TabContent::Chat | TabContent::GroupChat(_) => {
-            "Tab: next | Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+Up/Down: select | Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Log => {
             "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Ctrl+C: copy all | c: clear logs | F12: mouse | ?: help | Ctrl+Q: quit"
@@ -228,19 +230,18 @@ pub const fn shortcuts_help_text() -> &'static str {
     r"Tab / Shift+Tab  Next / previous tab      Ctrl+W  Close transient tab
 ?  This help                             F12  Mouse   Ctrl+Q  Quit
 Up/Down  Move   PgUp/PgDn  Page   Home/End  First / last
+Ctrl+Up/Down  Message cursor (clamped; Esc clears)
 Enter  Send / open / save   Shift+Enter  Newline   Esc  Cancel / back
 
 Chat / DM / Group: click a message -> sender's Peer Info
-Chat / DM / Group: Ctrl+R -> reply to newest message (Esc clears)
-Chat / DM / Group: Ctrl+Y -> react to newest message with an emoji
+Chat / DM / Group: verbs act on the selected row (newest if none selected)
+DM: cursor targets the bottom DM pane; bare arrows/wheel still scroll the hovered pane
+Chat / DM / Group: Ctrl+R -> reply | Ctrl+Y -> react | Ctrl+C -> copy (OSC 52)
 Reaction prompt: 1-6 quick emoji | Enter custom token | Esc cancel
-Chat / DM / Group: Ctrl+C -> copy newest message (OSC 52)
-Chat / DM / Group: Ctrl+O -> open newest downloaded attachment
-Chat / DM / Group: Del -> delete newest sent message (local only)
-Chat / DM / Group: Ctrl+E -> edit newest sent message (local only)
+Chat / DM / Group: Ctrl+O -> open attachment | Del -> delete sent (local) | Ctrl+E -> edit sent (local)
 Chat / DM / Group: /file <path> -> attach and send a local file
 DM: Ctrl+I (kitty) / Ctrl+P -> partner's Peer Info
-Chat / Group: Ctrl+P -> newest sender's Peer Info | Contacts: Ctrl+P -> selected peer
+Chat / Group: Ctrl+P -> newest/sender target (unchanged by selection) | Contacts: Ctrl+P -> selected peer
 Settings: Ctrl+P -> connected peer / bound device | click a peer row for its Peer Info
 
 Contacts: i Info | e expand | c call | d link device | / search | 1-5 sort | o reverse
@@ -250,7 +251,7 @@ Shares: Up/Down select | r refresh
 Log: Ctrl+C copy all logs | c clear logs
 Settings: n own nickname | d dial | b/r add peer | x remove | l LAN only | t dark/light | c accent | s sound | o desktop alert
 
-Prompts own the input; Esc cancels. Full reference: KEYBOARD_SHORTCUTS.md"
+Prompts own the input; Esc unwinds one layer: prompt -> reply draft -> message selection -> Chat. Full reference: KEYBOARD_SHORTCUTS.md"
 }
 
 /// Render the dedicated, larger popup used by [`shortcuts_help_text`].

@@ -70,6 +70,7 @@ fn apply_broadcast_to_state(
     trim_history(&mut state.messages, MAX_MESSAGE_HISTORY);
     trim_history(&mut state.message_ids, MAX_MESSAGE_HISTORY);
     trim_history(&mut state.message_db_ids, MAX_MESSAGE_HISTORY);
+    state.invalidate_rendered_selection(&p2p_app::tui_tabs::TabContent::Chat);
     if !state.auto_scroll.chat {
         state.chat_unread_count = state.chat_unread_count.saturating_add(1);
     }
@@ -114,6 +115,8 @@ fn apply_dm_to_state(
     if let Some(ids) = state.dm_message_db_ids.get_mut(peer_id) {
         trim_history(ids, MAX_DM_HISTORY);
     }
+    state
+        .invalidate_rendered_selection(&p2p_app::tui_tabs::TabContent::Direct(peer_id.to_string()));
     if is_scrolled_up(&state.dm_scroll_state, peer_id) {
         let unread = state
             .dm_unread_count
@@ -205,6 +208,9 @@ fn apply_group_message_to_state(
     if let Some(ids) = state.group_message_peer_ids.get_mut(group_id) {
         trim_history(ids, MAX_MESSAGE_HISTORY);
     }
+    state.invalidate_rendered_selection(&p2p_app::tui_tabs::TabContent::GroupChat(
+        group_id.to_string(),
+    ));
     // Flutter's `scrollToBottom` follows the tail only while `atBottom`; a
     // reader who scrolled up must keep their position and be offered the
     // unread banner. Auto-scroll rendering already follows the tail without a

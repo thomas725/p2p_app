@@ -94,6 +94,30 @@ pub struct InitialStateData {
     pub groups: Vec<p2p_app::groups::GroupSummary>,
 }
 
+/// Stable identity of a selected transcript row (US-006/008 parity).
+///
+/// Wire ids and DB ids survive history trims and row removals; the rendered
+/// fallback also records which equal line was picked and is cleared whenever
+/// its transcript mutates. A selection that can no longer be resolved is
+/// treated as absent rather than silently targeting the row that happened to
+/// inherit its old index.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum MessageSelection {
+    /// A message with a stable wire id (normal incoming/outgoing rows).
+    WireId(String),
+    /// A sent row with no wire id, identified by its local DB id (US-005).
+    DbId(i32),
+    /// A live row with neither id: the exact rendered line, its ordinal among
+    /// identical lines counted from the oldest loaded row, and that deque's
+    /// length at selection time. Any history change invalidates it, so a trim
+    /// cannot silently retarget an equal line.
+    Rendered {
+        text: String,
+        occurrence: usize,
+        loaded_len: usize,
+    },
+}
+
 /// Single-writer UI state (see the module doc above).
 ///
 /// This single-writer pattern prevents race conditions and simplifies reasoning about state changes.
@@ -253,9 +277,15 @@ pub struct AppState {
 
     /// Per-conversation reply drafts (US-006). Keyed by `chat`, `dm:<peer>` or
     /// `group:<id>` so a draft survives switching tabs but never leaks into a
-    /// different conversation. `Ctrl+R` captures the newest row; sending or
+    /// different conversation. `Ctrl+R` captures the targeted row; sending or
     /// `Esc` consumes/clears it.
     pub reply_drafts: HashMap<String, p2p_app::ReplyRef>,
+
+    /// Explicitly selected transcript row per conversation (`Ctrl+Up`/`Ctrl+Down`).
+    /// Absent means "newest", the historical default. The row is stored by a
+    /// stable identity, not an index, so a trim or local deletion can never
+    /// silently retarget a chat verb to a different message.
+    pub message_selection: HashMap<String, MessageSelection>,
 
     /// Incoming device-binding intro awaiting the account holder's decision
     /// (TUI user decision: like the mobile dialog, accepting is explicit — a
@@ -653,10 +683,10 @@ impl AppState {
         was_editing
     }
 
-    /// Open the shared editor for a reaction on the newest message in `tab`.
+    /// Open the shared editor for a reaction on the targeted message in `tab`.
     /// Returns `false` when the conversation has no stable wire id to react to.
     pub fn begin_reaction(&mut self, tab: &p2p_app::tui_tabs::TabContent) -> bool {
-        let Some(msg_id) = self.newest_message_id(tab) else {
+        let Some(msg_id) = self.target_message_id(tab) else {
             return false;
         };
         self.input_mode = p2p_app::InputMode::AddingReaction;
@@ -689,33 +719,44 @@ impl AppState {
         }
     }
 
-    /// Wire id of the newest message with a stable id in `tab` (US-008).
+    /// Wire id of the targeted message with a stable id in `tab` (US-008).
+    /// The cursor pins the row; without one the newest replyable row is used.
     #[must_use]
-    pub fn newest_message_id(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
-        self.message_ids_for_tab(tab)?.iter().rev().find_map(|id| {
-            id.as_deref()
-                .filter(|id| !id.trim().is_empty())
-                .map(str::to_owned)
-        })
+    pub fn target_message_id(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
+        let ids = self.message_ids_for_tab(tab)?;
+        let idx = self.replyable_index(ids, tab)?;
+        ids.get(idx)?.as_deref().map(str::to_owned)
     }
 
-    /// Local path of the newest downloaded attachment in `tab`'s conversation.
+    /// Local path of a downloaded attachment in `tab`'s conversation.
     ///
     /// `Ctrl+O` opens this (parity with Flutter's tappable attachment chip).
     /// Transcript lines hold only the rendered chip text (`[file] name (size)`),
     /// not the `file_id`, so the descriptor is resolved from the persisted row
-    /// by wire id — newest first. Rows without a stable id (e.g. meshed group
-    /// messages without a wire id) have no lookup key and are skipped, just as
-    /// they are for replies. `None` means nothing downloadable was found.
+    /// by wire id. With no cursor this scans backwards for the newest row that
+    /// actually has an attachment; with a cursor the picked row must itself
+    /// carry one, so `Ctrl+O` never opens an unrelated file. Rows without a
+    /// stable id (e.g. meshed group messages) have no lookup key and are skipped.
     #[must_use]
-    pub fn newest_attachment_path(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
-        self.message_ids_for_tab(tab)?.iter().rev().find_map(|id| {
-            let id = id.as_deref().filter(|id| !id.trim().is_empty())?;
+    pub fn target_attachment_path(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
+        fn path_for_id(id: &str) -> Option<String> {
+            if id.trim().is_empty() {
+                return None;
+            }
             let json = p2p_app::messages::attachment_json_for_msg_id(id)
                 .or_else(|| p2p_app::groups::attachment_json_for_msg_id(id))?;
             let att = p2p_app::files::attachment_from_json(&json)?;
             p2p_app::files::file_path(&att.file_id)
-        })
+        }
+
+        let ids = self.message_ids_for_tab(tab)?;
+        if self.message_selection_index(tab).is_some() {
+            let idx = self.target_index(tab)?;
+            return path_for_id(ids.get(idx)?.as_deref()?);
+        }
+        ids.iter()
+            .rev()
+            .find_map(|id| id.as_deref().and_then(path_for_id))
     }
 
     /// The most recent outgoing message in the conversation shown by `tab`,
@@ -766,6 +807,72 @@ impl AppState {
         Some((id, p2p_app::fmt::without_edited_marker(&body).to_string()))
     }
 
+    /// Outgoing row under an explicit cursor. Unlike [`Self::last_sent_message_raw`]
+    /// this never falls back to a different row: the operator picked one, so
+    /// edit/delete must not silently act on another message.
+    #[must_use]
+    pub fn selected_sent_message_raw(
+        &self,
+        tab: &p2p_app::tui_tabs::TabContent,
+    ) -> Option<(i32, String)> {
+        use p2p_app::tui_tabs::TabContent;
+
+        let idx = self.message_selection_index(tab)?;
+        let (row_id, text) = match tab {
+            TabContent::Chat => (
+                *self.message_db_ids.get(idx)?,
+                self.messages.get(idx).map_or("", |m| m.text.as_str()),
+            ),
+            TabContent::Direct(peer_id) => (
+                *self.dm_message_db_ids.get(peer_id)?.get(idx)?,
+                self.dm_messages
+                    .get(peer_id)
+                    .and_then(|msgs| msgs.get(idx))
+                    .map_or("", String::as_str),
+            ),
+            TabContent::GroupChat(group_id) => (
+                *self.group_message_db_ids.get(group_id)?.get(idx)?,
+                self.group_messages
+                    .get(group_id)
+                    .and_then(|msgs| msgs.get(idx))
+                    .map_or("", String::as_str),
+            ),
+            _ => return None,
+        };
+        let id = row_id?;
+        let body = p2p_app::reply::display_body(text);
+        Some((id, p2p_app::fmt::without_edited_marker(&body).to_string()))
+    }
+
+    /// Sent row the local verbs act on: the cursor's row when armed, otherwise
+    /// the newest sent row (the historical default).
+    #[must_use]
+    pub fn target_sent_message(
+        &self,
+        tab: &p2p_app::tui_tabs::TabContent,
+    ) -> Option<(i32, String)> {
+        if self.message_selection_index(tab).is_some() {
+            self.selected_sent_message_raw(tab)
+                .map(|(id, text)| (id, short_preview(&text)))
+        } else {
+            self.last_sent_message(tab)
+        }
+    }
+
+    /// Full-body counterpart of [`Self::target_sent_message`], used to pre-fill
+    /// the local-edit editor.
+    #[must_use]
+    pub fn target_sent_message_raw(
+        &self,
+        tab: &p2p_app::tui_tabs::TabContent,
+    ) -> Option<(i32, String)> {
+        if self.message_selection_index(tab).is_some() {
+            self.selected_sent_message_raw(tab)
+        } else {
+            self.last_sent_message_raw(tab)
+        }
+    }
+
     /// Notification focus key of the active tab (`broadcast`, `dm:<peer>`,
     /// `group:<id>`), or `None` for tabs without a chat conversation. Mirrors
     /// `notifications::conversation_key` so a message arriving in the
@@ -781,10 +888,11 @@ impl AppState {
         }
     }
 
-    /// Key of the reply draft belonging to a tab. `None` for tabs without a
-    /// message composer, so a draft can never leak into another conversation.
+    /// Key shared by a conversation's reply draft and message cursor (`chat`,
+    /// `dm:<peer>` or `group:<id>`). `None` for tabs without a message
+    /// composer, so neither piece of state can leak into another conversation.
     #[must_use]
-    pub fn reply_key(tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
+    pub fn conversation_key(tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
         use p2p_app::tui_tabs::TabContent;
         match tab {
             TabContent::Chat => Some("chat".to_string()),
@@ -794,49 +902,256 @@ impl AppState {
         }
     }
 
-    /// Rendered text of the newest message in a chat tab, if any.
+    /// Drop a rendered-line anchor after its transcript changes.
+    ///
+    /// Wire and DB anchors keep resolving by identity. A rendered anchor cannot
+    /// distinguish an append from a trim once the history cap is reached (the
+    /// length stays equal), so any mutation clears it rather than risking a
+    /// wrong target. Call this once after each aligned-queue append, reload,
+    /// deletion or in-place line replacement.
+    pub fn invalidate_rendered_selection(&mut self, tab: &p2p_app::tui_tabs::TabContent) {
+        let Some(key) = Self::conversation_key(tab) else {
+            return;
+        };
+        if matches!(
+            self.message_selection.get(&key),
+            Some(MessageSelection::Rendered { .. })
+        ) {
+            self.message_selection.remove(&key);
+        }
+    }
+
+    /// Number of rendered rows in a conversation's transcript.
+    fn transcript_len(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<usize> {
+        use p2p_app::tui_tabs::TabContent;
+        match tab {
+            TabContent::Chat => Some(self.messages.len()),
+            TabContent::Direct(peer_id) => self.dm_messages.get(peer_id).map(VecDeque::len),
+            TabContent::GroupChat(group_id) => self.group_messages.get(group_id).map(VecDeque::len),
+            _ => None,
+        }
+    }
+
+    /// Rendered line of one transcript row.
+    fn transcript_line<'a>(
+        &'a self,
+        tab: &p2p_app::tui_tabs::TabContent,
+        index: usize,
+    ) -> Option<&'a str> {
+        use p2p_app::tui_tabs::TabContent;
+        match tab {
+            TabContent::Chat => self.messages.get(index).map(|m| m.text.as_str()),
+            TabContent::Direct(peer_id) => self
+                .dm_messages
+                .get(peer_id)?
+                .get(index)
+                .map(String::as_str),
+            TabContent::GroupChat(group_id) => self
+                .group_messages
+                .get(group_id)?
+                .get(index)
+                .map(String::as_str),
+            _ => None,
+        }
+    }
+
+    /// DB-row-id deque aligned with `tab`, when it has one.
+    fn message_db_ids_for_tab(
+        &self,
+        tab: &p2p_app::tui_tabs::TabContent,
+    ) -> Option<&std::collections::VecDeque<Option<i32>>> {
+        use p2p_app::tui_tabs::TabContent;
+        match tab {
+            TabContent::Chat => Some(&self.message_db_ids),
+            TabContent::Direct(peer_id) => self.dm_message_db_ids.get(peer_id),
+            TabContent::GroupChat(group_id) => self.group_message_db_ids.get(group_id),
+            _ => None,
+        }
+    }
+
+    /// Stable identity of transcript row `index`, preferring the wire id, then
+    /// the DB id, and finally the rendered line with its equal-line ordinal.
+    fn selection_anchor(
+        &self,
+        tab: &p2p_app::tui_tabs::TabContent,
+        index: usize,
+    ) -> Option<MessageSelection> {
+        if let Some(id) = self
+            .message_ids_for_tab(tab)
+            .and_then(|ids| ids.get(index))
+            .and_then(|slot| slot.as_deref())
+            .filter(|id| !id.trim().is_empty())
+        {
+            return Some(MessageSelection::WireId(id.to_string()));
+        }
+        if let Some(id) = self
+            .message_db_ids_for_tab(tab)
+            .and_then(|ids| ids.get(index))
+            .copied()
+            .flatten()
+        {
+            return Some(MessageSelection::DbId(id));
+        }
+        let line = self.transcript_line(tab, index)?;
+        let occurrence = (0..index)
+            .filter(|previous| self.transcript_line(tab, *previous) == Some(line))
+            .count();
+        Some(MessageSelection::Rendered {
+            text: line.to_string(),
+            occurrence,
+            loaded_len: self.transcript_len(tab)?,
+        })
+    }
+
+    /// Find the current row by its stable identity. A missing identity means
+    /// the row was trimmed or deleted locally; callers then fall back to the
+    /// newest row instead of acting on whatever inherited its old index.
+    fn resolve_message_selection(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<usize> {
+        let key = Self::conversation_key(tab)?;
+        let anchor = self.message_selection.get(&key)?;
+        let count = self.transcript_len(tab)?;
+        match anchor {
+            MessageSelection::WireId(id) => self
+                .message_ids_for_tab(tab)?
+                .iter()
+                .position(|slot| slot.as_deref() == Some(id.as_str()))
+                .filter(|index| *index < count),
+            MessageSelection::DbId(db_id) => self
+                .message_db_ids_for_tab(tab)?
+                .iter()
+                .position(|slot| *slot == Some(*db_id))
+                .filter(|index| *index < count),
+            MessageSelection::Rendered {
+                text,
+                occurrence,
+                loaded_len,
+            } => {
+                if *loaded_len != count {
+                    return None;
+                }
+                let mut seen = 0;
+                for index in 0..count {
+                    if self.transcript_line(tab, index) == Some(text.as_str()) {
+                        if seen == *occurrence {
+                            return Some(index);
+                        }
+                        seen = seen.saturating_add(1);
+                    }
+                }
+                None
+            }
+        }
+    }
+
+    /// Row the chat verbs act on: the resolved explicit selection, otherwise
+    /// the newest row. Every verb uses this so a reply, reaction, copy, open,
+    /// edit or delete can never disagree about which message it targets.
+    fn target_index(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<usize> {
+        let count = self.transcript_len(tab)?;
+        (count > 0).then(|| {
+            self.resolve_message_selection(tab)
+                .unwrap_or_else(|| count.saturating_sub(1))
+        })
+    }
+
+    /// Arm the cursor on transcript row `index` (clamped to the conversation).
+    /// Returns false for tabs without a transcript, or an empty one.
+    pub fn select_message(&mut self, tab: &p2p_app::tui_tabs::TabContent, index: usize) -> bool {
+        let Some(key) = Self::conversation_key(tab) else {
+            return false;
+        };
+        let Some(count) = self.transcript_len(tab).filter(|count| *count > 0) else {
+            return false;
+        };
+        let last = count.saturating_sub(1);
+        let Some(anchor) = self.selection_anchor(tab, index.min(last)) else {
+            return false;
+        };
+        self.message_selection.insert(key, anchor);
+        true
+    }
+
+    /// Move the cursor by `delta` rows, starting from the newest when unset.
+    /// Both ends clamp: wrapping would jump from the oldest row to an unrelated
+    /// newest one on a single `Ctrl+Up` at the top of a transcript.
+    pub fn move_message_selection(
+        &mut self,
+        tab: &p2p_app::tui_tabs::TabContent,
+        delta: isize,
+    ) -> bool {
+        let Some(count) = self.transcript_len(tab).filter(|count| *count > 0) else {
+            return false;
+        };
+        let current = self
+            .resolve_message_selection(tab)
+            .unwrap_or_else(|| count.saturating_sub(1));
+        let step = delta.unsigned_abs();
+        let next = if delta < 0 {
+            current.saturating_sub(step)
+        } else {
+            current.saturating_add(step)
+        }
+        .min(count.saturating_sub(1));
+        self.select_message(tab, next)
+    }
+
+    /// Drop the cursor for `tab` so verbs return to the newest row.
+    pub fn clear_message_selection(&mut self, tab: &p2p_app::tui_tabs::TabContent) -> bool {
+        let Some(key) = Self::conversation_key(tab) else {
+            return false;
+        };
+        self.message_selection.remove(&key).is_some()
+    }
+
+    /// Resolved explicit cursor for the active conversation, used to highlight
+    /// its row. Stale anchors resolve to `None` (never to a reused index).
+    #[must_use]
+    pub fn message_selection_index(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<usize> {
+        self.resolve_message_selection(tab)
+    }
+
+    /// Rendered text of the targeted message in a chat tab, if any.
     ///
     /// This is the exact transcript line (time, sender tag, body) the user
     /// sees, so `Ctrl+C` copies the same row that `Ctrl+R`/`Ctrl+Y` target.
     /// Returns an owned string so the caller can queue it while mutating state.
     #[must_use]
-    pub fn newest_message_line(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
+    pub fn target_message_line(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
         use p2p_app::tui_tabs::TabContent;
+        let idx = self.target_index(tab)?;
         let line = match tab {
-            TabContent::Chat => self.messages.back().map(|m| m.text.as_str()),
+            TabContent::Chat => self.messages.get(idx).map(|m| m.text.as_str()),
             TabContent::Direct(peer_id) => self
                 .dm_messages
                 .get(peer_id)
-                .and_then(VecDeque::back)
+                .and_then(|msgs| msgs.get(idx))
                 .map(String::as_str),
             TabContent::GroupChat(group_id) => self
                 .group_messages
                 .get(group_id)
-                .and_then(VecDeque::back)
+                .and_then(|msgs| msgs.get(idx))
                 .map(String::as_str),
             _ => None,
         }?;
         Some(line.to_string())
     }
 
-    /// Capture the newest replyable message in `tab` as a reply draft.
+    /// Capture the targeted replyable message in `tab` as a reply draft.
     ///
-    /// The source must have a stable wire id; otherwise the quote could not be
-    /// correlated by the receiver. Attached files render as their canonical
-    /// chip text, which is already part of the transcript line.
+    /// With no explicit cursor this is the newest message with a stable wire
+    /// id (the historical behaviour). With a cursor the picked row must itself
+    /// carry an id, so a reply can never silently quote a different message.
+    /// Attached files render as their canonical chip text in the transcript.
     pub fn begin_reply(
         &mut self,
         tab: &p2p_app::tui_tabs::TabContent,
     ) -> Option<p2p_app::ReplyRef> {
         use p2p_app::tui_tabs::TabContent;
 
-        let key = Self::reply_key(tab)?;
+        let key = Self::conversation_key(tab)?;
         let (line, id) = match tab {
             TabContent::Chat => {
-                let idx = self
-                    .message_ids
-                    .iter()
-                    .rposition(|id| id.as_deref().is_some_and(|id| !id.trim().is_empty()))?;
+                let idx = self.replyable_index(&self.message_ids, tab)?;
                 (
                     self.messages.get(idx)?.text.as_str(),
                     self.message_ids.get(idx)?.as_deref()?,
@@ -844,9 +1159,7 @@ impl AppState {
             }
             TabContent::Direct(peer_id) => {
                 let ids = self.dm_message_ids.get(peer_id)?;
-                let idx = ids
-                    .iter()
-                    .rposition(|id| id.as_deref().is_some_and(|id| !id.trim().is_empty()))?;
+                let idx = self.replyable_index(ids, tab)?;
                 (
                     self.dm_messages.get(peer_id)?.get(idx)?.as_str(),
                     ids.get(idx)?.as_deref()?,
@@ -854,9 +1167,7 @@ impl AppState {
             }
             TabContent::GroupChat(group_id) => {
                 let ids = self.group_message_ids.get(group_id)?;
-                let idx = ids
-                    .iter()
-                    .rposition(|id| id.as_deref().is_some_and(|id| !id.trim().is_empty()))?;
+                let idx = self.replyable_index(ids, tab)?;
                 (
                     self.group_messages.get(group_id)?.get(idx)?.as_str(),
                     ids.get(idx)?.as_deref()?,
@@ -869,22 +1180,42 @@ impl AppState {
         Some(reply)
     }
 
+    /// Index whose wire id is used by reply/reaction/open. An explicit cursor
+    /// pins the row; without one we keep scanning backwards for the newest row
+    /// with a stable id (meshed group rows can lack one).
+    fn replyable_index(
+        &self,
+        ids: &std::collections::VecDeque<Option<String>>,
+        tab: &p2p_app::tui_tabs::TabContent,
+    ) -> Option<usize> {
+        if self.message_selection_index(tab).is_some() {
+            let idx = self.target_index(tab)?;
+            return ids
+                .get(idx)
+                .and_then(|id| id.as_deref())
+                .filter(|id| !id.trim().is_empty())
+                .map(|_| idx);
+        }
+        ids.iter()
+            .rposition(|id| id.as_deref().is_some_and(|id| !id.trim().is_empty()))
+    }
+
     /// Draft currently attached to `tab`, if any.
     #[must_use]
     pub fn reply_draft(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<&p2p_app::ReplyRef> {
-        let key = Self::reply_key(tab)?;
+        let key = Self::conversation_key(tab)?;
         self.reply_drafts.get(key.as_str())
     }
 
     /// Consume the draft for `tab` and return it (used just before sending).
     pub fn take_reply(&mut self, tab: &p2p_app::tui_tabs::TabContent) -> Option<p2p_app::ReplyRef> {
-        let key = Self::reply_key(tab)?;
+        let key = Self::conversation_key(tab)?;
         self.reply_drafts.remove(key.as_str())
     }
 
     /// Clear the draft for `tab`; true when one was armed.
     pub fn clear_reply(&mut self, tab: &p2p_app::tui_tabs::TabContent) -> bool {
-        let Some(key) = Self::reply_key(tab) else {
+        let Some(key) = Self::conversation_key(tab) else {
             return false;
         };
         self.reply_drafts.remove(key.as_str()).is_some()
@@ -905,6 +1236,7 @@ impl AppState {
                 let _ = self.message_ids.remove(idx);
                 let _ = self.messages.remove(idx);
                 self.chat_scroll_offset = self.chat_scroll_offset.min(self.messages.len());
+                self.invalidate_rendered_selection(&TabContent::Chat);
                 true
             }
             TabContent::Direct(peer_id) => {
@@ -924,6 +1256,7 @@ impl AppState {
                         offset.0 = offset.0.min(msgs.len());
                     }
                 }
+                self.invalidate_rendered_selection(&TabContent::Direct(peer_id.clone()));
                 true
             }
             TabContent::GroupChat(group_id) => {
@@ -948,6 +1281,7 @@ impl AppState {
                 {
                     scroll.0 = scroll.0.min(msgs.len());
                 }
+                self.invalidate_rendered_selection(&TabContent::GroupChat(group_id.clone()));
                 true
             }
             _ => false,
@@ -979,6 +1313,7 @@ impl AppState {
                     let old = line.text.clone();
                     line.text = replace(&old);
                 }
+                self.invalidate_rendered_selection(&TabContent::Chat);
                 true
             }
             TabContent::Direct(peer_id) => {
@@ -995,6 +1330,7 @@ impl AppState {
                     let old = line.clone();
                     *line = replace(&old);
                 }
+                self.invalidate_rendered_selection(&TabContent::Direct(peer_id.clone()));
                 true
             }
             TabContent::GroupChat(group_id) => {
@@ -1011,6 +1347,7 @@ impl AppState {
                     let old = line.clone();
                     *line = replace(&old);
                 }
+                self.invalidate_rendered_selection(&TabContent::GroupChat(group_id.clone()));
                 true
             }
             _ => false,
@@ -1033,6 +1370,7 @@ impl AppState {
         self.group_scroll_state.remove(group_id);
         self.group_unread_count.remove(group_id);
         self.reply_drafts.remove(&format!("group:{group_id}"));
+        self.message_selection.remove(&format!("group:{group_id}"));
         if let Some(closed) = self.dynamic_tabs.remove_group_tab(group_id) {
             let next_tab = match closed.cmp(&self.active_tab) {
                 // Leaving from the group's own chat tab: back to the list.
@@ -1408,6 +1746,7 @@ impl AppState {
             pending_notifications: Vec::new(),
             pending_clipboard: Vec::new(),
             reply_drafts: HashMap::new(),
+            message_selection: HashMap::new(),
             device_binding_prompt: None,
             group_leave_prompt: None,
             delete_message_prompt: None,

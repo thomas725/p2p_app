@@ -115,11 +115,11 @@ fn test_reply_capture_keeps_multiline_body_and_collapses_preview() {
 }
 
 #[test]
-fn test_newest_message_line_returns_last_row_per_chat_tab() {
+fn test_target_message_line_returns_last_row_per_chat_tab() {
     use p2p_app::tui_tabs::TabContent;
 
     let mut s = test_app_state();
-    assert_eq!(s.newest_message_line(&TabContent::Chat), None);
+    assert_eq!(s.target_message_line(&TabContent::Chat), None);
 
     s.messages.push_back(p2p_app::DisplayMessage {
         text: "first".to_string(),
@@ -130,7 +130,7 @@ fn test_newest_message_line_returns_last_row_per_chat_tab() {
         sender_peer_id: None,
     });
     assert_eq!(
-        s.newest_message_line(&TabContent::Chat).as_deref(),
+        s.target_message_line(&TabContent::Chat).as_deref(),
         Some("12:00 [Alice] second\ncontinuation"),
         "the full rendered line - including continuation rows - is copied"
     );
@@ -140,7 +140,7 @@ fn test_newest_message_line_returns_last_row_per_chat_tab() {
         std::collections::VecDeque::from(["dm old".to_string(), "dm new".to_string()]),
     );
     assert_eq!(
-        s.newest_message_line(&TabContent::Direct("peer-b".to_string()))
+        s.target_message_line(&TabContent::Direct("peer-b".to_string()))
             .as_deref(),
         Some("dm new")
     );
@@ -150,16 +150,16 @@ fn test_newest_message_line_returns_last_row_per_chat_tab() {
         std::collections::VecDeque::from(["group old".to_string(), "group new".to_string()]),
     );
     assert_eq!(
-        s.newest_message_line(&TabContent::GroupChat("group-c".to_string()))
+        s.target_message_line(&TabContent::GroupChat("group-c".to_string()))
             .as_deref(),
         Some("group new")
     );
 
     // Non-chat tabs own no message queue, so they must never yield a copy.
-    assert_eq!(s.newest_message_line(&TabContent::Contacts), None);
-    assert_eq!(s.newest_message_line(&TabContent::Log), None);
+    assert_eq!(s.target_message_line(&TabContent::Contacts), None);
+    assert_eq!(s.target_message_line(&TabContent::Log), None);
     assert_eq!(
-        s.newest_message_line(&TabContent::Direct("missing".to_string())),
+        s.target_message_line(&TabContent::Direct("missing".to_string())),
         None
     );
 }
@@ -1047,10 +1047,10 @@ fn test_active_conversation_key_tracks_the_visible_chat() {
     );
 }
 
-// ── newest_attachment_path (TUI received-attachment open, Flutter parity) ───
+// ── target_attachment_path (TUI received-attachment open, Flutter parity) ───
 
 #[test]
-fn test_newest_attachment_path_resolves_broadcast_and_group() {
+fn test_target_attachment_path_resolves_broadcast_and_group() {
     use p2p_app::tui_tabs::TabContent;
 
     let _guard = p2p_app::db::shared_db_test_lock()
@@ -1064,7 +1064,7 @@ fn test_newest_attachment_path_resolves_broadcast_and_group() {
 
     // No attachment in an empty conversation.
     let mut state = test_app_state();
-    assert_eq!(state.newest_attachment_path(&TabContent::Chat), None);
+    assert_eq!(state.target_attachment_path(&TabContent::Chat), None);
 
     // Store a blob on disk and attach it to a broadcast message.
     let src = dir.path().join("chip.txt");
@@ -1084,7 +1084,7 @@ fn test_newest_attachment_path_resolves_broadcast_and_group() {
         .message_ids
         .push_back(Some("broadcast-att-1".to_string()));
     assert_eq!(
-        state.newest_attachment_path(&TabContent::Chat).as_deref(),
+        state.target_attachment_path(&TabContent::Chat).as_deref(),
         Some(expected.as_str())
     );
 
@@ -1102,7 +1102,7 @@ fn test_newest_attachment_path_resolves_broadcast_and_group() {
     );
     assert_eq!(
         gstate
-            .newest_attachment_path(&TabContent::GroupChat("grp-att".to_string()))
+            .target_attachment_path(&TabContent::GroupChat("grp-att".to_string()))
             .as_deref(),
         Some(expected.as_str())
     );
@@ -1113,7 +1113,460 @@ fn test_newest_attachment_path_resolves_broadcast_and_group() {
     missing
         .message_ids
         .push_back(Some("never-persisted".to_string()));
-    assert_eq!(missing.newest_attachment_path(&TabContent::Chat), None);
+    assert_eq!(missing.target_attachment_path(&TabContent::Chat), None);
+
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
+
+// ── stable message selection (keyboard cursor parity) ─────────────────────
+
+#[test]
+fn test_message_selection_follows_wire_id_when_history_shifts() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let mut s = test_app_state();
+    let tab = TabContent::Chat;
+    s.messages = std::collections::VecDeque::from(vec![
+        p2p_app::DisplayMessage {
+            text: "12:00 [Alice] old line".to_string(),
+            sender_peer_id: Some("peer-a".to_string()),
+        },
+        p2p_app::DisplayMessage {
+            text: "12:01 [Alice] target line".to_string(),
+            sender_peer_id: Some("peer-a".to_string()),
+        },
+        p2p_app::DisplayMessage {
+            text: "12:02 [Alice] newest line".to_string(),
+            sender_peer_id: Some("peer-a".to_string()),
+        },
+    ]);
+    s.message_ids = std::collections::VecDeque::from(vec![
+        Some("wire-old".to_string()),
+        Some("wire-target".to_string()),
+        Some("wire-new".to_string()),
+    ]);
+    s.message_db_ids = std::collections::VecDeque::from(vec![None, None, None]);
+
+    assert!(s.select_message(&tab, 1));
+    assert_eq!(
+        s.message_selection.get("chat"),
+        Some(&MessageSelection::WireId("wire-target".to_string()))
+    );
+    assert_eq!(s.message_selection_index(&tab), Some(1));
+    assert_eq!(s.target_message_id(&tab).as_deref(), Some("wire-target"));
+    assert_eq!(
+        s.target_message_line(&tab).as_deref(),
+        Some("12:01 [Alice] target line")
+    );
+
+    // A history trim removes the row before the pinned one. The wire id still
+    // resolves, now at index 0, so every chat verb keeps targeting it.
+    let _ = s.messages.pop_front();
+    let _ = s.message_ids.pop_front();
+    let _ = s.message_db_ids.pop_front();
+    assert_eq!(s.message_selection_index(&tab), Some(0));
+    assert_eq!(s.target_message_id(&tab).as_deref(), Some("wire-target"));
+
+    assert!(s.clear_message_selection(&tab));
+    assert_eq!(s.message_selection_index(&tab), None);
+    assert_eq!(s.target_message_id(&tab).as_deref(), Some("wire-new"));
+}
+
+#[test]
+fn test_message_selection_uses_db_id_when_wire_id_is_absent() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let mut s = test_app_state();
+    let tab = TabContent::Chat;
+    s.messages = std::collections::VecDeque::from(vec![
+        p2p_app::DisplayMessage {
+            text: "12:00 [Me] first body".to_string(),
+            sender_peer_id: None,
+        },
+        p2p_app::DisplayMessage {
+            text: "12:01 [Me] second body".to_string(),
+            sender_peer_id: None,
+        },
+    ]);
+    s.message_ids = std::collections::VecDeque::from(vec![None, None]);
+    s.message_db_ids = std::collections::VecDeque::from(vec![Some(10), Some(11)]);
+
+    assert!(s.select_message(&tab, 0));
+    assert_eq!(
+        s.message_selection.get("chat"),
+        Some(&MessageSelection::DbId(10))
+    );
+    assert_eq!(s.target_message_id(&tab), None);
+    assert_eq!(
+        s.target_sent_message_raw(&tab),
+        Some((10, "first body".to_string()))
+    );
+    assert_eq!(
+        s.target_sent_message(&tab),
+        Some((10, "first body".to_string()))
+    );
+
+    s.messages.push_front(p2p_app::DisplayMessage {
+        text: "11:59 [Alice] unrelated".to_string(),
+        sender_peer_id: Some("peer-a".to_string()),
+    });
+    s.message_ids.push_front(None);
+    s.message_db_ids.push_front(None);
+    assert_eq!(s.message_selection_index(&tab), Some(1));
+    assert_eq!(
+        s.target_sent_message_raw(&tab),
+        Some((10, "first body".to_string()))
+    );
+}
+
+#[test]
+fn test_message_selection_rendered_anchor_uses_line_occurrence() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let mut s = test_app_state();
+    let tab = TabContent::Chat;
+    let duplicate = "12:00 [Alice] same line";
+    s.messages = std::collections::VecDeque::from(vec![
+        p2p_app::DisplayMessage {
+            text: duplicate.to_string(),
+            sender_peer_id: Some("peer-a".to_string()),
+        },
+        p2p_app::DisplayMessage {
+            text: duplicate.to_string(),
+            sender_peer_id: Some("peer-a".to_string()),
+        },
+    ]);
+    s.message_ids = std::collections::VecDeque::from(vec![Some(String::new()), None]);
+    s.message_db_ids = std::collections::VecDeque::from(vec![None, None]);
+
+    assert!(s.select_message(&tab, 1));
+    assert_eq!(
+        s.message_selection.get("chat"),
+        Some(&MessageSelection::Rendered {
+            text: duplicate.to_string(),
+            occurrence: 1,
+            loaded_len: 2,
+        })
+    );
+
+    // A front trim changes the loaded length, so the id-less anchor is stale:
+    // verbs fall back to the newest row instead of retargeting the remaining
+    // equal line at a different index.
+    s.messages.push_front(p2p_app::DisplayMessage {
+        text: "11:59 [Alice] distinct line".to_string(),
+        sender_peer_id: Some("peer-a".to_string()),
+    });
+    s.message_ids.push_front(None);
+    s.message_db_ids.push_front(None);
+    assert_eq!(s.message_selection_index(&tab), None);
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: "12:03 [Alice] newer distinct line".to_string(),
+        sender_peer_id: Some("peer-a".to_string()),
+    });
+    s.message_ids.push_back(None);
+    s.message_db_ids.push_back(None);
+    assert_eq!(
+        s.target_message_line(&tab).as_deref(),
+        Some("12:03 [Alice] newer distinct line")
+    );
+}
+
+#[test]
+fn test_message_selection_is_scoped_per_conversation() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let mut s = test_app_state();
+    let chat = TabContent::Chat;
+    let dm = TabContent::Direct("peer-1".to_string());
+    let group = TabContent::GroupChat("group-1".to_string());
+
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: "chat oldest".to_string(),
+        sender_peer_id: None,
+    });
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: "chat newest".to_string(),
+        sender_peer_id: None,
+    });
+    s.message_ids.push_back(Some("chat-old".to_string()));
+    s.message_ids.push_back(Some("chat-new".to_string()));
+    s.message_db_ids.push_back(None);
+    s.message_db_ids.push_back(None);
+
+    s.dm_messages.insert(
+        "peer-1".to_string(),
+        std::collections::VecDeque::from(vec!["dm oldest".to_string(), "dm newest".to_string()]),
+    );
+    s.dm_message_ids.insert(
+        "peer-1".to_string(),
+        std::collections::VecDeque::from(vec![
+            Some("dm-old".to_string()),
+            Some("dm-new".to_string()),
+        ]),
+    );
+    s.dm_message_db_ids.insert(
+        "peer-1".to_string(),
+        std::collections::VecDeque::from(vec![None, None]),
+    );
+
+    s.group_messages.insert(
+        "group-1".to_string(),
+        std::collections::VecDeque::from(vec![
+            "group oldest".to_string(),
+            "group newest".to_string(),
+        ]),
+    );
+    s.group_message_ids.insert(
+        "group-1".to_string(),
+        std::collections::VecDeque::from(vec![
+            Some("group-old".to_string()),
+            Some("group-new".to_string()),
+        ]),
+    );
+    s.group_message_db_ids.insert(
+        "group-1".to_string(),
+        std::collections::VecDeque::from(vec![None, None]),
+    );
+
+    assert!(s.select_message(&chat, 0));
+    assert!(s.select_message(&dm, 0));
+    assert!(s.select_message(&group, 0));
+    assert_eq!(s.target_message_id(&chat).as_deref(), Some("chat-old"));
+    assert_eq!(s.target_message_id(&dm).as_deref(), Some("dm-old"));
+    assert_eq!(s.target_message_id(&group).as_deref(), Some("group-old"));
+
+    assert!(s.clear_message_selection(&chat));
+    assert_eq!(s.message_selection_index(&chat), None);
+    assert_eq!(s.target_message_id(&chat).as_deref(), Some("chat-new"));
+    assert_eq!(s.message_selection_index(&dm), Some(0));
+    assert_eq!(s.message_selection_index(&group), Some(0));
+}
+
+#[test]
+fn test_stale_message_selection_falls_back_to_newest_row() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let mut s = test_app_state();
+    let tab = TabContent::Chat;
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: "12:00 [Alice] deleted row".to_string(),
+        sender_peer_id: Some("peer-a".to_string()),
+    });
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: "12:01 [Alice] surviving row".to_string(),
+        sender_peer_id: Some("peer-a".to_string()),
+    });
+    s.message_ids.push_back(Some("wire-deleted".to_string()));
+    s.message_ids.push_back(Some("wire-survivor".to_string()));
+    s.message_db_ids.push_back(None);
+    s.message_db_ids.push_back(None);
+
+    assert!(s.select_message(&tab, 0));
+    let _ = s.messages.pop_front();
+    let _ = s.message_ids.pop_front();
+    let _ = s.message_db_ids.pop_front();
+
+    // The stale anchor is not reused as index 0 of unrelated content: the
+    // verb-returning helpers fall back to the newest row instead.
+    assert_eq!(s.message_selection_index(&tab), None);
+    assert_eq!(s.target_message_id(&tab).as_deref(), Some("wire-survivor"));
+    assert_eq!(
+        s.target_message_line(&tab).as_deref(),
+        Some("12:01 [Alice] surviving row")
+    );
+}
+
+#[test]
+fn test_blank_wire_id_is_never_replyable_when_selected() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let mut s = test_app_state();
+    let tab = TabContent::Chat;
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: "12:00 [Alice] older valid".to_string(),
+        sender_peer_id: Some("peer-a".to_string()),
+    });
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: "12:01 [Alice] newest blank".to_string(),
+        sender_peer_id: Some("peer-a".to_string()),
+    });
+    s.message_ids.push_back(Some("wire-valid".to_string()));
+    s.message_ids.push_back(Some("   ".to_string()));
+    s.message_db_ids.push_back(None);
+    s.message_db_ids.push_back(None);
+
+    // Without a cursor, scanning backwards skips the blank newest id.
+    let reply = s.begin_reply(&tab).expect("older valid row is replyable");
+    assert_eq!(reply.msg_id, "wire-valid");
+    s.clear_reply(&tab);
+
+    // With the blank row explicitly selected, no older row may be substituted.
+    assert!(s.select_message(&tab, 1));
+    assert_eq!(s.message_selection_index(&tab), Some(1));
+    assert_eq!(s.target_message_id(&tab), None);
+    assert!(!s.begin_reaction(&tab));
+    assert_eq!(s.begin_reply(&tab), None);
+    assert_eq!(
+        s.target_message_line(&tab).as_deref(),
+        Some("12:01 [Alice] newest blank")
+    );
+}
+
+#[test]
+fn test_sent_verbs_target_selected_row_without_falling_back() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let mut s = test_app_state();
+    let tab = TabContent::Chat;
+    s.messages = std::collections::VecDeque::from(vec![
+        p2p_app::DisplayMessage {
+            text: "12:00 [Alice] incoming".to_string(),
+            sender_peer_id: Some("peer-a".to_string()),
+        },
+        p2p_app::DisplayMessage {
+            text: "12:01 [Me] selected body".to_string(),
+            sender_peer_id: None,
+        },
+        p2p_app::DisplayMessage {
+            text: "12:02 [Me] newest body".to_string(),
+            sender_peer_id: None,
+        },
+    ]);
+    s.message_ids = std::collections::VecDeque::from(vec![
+        Some("wire-in".to_string()),
+        Some("wire-selected".to_string()),
+        Some("wire-new".to_string()),
+    ]);
+    s.message_db_ids = std::collections::VecDeque::from(vec![None, Some(7), Some(9)]);
+
+    assert!(s.select_message(&tab, 1));
+    assert_eq!(
+        s.target_sent_message_raw(&tab),
+        Some((7, "selected body".to_string()))
+    );
+    assert_eq!(s.target_message_id(&tab).as_deref(), Some("wire-selected"));
+    assert_eq!(
+        s.begin_reply(&tab).map(|reply| reply.msg_id),
+        Some("wire-selected".to_string())
+    );
+
+    assert!(s.select_message(&tab, 0));
+    assert_eq!(
+        s.target_sent_message(&tab),
+        None,
+        "incoming row is not deletable"
+    );
+
+    assert!(s.clear_message_selection(&tab));
+    assert_eq!(
+        s.target_sent_message_raw(&tab),
+        Some((9, "newest body".to_string()))
+    );
+    assert_eq!(s.target_message_id(&tab).as_deref(), Some("wire-new"));
+}
+
+#[test]
+fn test_rendered_anchor_is_invalidated_when_history_cap_keeps_deque_length() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let mut s = test_app_state();
+    let tab = TabContent::Chat;
+    let duplicate = "12:00 [Alice] recycled line";
+    // At the history cap the deque length never changes: a trim+append evicts
+    // the oldest row and pushes a new one, so the rendered anchor's loaded_len
+    // guard cannot detect the mutation on its own.
+    for _ in 0..MAX_MESSAGE_HISTORY {
+        s.messages.push_back(p2p_app::DisplayMessage {
+            text: duplicate.to_string(),
+            sender_peer_id: Some("peer-a".to_string()),
+        });
+        s.message_ids.push_back(None);
+        s.message_db_ids.push_back(None);
+    }
+    assert!(s.select_message(&tab, 1));
+    assert_eq!(
+        s.message_selection.get("chat"),
+        Some(&MessageSelection::Rendered {
+            text: duplicate.to_string(),
+            occurrence: 1,
+            loaded_len: MAX_MESSAGE_HISTORY,
+        })
+    );
+
+    // A normal append path must invalidate explicitly at the cap.
+    let _ = s.messages.pop_front();
+    let _ = s.message_ids.pop_front();
+    let _ = s.message_db_ids.pop_front();
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: duplicate.to_string(),
+        sender_peer_id: Some("peer-a".to_string()),
+    });
+    s.message_ids.push_back(None);
+    s.message_db_ids.push_back(None);
+    assert_eq!(
+        s.message_selection_index(&tab),
+        Some(1),
+        "the stale anchor still resolves while the length is unchanged"
+    );
+    s.invalidate_rendered_selection(&tab);
+    assert!(!s.message_selection.contains_key("chat"));
+    assert_eq!(s.message_selection_index(&tab), None);
+    assert_eq!(s.target_message_line(&tab).as_deref(), Some(duplicate));
+}
+
+#[test]
+#[serial_test::serial]
+fn test_group_leave_drops_the_group_selection_and_reply_draft() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("group-leave-selection.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+
+    let mut s = test_app_state();
+    let group_id = "g-leave-selection";
+    let group_tab = s
+        .dynamic_tabs
+        .add_group_tab(group_id.to_string(), "Group".to_string());
+    s.active_tab = group_tab;
+    s.group_messages.insert(
+        group_id.to_string(),
+        std::collections::VecDeque::from(vec![
+            "12:00 [Alice] group body".to_string(),
+            "12:01 [Me] group newest".to_string(),
+        ]),
+    );
+    s.group_message_ids.insert(
+        group_id.to_string(),
+        std::collections::VecDeque::from(vec![
+            Some("group-old".to_string()),
+            Some("group-new".to_string()),
+        ]),
+    );
+    s.group_message_db_ids.insert(
+        group_id.to_string(),
+        std::collections::VecDeque::from(vec![None, None]),
+    );
+    let tab = TabContent::GroupChat(group_id.to_string());
+    assert!(s.select_message(&tab, 0));
+    assert!(s.begin_reply(&tab).is_some());
+
+    s.apply_group_leave(group_id);
+
+    assert!(!s.message_selection.contains_key("group:g-leave-selection"));
+    assert!(s.reply_draft(&tab).is_none());
+    assert!(!s.group_messages.contains_key(group_id));
+    assert!(!s.group_message_ids.contains_key(group_id));
+    assert_eq!(s.dynamic_tabs.group_tab_count(), 0);
+    assert!(matches!(
+        s.dynamic_tabs.tab_index_to_content(s.active_tab),
+        TabContent::Groups
+    ));
 
     p2p_app::db::release_db_lock();
     p2p_app::db::reset_db_url();

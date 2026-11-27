@@ -20,6 +20,12 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use tokio::sync::{Mutex, mpsc};
 
+/// Text and selection-highlight rows from one rendered frame.
+struct FrameSnapshot {
+    lines: Vec<String>,
+    highlighted: Vec<bool>,
+}
+
 /// A real key-dispatch session with drained channels and a render probe.
 ///
 /// The helpers drive `process_input_event`, the same public entry point the TUI
@@ -119,7 +125,26 @@ impl KeySession {
     /// Project the current `AppState` through the same conversion and renderer
     /// the live frame loop uses, then return the visible buffer as text.
     pub async fn frame_text(&self) -> String {
+        self.render_frame_snapshot().await.lines.join("\n")
+    }
+
+    /// Text of every frame row containing the active palette's selection
+    /// background. This observes the real renderer's `ListState` highlight, so
+    /// a key-driven cursor test does not have to trust state alone.
+    pub async fn frame_highlighted_lines(&self) -> Vec<String> {
+        let snapshot = self.render_frame_snapshot().await;
+        snapshot
+            .lines
+            .into_iter()
+            .zip(snapshot.highlighted)
+            .filter_map(|(line, highlighted)| highlighted.then_some(line))
+            .collect()
+    }
+
+    /// Render one frame and extract both text and highlight rows from it.
+    async fn render_frame_snapshot(&self) -> FrameSnapshot {
         let state = self.state.lock().await;
+        let background = state.palette.selection_bg();
         let backend = TestBackend::new(160, 40);
         let mut terminal = Terminal::new(backend).expect("test terminal");
         terminal
@@ -128,18 +153,19 @@ impl KeySession {
         drop(state);
         let buffer = terminal.backend().buffer();
         let width = usize::from(buffer.area.width);
-        let lines = buffer
-            .content
-            .chunks(width)
-            .map(|row| {
+        let mut lines = Vec::with_capacity(buffer.content.len().div_ceil(width.max(1)));
+        let mut highlighted = Vec::with_capacity(lines.capacity());
+        for row in buffer.content.chunks(width) {
+            lines.push(
                 row.iter()
                     .map(Cell::symbol)
                     .collect::<String>()
                     .trim_end()
-                    .to_owned()
-            })
-            .collect::<Vec<_>>();
-        lines.join("\n")
+                    .to_owned(),
+            );
+            highlighted.push(row.iter().any(|cell| cell.bg == background));
+        }
+        FrameSnapshot { lines, highlighted }
     }
 
     fn drain_renders(&mut self) {

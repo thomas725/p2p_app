@@ -274,6 +274,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| TUI message cursor + row-targeted chat verbs | 2026-11-27 | [`archive/2026-11-27_tui_message_selection.md`](archive/2026-11-27_tui_message_selection.md) |
 | Rust-owned seen timestamps in Flutter Contacts/Peer Info | 2026-11-27 | [`archive/2026-11-27_rust_owned_seen_timestamps.md`](archive/2026-11-27_rust_owned_seen_timestamps.md) |
 | Rust-owned last-connection label in Flutter Settings | 2026-11-27 | [`archive/2026-11-27_last_connection_rust_label.md`](archive/2026-11-27_last_connection_rust_label.md) |
 | Orphaned generated-model test files | 2026-11-27 | [`archive/2026-11-27_orphan_generated_model_tests.md`](archive/2026-11-27_orphan_generated_model_tests.md) |
