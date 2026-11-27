@@ -77,6 +77,7 @@ src/
 ├── reply.rs            canonical bounded reply preview + quoted header
 ├── notifications.rs    Rust-owned notification payload, policy, terminal sequence
 ├── settings.rs         typed app_settings readers/writers
+├── sort.rs             one canonical five-column sort for all frontends
 ├── theme.rs            shared theme tokens
 │
 ├── api/mod.rs          FRB surface (mobile) — the canonical binding layer

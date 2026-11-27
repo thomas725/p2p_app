@@ -349,6 +349,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Canonical five-column sort comparator | 2026-11-27 | [`archive/2026-11-27_canonical_sort_comparator.md`](archive/2026-11-27_canonical_sort_comparator.md) |
 | Exhaustive FRB↔web dispatch drift guard | 2026-11-27 | [`archive/2026-11-27_frb_web_drift_guard.md`](archive/2026-11-27_frb_web_drift_guard.md) |
 | Untrusted share-owner claim hardening | 2026-11-27 | [`archive/2026-11-27_share_owner_claim_hardening.md`](archive/2026-11-27_share_owner_claim_hardening.md) |
 | Share manifest revision/ACL hardening | 2026-11-27 | [`archive/2026-11-27_share_manifest_hardening.md`](archive/2026-11-27_share_manifest_hardening.md) |

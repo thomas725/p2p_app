@@ -4,6 +4,7 @@
 //! Android services, and future iOS bindings should depend on this facade rather
 //! than reaching into TUI/desktop-oriented modules directly.
 
+use crate::sort::SortableRow;
 use chrono::TimeZone;
 use serde::{Deserialize, Serialize};
 
@@ -93,6 +94,32 @@ pub struct PeerSortInput {
     pub dm_count: u32,
     /// Number of broadcasts sent to the peer.
     pub broadcast_count: u32,
+}
+
+impl SortableRow for PeerSortInput {
+    fn display_name(&self) -> &str {
+        &self.display_name
+    }
+
+    fn stable_id(&self) -> &str {
+        &self.peer_id
+    }
+
+    fn last_seen(&self) -> &str {
+        &self.last_seen
+    }
+
+    fn first_seen(&self) -> &str {
+        &self.first_seen
+    }
+
+    fn dm_count(&self) -> i64 {
+        i64::from(self.dm_count)
+    }
+
+    fn broadcasts_sent(&self) -> i64 {
+        i64::from(self.broadcast_count)
+    }
 }
 
 /// A known peer joined with its message counts, fetched in a single call.
@@ -251,34 +278,7 @@ pub fn sort_peers(
     sort_column: u32,
     ascending: bool,
 ) -> Vec<PeerSortInput> {
-    let mut keyed: Vec<(PeerSortInput, String)> = peers
-        .into_iter()
-        .map(|p| {
-            let name_key = p.display_name.to_lowercase();
-            (p, name_key)
-        })
-        .collect();
-    keyed.sort_by(|(a, an), (b, bn)| {
-        let ord = match sort_column {
-            1 => a
-                .dm_count
-                .cmp(&b.dm_count)
-                .then_with(|| a.peer_id.cmp(&b.peer_id)),
-            2 => a
-                .broadcast_count
-                .cmp(&b.broadcast_count)
-                .then_with(|| a.peer_id.cmp(&b.peer_id)),
-            3 => crate::fmt::parse_last_seen_ms(&a.last_seen)
-                .cmp(&crate::fmt::parse_last_seen_ms(&b.last_seen))
-                .then_with(|| a.peer_id.cmp(&b.peer_id)),
-            4 => crate::fmt::parse_last_seen_ms(&a.first_seen)
-                .cmp(&crate::fmt::parse_last_seen_ms(&b.first_seen))
-                .then_with(|| a.peer_id.cmp(&b.peer_id)),
-            _ => an.cmp(bn).then_with(|| a.peer_id.cmp(&b.peer_id)),
-        };
-        if ascending { ord } else { ord.reverse() }
-    });
-    keyed.into_iter().map(|(p, _)| p).collect()
+    crate::sort::sort_rows_by_column(peers, sort_column, ascending)
 }
 
 /// One contact row of the Contacts tab, as fed to [`sort_contacts`].
@@ -302,6 +302,32 @@ pub struct ContactSortInput {
     pub broadcast_sent_to_peer: i64,
 }
 
+impl SortableRow for ContactSortInput {
+    fn display_name(&self) -> &str {
+        &self.display_name
+    }
+
+    fn stable_id(&self) -> &str {
+        &self.contact_id
+    }
+
+    fn last_seen(&self) -> &str {
+        &self.last_seen
+    }
+
+    fn first_seen(&self) -> &str {
+        &self.first_seen
+    }
+
+    fn dm_count(&self) -> i64 {
+        self.dm_count
+    }
+
+    fn broadcasts_sent(&self) -> i64 {
+        self.broadcast_sent_to_peer
+    }
+}
+
 /// Sort a Contacts-tab roster by the given column and order, mirroring the
 /// canonical `contacts::sort_canonical_rows` used by the TUI and the DB
 /// loader: column `0` name, `1` DM count, `2` broadcast count, `3` last seen,
@@ -317,34 +343,7 @@ pub fn sort_contacts(
     sort_column: u32,
     ascending: bool,
 ) -> Vec<ContactSortInput> {
-    let mut keyed: Vec<(ContactSortInput, String)> = contacts
-        .into_iter()
-        .map(|c| {
-            let name_key = c.display_name.to_lowercase();
-            (c, name_key)
-        })
-        .collect();
-    keyed.sort_by(|(a, an), (b, bn)| {
-        let ord = match sort_column {
-            1 => a
-                .dm_count
-                .cmp(&b.dm_count)
-                .then_with(|| a.contact_id.cmp(&b.contact_id)),
-            2 => a
-                .broadcast_sent_to_peer
-                .cmp(&b.broadcast_sent_to_peer)
-                .then_with(|| a.contact_id.cmp(&b.contact_id)),
-            3 => crate::fmt::parse_last_seen_ms(&a.last_seen)
-                .cmp(&crate::fmt::parse_last_seen_ms(&b.last_seen))
-                .then_with(|| a.contact_id.cmp(&b.contact_id)),
-            4 => crate::fmt::parse_last_seen_ms(&a.first_seen)
-                .cmp(&crate::fmt::parse_last_seen_ms(&b.first_seen))
-                .then_with(|| a.contact_id.cmp(&b.contact_id)),
-            _ => an.cmp(bn).then_with(|| a.contact_id.cmp(&b.contact_id)),
-        };
-        if ascending { ord } else { ord.reverse() }
-    });
-    keyed.into_iter().map(|(c, _)| c).collect()
+    crate::sort::sort_rows_by_column(contacts, sort_column, ascending)
 }
 
 /// A device bound into a user's device-set, as exposed to Flutter.

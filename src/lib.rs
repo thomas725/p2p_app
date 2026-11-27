@@ -46,6 +46,7 @@
 //! - [`blocklist`] - peer blocklist / mute (swarm-boundary filtering)
 //! - [`nickname`] - nickname management
 //! - [`fmt`] - formatting utilities
+//! - [`sort`] - the canonical five-column comparator for both frontends
 //! - [`reply`] - immutable reply/quote snapshots (US-006)
 //! - [`shares`] - versioned file/folder shares, grants and ACLs
 //! - [`logging`] - tracing-based logging with TUI callback
@@ -92,6 +93,7 @@ pub mod reply;
 pub mod settings;
 pub mod shares;
 mod shares_json;
+pub mod sort;
 pub mod swarm_handler;
 pub mod theme;
 pub mod tui_tabs;

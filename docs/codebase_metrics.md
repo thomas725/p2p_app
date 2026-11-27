@@ -4,11 +4,11 @@
 
 | Metric                |     Value |
 |:----------------------|:----------|
-| Total Rust Files      |        73 |
-| Total Rust Lines      |    47,062 |
-| Total Rust Chars      | 1,793,207 |
-| Avg Lines/Rust File   |       644 |
-| Avg Chars/Rust File   |    24,564 |
+| Total Rust Files      |        74 |
+| Total Rust Lines      |    47,141 |
+| Total Rust Chars      | 1,794,258 |
+| Avg Lines/Rust File   |       637 |
+| Avg Chars/Rust File   |    24,246 |
 | Total Dart Files      |        61 |
 | Total Dart Lines      |    27,162 |
 | Total Dart Chars      |   873,320 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 139 files, 75,284 lines, 2,706,107 characters
+**Grand Total:** 140 files, 75,363 lines, 2,707,158 characters
 
 ## Rust Source Files
 
@@ -33,7 +33,7 @@
 | src                     | calls.rs             |     3 |  3221 |    90 |        - |       - | Call session state machine (signaling)             |
 | src                     | clipboard.rs         |     3 |  3617 |    98 |        - |       - | Source file                                        |
 | src                     | connected.rs         |     3 |  2983 |    89 |        - |       - | Connected peers tracking & monitoring              |
-| src                     | contacts.rs          |     4 | 14829 |   395 |        - |       - | Canonical contacts-roster model                    |
+| src                     | contacts.rs          |     4 | 14254 |   399 |        - |       - | Canonical contacts-roster model                    |
 | src                     | db.rs                |     5 | 27253 |   686 |        - |       - | Database connection & identity mgmt                |
 | src                     | dm_outbox.rs         |     3 |  5631 |   155 |        - |       - | Source file                                        |
 | src                     | e2e.rs               |     4 | 17759 |   443 |        - |       - | Source file                                        |
@@ -43,11 +43,11 @@
 | src                     | frb_generated.rs     |     6 | 295861 |  7115 |        - |       - | flutter_rust_bridge codegen                        |
 | src                     | groups.rs            |     3 | 24841 |   664 |        - |       - | Group management & persistence                     |
 | src                     | identity.rs          |     4 | 29405 |   777 |        - |       - | Users, account keys & device bindings              |
-| src                     | lib.rs               |     1 |  7517 |   202 |        - |       - | Module declarations & re-exports                   |
+| src                     | lib.rs               |     1 |  7604 |   204 |        - |       - | Module declarations & re-exports                   |
 | src                     | location.rs          |     5 | 29490 |   804 |        - |       - | Source file                                        |
 | src                     | logging.rs           |     5 | 13949 |   426 |        - |       - | Logging utilities & setup                          |
 | src                     | messages.rs          |     5 | 25355 |   643 |        - |       - | Message persistence & retrieval                    |
-| src                     | mobile_api.rs        |     4 | 40897 |  1165 |        - |       - | Mobile FRB API surface                             |
+| src                     | mobile_api.rs        |     4 | 39649 |  1164 |        - |       - | Mobile FRB API surface                             |
 | src                     | mobile_node.rs       |     5 | 99311 |  2629 |        - |       - | Mobile node lifecycle & swarm                      |
 | src                     | mod.rs               |     5 | 53493 |  1509 |        - |       - | FRB API surface                                    |
 | src                     | net_diag.rs          |     4 | 21449 |   596 |        - |       - | Source file                                        |
@@ -62,6 +62,7 @@
 | src                     | settings.rs          |     4 |  9991 |   251 |        - |       - | Source file                                        |
 | src                     | shares.rs            |     6 | 58668 |  1556 |        - |       - | File shares & folder sync (ACLs, manifests, apply) |
 | src                     | shares_json.rs       |     4 |  6336 |   195 |        - |       - | Source file                                        |
+| src                     | sort.rs              |     3 |  2787 |    74 |        - |       - | Source file                                        |
 | src                     | swarm_handler.rs     |     7 | 101082 |  2630 |        - |       - | Network event translation                          |
 | src                     | theme.rs             |     4 |  7223 |   234 |        - |       - | Source file                                        |
 | src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities                   |
@@ -100,7 +101,7 @@
 | src/web                 | methods.rs           |     5 | 46468 |  1441 |        - |       - | Web JSON method dispatch                           |
 | src/web                 | mod.rs               |     9 | 70240 |  1824 |        - |       - | Web server (axum HTTP+WS)                          |
 
-**Total:** 73 files, 47,062 lines, 1,793,207 characters
+**Total:** 74 files, 47,141 lines, 1,794,258 characters
 
 ## Rust Test Files
 
@@ -167,6 +168,7 @@
 | unit   | unit_reply.rs                      |   215 |  7626 |     3 | Test file                             |
 | unit   | unit_settings.rs                   |   173 |  5340 |     4 | Test file                             |
 | unit   | unit_shares.rs                     |  1662 | 59364 |     6 | shares module tests                   |
+| unit   | unit_sort.rs                       |   123 |  2770 |     3 | Test file                             |
 | unit   | unit_swarm_handler.rs              |   461 | 15592 |     4 | Unit tests for swarm_handler module   |
 | unit   | unit_tui_helpers.rs                |   694 | 23223 |     5 | Unit tests for TUI helpers            |
 | unit   | unit_tui_render_state.rs           |   415 | 13085 |     2 | Unit tests for TUI render state       |
@@ -174,7 +176,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   425 | 12920 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 35,918 lines, 1,223,133 characters
+**Total:** 68 test files, 36,041 lines, 1,225,903 characters
 
 ## Dart Source Files
 

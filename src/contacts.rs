@@ -19,6 +19,7 @@
 
 use crate::generated::models_queryable::User;
 use crate::messages::{PeerMessageStats, get_all_peer_stats};
+use crate::sort::SortableRow;
 use crate::types::StringMap;
 use std::collections::HashMap;
 
@@ -100,6 +101,32 @@ impl ContactRow {
     #[must_use]
     pub fn best_device_peer_id(&self) -> Option<&str> {
         self.device_rows.first().map(|d| d.peer_id.as_str())
+    }
+}
+
+impl SortableRow for ContactRow {
+    fn display_name(&self) -> &str {
+        &self.display_name
+    }
+
+    fn stable_id(&self) -> &str {
+        &self.contact_id
+    }
+
+    fn last_seen(&self) -> &str {
+        &self.last_seen
+    }
+
+    fn first_seen(&self) -> &str {
+        &self.first_seen
+    }
+
+    fn dm_count(&self) -> i64 {
+        self.dm_count
+    }
+
+    fn broadcasts_sent(&self) -> i64 {
+        self.broadcast_sent_to_peer
     }
 }
 
@@ -360,34 +387,11 @@ pub fn sort_canonical_rows(
     sort_column: usize,
     ascending: bool,
 ) -> Vec<ContactRow> {
-    let mut keyed: Vec<(ContactRow, String)> = rows
-        .iter()
-        .map(|r| {
-            let name_key = r.display_name.to_lowercase();
-            ((*r).clone(), name_key)
-        })
-        .collect();
-    keyed.sort_by(|(a, an), (b, bn)| {
-        let ord = match sort_column {
-            1 => a
-                .dm_count
-                .cmp(&b.dm_count)
-                .then_with(|| a.contact_id.cmp(&b.contact_id)),
-            2 => a
-                .broadcast_sent_to_peer
-                .cmp(&b.broadcast_sent_to_peer)
-                .then_with(|| a.contact_id.cmp(&b.contact_id)),
-            3 => crate::fmt::parse_last_seen_ms(&a.last_seen)
-                .cmp(&crate::fmt::parse_last_seen_ms(&b.last_seen))
-                .then_with(|| a.contact_id.cmp(&b.contact_id)),
-            4 => crate::fmt::parse_last_seen_ms(&a.first_seen)
-                .cmp(&crate::fmt::parse_last_seen_ms(&b.first_seen))
-                .then_with(|| a.contact_id.cmp(&b.contact_id)),
-            _ => an.cmp(bn).then_with(|| a.contact_id.cmp(&b.contact_id)),
-        };
-        if ascending { ord } else { ord.reverse() }
-    });
-    keyed.into_iter().map(|(r, _)| r).collect()
+    crate::sort::sort_rows_by_column(
+        rows.to_vec(),
+        u32::try_from(sort_column).unwrap_or(0),
+        ascending,
+    )
 }
 
 #[cfg(test)]
