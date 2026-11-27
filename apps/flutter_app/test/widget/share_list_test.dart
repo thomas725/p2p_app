@@ -50,6 +50,7 @@ Widget detailApp({
   required Future<List<MobileShareGrant>> Function(String) loadGrants,
   Future<void> Function(String, String, String)? onSetGrant,
   Future<void> Function(String, String)? onRemoveGrant,
+  Future<void> Function(String)? onDeleteShare,
 }) => MaterialApp(
   home: ShareDetailScreen(
     share: makeShare('share-a', name: 'Docs', kind: 'private'),
@@ -57,6 +58,7 @@ Widget detailApp({
     loadGrants: loadGrants,
     onSetGrant: onSetGrant,
     onRemoveGrant: onRemoveGrant,
+    onDeleteShare: onDeleteShare,
   ),
 );
 
@@ -156,6 +158,38 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('shares-create')), findsOneWidget);
+  });
+
+  testWidgets('list screen follows the share notifier while open', (
+    tester,
+  ) async {
+    final rows = ValueNotifier<List<MobileShare>>([
+      makeShare('share-a', name: 'Docs', kind: 'private'),
+    ]);
+    addTearDown(rows.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShareListScreen(
+          shares: rows.value,
+          shareRows: rows,
+          onOpenShare: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Docs'), findsOneWidget);
+
+    rows.value = const [];
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'No shares yet. Create one here, or wait for a peer share to be '
+        'accepted.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('create sends the trimmed name and closes the dialog', (
@@ -650,5 +684,87 @@ void main() {
     expect(find.byKey(const Key('share-grant-error')), findsOneWidget);
     expect(find.textContaining('Failed to revoke user-friend'), findsOneWidget);
     expect(find.text('user-friend'), findsOneWidget);
+  });
+
+  testWidgets('delete action is hidden without a Home callback', (
+    tester,
+  ) async {
+    await tester.pumpWidget(detailApp(loadGrants: (_) async => const []));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('share-detail-delete')), findsNothing);
+  });
+
+  testWidgets('cancel keeps the share and never calls the deleter', (
+    tester,
+  ) async {
+    final ids = <String>[];
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => const [],
+        onDeleteShare: (id) async => ids.add(id),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('share-detail-delete')));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete "Docs"?'), findsOneWidget);
+    expect(find.textContaining('Files in the bound folder'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('share-delete-cancel')));
+    await tester.pumpAndSettle();
+
+    expect(ids, isEmpty);
+    expect(find.text('Share ID'), findsOneWidget);
+  });
+
+  testWidgets('confirmed delete calls the seam and leaves the detail route', (
+    tester,
+  ) async {
+    final ids = <String>[];
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => const [],
+        onDeleteShare: (id) async => ids.add(id),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('share-detail-delete')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('share-delete-submit')));
+    await tester.pumpAndSettle();
+
+    expect(ids, ['share-a']);
+    expect(find.byKey(const Key('share-detail-delete')), findsNothing);
+    expect(find.text('Share ID'), findsNothing);
+  });
+
+  testWidgets('delete failure stays in the dialog with an error', (
+    tester,
+  ) async {
+    final ids = <String>[];
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => const [],
+        onDeleteShare: (id) async {
+          ids.add(id);
+          throw Exception('database locked');
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('share-detail-delete')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('share-delete-submit')));
+    await tester.pumpAndSettle();
+
+    expect(ids, ['share-a']);
+    expect(find.text('Delete "Docs"?'), findsOneWidget);
+    expect(find.byKey(const Key('share-delete-dialog-error')), findsOneWidget);
+    expect(find.textContaining('Failed to delete share'), findsOneWidget);
+    expect(find.text('Share ID'), findsOneWidget);
   });
 }

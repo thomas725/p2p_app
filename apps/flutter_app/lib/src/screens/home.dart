@@ -106,6 +106,12 @@ class _HomeScreenState extends State<HomeScreen> {
   List<MobileGroup> _groups = [];
   List<MobileShare> _shares = [];
 
+  /// Live view of [_shares] for the already-open File shares route. A detail
+  /// route can delete or a list route can create a share, then pop without
+  /// rebuilding the route below it; this notifier delivers the new canonical
+  /// store contents to that route.
+  final ValueNotifier<List<MobileShare>> _shareRows = ValueNotifier(const []);
+
   /// Offers announced by peers, keyed by peer/share id in
   /// [mergeDiscoveredShares]. A notifier lets an open discovery route see new
   /// `share_offered` events without being rebuilt.
@@ -249,6 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _statusNotifier.dispose();
     _networkNotifier.dispose();
     _discoveredShares.dispose();
+    _shareRows.dispose();
     super.dispose();
   }
 
@@ -462,7 +469,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _refreshShares() async {
     try {
       final shares = await nodeApi.listShares();
-      if (mounted) setState(() => _shares = shares);
+      if (mounted) {
+        setState(() => _shares = shares);
+        _shareRows.value = shares;
+      }
     } catch (_) {}
   }
 
@@ -1165,6 +1175,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (_) => ShareListScreen(
           shares: _shares,
+          shareRows: _shareRows,
           onOpenShare: _openShareDetail,
           onCreateShare: _createShare,
           onDiscoverShares: _openShareDiscovery,
@@ -1192,6 +1203,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     await _refreshShares();
   }
+
+  /// Delete a share locally. Rust removes only the share metadata and grants;
+  /// the bound folder and content-addressed blobs stay on disk. The detail
+  /// route pops after this succeeds and its completion refreshes both Home and
+  /// the list route's notifier.
+  Future<void> _deleteShare(String shareId) => nodeApi.deleteShare(shareId);
 
   /// Open peer-share discovery. Clearing here (rather than after the request)
   /// avoids wiping offers that arrive while the queue call is still in flight.
@@ -1252,6 +1269,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           onRemoveGrant: (shareId, userId) =>
               nodeApi.removeShareGrant(shareId: shareId, userId: userId),
+          onDeleteShare: _deleteShare,
           peerIds: connectedShareActionPeerIds(_connectedPeerIds),
           onRequestManifest: (shareId, peerId) =>
               nodeApi.requestShareManifest(peerId: peerId, shareId: shareId),
@@ -1274,7 +1292,11 @@ class _HomeScreenState extends State<HomeScreen> {
           currentTab: 4,
         ),
       ),
-    );
+    ).then((_) {
+      // A confirmed delete pops itself; refresh before the list route is
+      // revealed so its notifier shows the canonical store without a stale row.
+      if (mounted) _refreshShares();
+    });
   }
 
   // Open the info page for the sender of a broadcast message. If the peer

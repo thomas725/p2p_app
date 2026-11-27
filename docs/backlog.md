@@ -270,16 +270,22 @@ Shipped after the core:
   error in place and the list reloads on success; binding a folder and taking a
   native snapshot stay native-only. Record:
   [`archive/2026-11-27_flutter_web_share_creation.md`](archive/2026-11-27_flutter_web_share_creation.md).
+- Flutter/web share deletion: the detail page has a confirmed "Delete share"
+  action calling the existing `deleteShare` facade on both transports. Rust
+  owns the one-transaction removal of the share row, entries and grants while
+  keeping the bound folder and blobs; the detail route pops on success and a
+  `ValueNotifier` refreshes the list route that is already open. Record:
+  [`archive/2026-11-27_flutter_web_share_deletion.md`](archive/2026-11-27_flutter_web_share_deletion.md).
 
 Still open (UI/integration, not protocol work):
 
 - TUI Shares tab action for adding files (the list, detail, event notice,
   creation, folder binding/snapshot/publish, grant/visibility editors, network
   refresh/re-advertise, deletion publishing and discovery already ship);
-- Native share binding and folder snapshot UI. Creation, deletion publishing,
-  discovery, manifest refresh and re-advertise already ship on both transports;
-  the browser remains a display client — adding new files needs a real local
-  folder snapshot, which only a native install can produce.
+- Native share binding and folder snapshot UI. Creation, local share deletion,
+  deletion publishing, discovery, manifest refresh and re-advertise already ship
+  on both transports; the browser remains a display client — adding new files
+  needs a real local folder snapshot, which only a native install can produce.
 
 The two-node blob-pull → apply test shipped with separate per-thread databases
 and blob stores; see
@@ -349,6 +355,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Flutter/web share deletion | 2026-11-27 | [`archive/2026-11-27_flutter_web_share_deletion.md`](archive/2026-11-27_flutter_web_share_deletion.md) |
 | Canonical five-column sort comparator | 2026-11-27 | [`archive/2026-11-27_canonical_sort_comparator.md`](archive/2026-11-27_canonical_sort_comparator.md) |
 | Exhaustive FRB↔web dispatch drift guard | 2026-11-27 | [`archive/2026-11-27_frb_web_drift_guard.md`](archive/2026-11-27_frb_web_drift_guard.md) |
 | Untrusted share-owner claim hardening | 2026-11-27 | [`archive/2026-11-27_share_owner_claim_hardening.md`](archive/2026-11-27_share_owner_claim_hardening.md) |

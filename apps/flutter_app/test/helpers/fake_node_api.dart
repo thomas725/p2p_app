@@ -1005,10 +1005,22 @@ class FakeNodeApi implements NodeApi {
 
   // --- Versioned file shares (recorded; no FFI) ---
 
+  /// Returned by [listShares] verbatim.
+  List<MobileShare> Function()? listSharesOverride;
+
+  /// Returned by [listShareGrants] and [loadShareManifest] when set.
+  Future<List<MobileShareGrant>> Function(String shareId)?
+  listShareGrantsOverride;
+  Future<ShareManifest?> Function(String shareId)? loadShareManifestOverride;
+
+  /// Overrides [deleteShare]; when unset it records the call and succeeds, so
+  /// tests can drive the UI without a real share store.
+  Future<void> Function(String shareId)? deleteShareOverride;
+
   @override
   Future<List<MobileShare>> listShares() async {
     _record('listShares');
-    return const [];
+    return listSharesOverride?.call() ?? const [];
   }
 
   @override
@@ -1023,7 +1035,11 @@ class FakeNodeApi implements NodeApi {
       throw UnimplementedError();
 
   @override
-  Future<void> deleteShare(String shareId) => throw UnimplementedError();
+  Future<void> deleteShare(String shareId) async {
+    _record('deleteShare', shareId);
+    final override = deleteShareOverride;
+    if (override != null) await override(shareId);
+  }
 
   @override
   Future<MobileShare> setShareVisibility({
@@ -1033,8 +1049,12 @@ class FakeNodeApi implements NodeApi {
   }) => throw UnimplementedError();
 
   @override
-  Future<List<MobileShareGrant>> listShareGrants(String shareId) =>
-      throw UnimplementedError();
+  Future<List<MobileShareGrant>> listShareGrants(String shareId) async {
+    _record('listShareGrants', shareId);
+    final override = listShareGrantsOverride;
+    if (override == null) throw UnimplementedError();
+    return override(shareId);
+  }
 
   @override
   Future<void> setShareGrant({
@@ -1050,8 +1070,12 @@ class FakeNodeApi implements NodeApi {
   }) => throw UnimplementedError();
 
   @override
-  Future<ShareManifest?> loadShareManifest(String shareId) =>
-      throw UnimplementedError();
+  Future<ShareManifest?> loadShareManifest(String shareId) async {
+    _record('loadShareManifest', shareId);
+    final override = loadShareManifestOverride;
+    if (override == null) throw UnimplementedError();
+    return override(shareId);
+  }
 
   @override
   Future<ShareManifest> reviseShareManifestForDeletion({

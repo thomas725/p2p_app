@@ -1,5 +1,6 @@
 import 'dart:async' show unawaited;
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 
 import 'package:p2p_app_flutter/src/rust/api.dart'
@@ -134,6 +135,9 @@ class _ShareListState extends State<ShareList> {
 
 /// Full-screen route hosting [ShareList], with the same bottom navigation as
 /// the other detail routes so the user can jump back to any main tab.
+///
+/// Home passes [shareRows] so creation/deletion refreshes reach an already-open
+/// route; [shares] stays the plain-list source for embeds and widget tests.
 class ShareListScreen extends StatelessWidget {
   const ShareListScreen({
     super.key,
@@ -141,6 +145,7 @@ class ShareListScreen extends StatelessWidget {
     required this.onOpenShare,
     this.onCreateShare,
     this.onDiscoverShares,
+    this.shareRows,
     this.onNavigate,
     this.currentTab = 4,
   });
@@ -149,11 +154,25 @@ class ShareListScreen extends StatelessWidget {
   final void Function(MobileShare) onOpenShare;
   final Future<void> Function(String name)? onCreateShare;
   final void Function()? onDiscoverShares;
+
+  /// Optional live list. Home's canonical `_refreshShares` updates it, so a
+  /// share created or deleted from a pushed route is visible on return.
+  final ValueListenable<List<MobileShare>>? shareRows;
+
   final void Function(int)? onNavigate;
   final int currentTab;
 
   @override
   Widget build(BuildContext context) {
+    final rows = shareRows;
+    if (rows == null) return _buildScreen(context, shares);
+    return ValueListenableBuilder<List<MobileShare>>(
+      valueListenable: rows,
+      builder: (context, current, _) => _buildScreen(context, current),
+    );
+  }
+
+  Widget _buildScreen(BuildContext context, List<MobileShare> shares) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('File shares'),
@@ -201,6 +220,7 @@ class ShareDetailScreen extends StatefulWidget {
     this.onSetVisibility,
     this.onSetGrant,
     this.onRemoveGrant,
+    this.onDeleteShare,
     this.peerIds = const [],
     this.onRequestManifest,
     this.onReadvertise,
@@ -232,6 +252,11 @@ class ShareDetailScreen extends StatefulWidget {
   final Future<void> Function(String shareId, String userId, String mode)?
   onSetGrant;
   final Future<void> Function(String shareId, String userId)? onRemoveGrant;
+
+  /// Optional local-delete seam. Rust removes the share row, entries and grants
+  /// in one transaction but leaves the bound folder and blobs untouched, so the
+  /// confirmation text says so. Hidden when absent (read-only embeds/tests).
+  final Future<void> Function(String shareId)? onDeleteShare;
 
   /// Optional network seams. Both are needed for [ShareNetworkSection] to
   /// appear; Home supplies the currently connected peer IDs alongside them.
@@ -299,6 +324,22 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
     }
   }
 
+  /// Local deletion is destructive but non-retracting: peers that already have
+  /// the share keep their copy. The dialog says that before calling Rust.
+  Future<void> _confirmDelete() async {
+    final delete = widget.onDeleteShare;
+    if (delete == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => _DeleteShareDialog(
+        shareName: _share.name,
+        onSubmit: () => delete(_share.shareId),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    Navigator.of(context).pop(true);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -311,6 +352,14 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
             tooltip: 'Refresh',
             onPressed: _reload,
           ),
+          if (widget.onDeleteShare != null)
+            IconButton(
+              key: const Key('share-detail-delete'),
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Delete share',
+              color: Theme.of(context).colorScheme.error,
+              onPressed: _confirmDelete,
+            ),
         ],
       ),
       bottomNavigationBar: widget.onNavigate == null
@@ -665,6 +714,87 @@ class _CreateShareDialogState extends State<_CreateShareDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Text('Create'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Confirms local share deletion. Rust deletes the share row, entries and
+/// grants in one transaction; the bound folder and stored blobs are kept, and
+/// peers that already accepted the share keep their own copy.
+class _DeleteShareDialog extends StatefulWidget {
+  const _DeleteShareDialog({required this.shareName, required this.onSubmit});
+
+  final String shareName;
+  final Future<void> Function() onSubmit;
+
+  @override
+  State<_DeleteShareDialog> createState() => _DeleteShareDialogState();
+}
+
+class _DeleteShareDialogState extends State<_DeleteShareDialog> {
+  bool _submitting = false;
+  String? _error;
+
+  Future<void> _submit() async {
+    if (_submitting) return;
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await widget.onSubmit();
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = 'Failed to delete share: $e';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Delete "${widget.shareName}"?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'This removes the share, its entries and its grants from this '
+            'device. Files in the bound folder and stored blobs are kept, and '
+            'peers that already accepted it keep their copy.',
+          ),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                _error!,
+                key: const Key('share-delete-dialog-error'),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          key: const Key('share-delete-cancel'),
+          onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          key: const Key('share-delete-submit'),
+          onPressed: _submitting ? null : _submit,
+          child: _submitting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Delete'),
         ),
       ],
     );
