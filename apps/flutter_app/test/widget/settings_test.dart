@@ -297,6 +297,35 @@ void main() {
     expect(find.text('Never · Brave Otter (er9)'), findsOneWidget);
   });
 
+  testWidgets(
+    'Last connection lost prefers the Rust label for a departed peer',
+    (tester) async {
+      _useTallSurface(tester);
+      await tester.pumpWidget(
+        _app(
+          userId: 'user-abc',
+          devices: const [],
+          liveStatus: const LiveStatus(
+            connectedCount: 0,
+            connectedPeerIds: [],
+            listenAddresses: [],
+            lastConnectionAt: null,
+            lastConnectionPeerId: '12D3KooWDepartedPeer',
+            lastConnectionLabel: 'Brave Otter (er9)',
+          ),
+          // No roster row: the label came from Rust at disconnect time and must
+          // survive the peer leaving the roster.
+          peers: const [],
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Last connection lost'), findsOneWidget);
+      expect(find.text('Never · Brave Otter (er9)'), findsOneWidget);
+      expect(find.text('12D3KooWDepartedPeer'), findsNothing);
+    },
+  );
+
   testWidgets('Help card opens and closes the controls dialog', (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(userId: 'user-abc', devices: const []));

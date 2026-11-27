@@ -117,6 +117,10 @@ class _HomeScreenState extends State<HomeScreen> {
   /// last peer as well as the time (mirrors the TUI's last-connected line).
   String? _lastConnectionPeerId;
 
+  /// Canonical display label resolved by Rust on the disconnect event. Kept
+  /// alongside the id so Settings can name a peer that has left the roster.
+  String? _lastConnectionLabel;
+
   /// Device-binding intros already being prompted for (peer_id → device_pubkey),
   /// so repeated `device_binding_intro` events never stack dialogs.
   final Map<String, Uint8List> _pendingDeviceBindings = {};
@@ -142,6 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
       listenAddresses: [],
       lastConnectionAt: null,
       lastConnectionPeerId: null,
+      lastConnectionLabel: null,
     ),
   );
 
@@ -176,6 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
       listenAddresses: List<String>.from(_listenAddresses),
       lastConnectionAt: _lastConnectionAt,
       lastConnectionPeerId: _lastConnectionPeerId,
+      lastConnectionLabel: _lastConnectionLabel,
     );
   }
 
@@ -655,9 +661,11 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           _connectedCount = _connectedPeerIds.length;
           _lastConnectionAt = DateTime.now();
-          // The event already carries the peer id; keep it so Settings can
-          // name the last peer (the TUI's last-connected row does the same).
+          // Rust resolves the canonical display label at disconnect time; keep
+          // both it and the id so Settings can name a peer that has since left
+          // the roster (the TUI's last-connected row does the same).
           _lastConnectionPeerId = event.peerId;
+          _lastConnectionLabel = event.content;
         });
         _refreshRoster();
         break;
@@ -926,6 +934,9 @@ class _HomeScreenState extends State<HomeScreen> {
           _connectedPeerIds.clear();
           _listenAddresses.clear();
           _groups = [];
+          _lastConnectionAt = null;
+          _lastConnectionPeerId = null;
+          _lastConnectionLabel = null;
         });
         _syncLiveStatus();
       } else {
@@ -946,6 +957,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _listenAddresses.clear();
           _lastConnectionAt = null;
           _lastConnectionPeerId = null;
+          _lastConnectionLabel = null;
         });
         final status = await nodeApi.getMobilePeerStatus();
         setState(() => _status = status);

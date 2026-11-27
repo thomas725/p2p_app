@@ -1463,10 +1463,7 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             peer_id: Some(id),
             ..event_with_type("peer_connected")
         },
-        SwarmEvent::PeerDisconnected(id) => SwarmEventJson {
-            peer_id: Some(id),
-            ..event_with_type("peer_disconnected")
-        },
+        SwarmEvent::PeerDisconnected(id) => disconnected_event_json(id),
         SwarmEvent::ListenAddrEstablished(addr) => SwarmEventJson {
             address: Some(addr),
             ..event_with_type("listen_addr")
@@ -1617,6 +1614,18 @@ fn call_lane_event_json(ev: SwarmEvent) -> SwarmEventJson {
             ..event_with_type("call_media")
         },
         other => event_with_type(&format!("unexpected call event: {other:?}")),
+    }
+}
+
+/// JSON envelope for a lost connection: `content` carries the canonical Rust
+/// display label so both frontends name the last-lost peer the same way, even
+/// when that peer is no longer in the roster.
+fn disconnected_event_json(peer_id: String) -> SwarmEventJson {
+    SwarmEventJson {
+        event_type: "peer_disconnected".into(),
+        content: Some(crate::nickname::get_peer_display_name_or_short(&peer_id)),
+        peer_id: Some(peer_id),
+        ..default_event()
     }
 }
 
@@ -1795,10 +1804,31 @@ mod tests {
     }
 
     #[test]
+    #[serial(db)]
     fn test_event_to_json_peer_disconnected() {
-        let j = event_to_json(SwarmEvent::PeerDisconnected("p3".into()));
+        // The disconnect event carries the canonical Rust display label, so
+        // isolate the DB and clear the global name cache for a deterministic
+        // assertion (resolution can persist a generated name).
+        let _guard = crate::db::shared_db_test_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_url = dir
+            .path()
+            .join("disconnected.sqlite")
+            .to_string_lossy()
+            .into_owned();
+        crate::reset_db_url();
+        crate::db::set_db_url(&db_url);
+        crate::init_database().expect("init db");
+        crate::nickname::clear_display_names();
+        crate::nickname::set_peer_local_nickname("peer-disconnect-label", "Alice")
+            .expect("set nickname");
+
+        let j = event_to_json(SwarmEvent::PeerDisconnected("peer-disconnect-label".into()));
         assert_eq!(j.event_type, "peer_disconnected");
-        assert_eq!(j.peer_id.as_deref(), Some("p3"));
+        assert_eq!(j.peer_id.as_deref(), Some("peer-disconnect-label"));
+        assert_eq!(j.content.as_deref(), Some("Alice (bel)"));
     }
 
     #[test]

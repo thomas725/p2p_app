@@ -27,6 +27,7 @@ class LiveStatus {
     required this.listenAddresses,
     required this.lastConnectionAt,
     this.lastConnectionPeerId,
+    this.lastConnectionLabel,
   });
 
   final int connectedCount;
@@ -38,6 +39,11 @@ class LiveStatus {
   /// event already carries it, so the Settings row can name the peer as well
   /// as the time — matching the TUI's "Last connected … to peer …" line.
   final String? lastConnectionPeerId;
+
+  /// Canonical display label resolved in Rust at disconnect time. Preferred
+  /// over the roster lookup so a peer that has since left the roster is still
+  /// named exactly as the TUI names it. Older/synthetic events omit it.
+  final String? lastConnectionLabel;
 }
 
 /// Peer IDs in the same lexicographic order as the TUI's Settings rows.
@@ -963,11 +969,15 @@ class _SettingsState extends State<Settings> {
 
   /// The "Last connection lost" value: timestamp plus the peer's display name
   /// when the disconnect event carried one, mirroring the TUI's
-  /// "Last connected … to peer …" line.
+  /// "Last connected … to peer …" line. Rust resolves the label at disconnect
+  /// time so a peer that has since left the roster is still named correctly;
+  /// older/synthetic events fall back to the roster (then the raw id).
   String _lastConnectionLabel() {
     final ts = formatTimestamp(_live.lastConnectionAt);
     final peerId = _live.lastConnectionPeerId;
-    return peerId == null ? ts : '$ts · ${_peerDisplay(peerId)}';
+    if (peerId == null) return ts;
+    final label = _live.lastConnectionLabel ?? _peerDisplay(peerId);
+    return '$ts · $label';
   }
 
   List<Widget> _connectedPeerRows() {
