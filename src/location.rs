@@ -391,6 +391,28 @@ pub fn location_session_expired(
     }
 }
 
+/// Whether a sharing session is still active at `now`, given its Rust-validated
+/// mode and optional duration. Exposed to the frontends so their timers never
+/// implement expiry policy themselves.
+///
+/// # Errors
+/// Returns an error for an unknown mode name.
+pub fn location_session_active(
+    started_at: f64,
+    mode: &str,
+    duration_secs: Option<u32>,
+    now: f64,
+) -> Result<bool, String> {
+    let settings = LocationSessionSettings {
+        mode: LocationMode::parse(mode)?,
+        duration_secs,
+        sensor_interval_secs: MIN_SENSOR_INTERVAL_SECS,
+        send_interval_secs: MIN_SEND_INTERVAL_SECS,
+        motion_gate: false,
+    };
+    Ok(!location_session_expired(started_at, &settings, now))
+}
+
 /// Whether a new sample should be sent given the last send time.
 ///
 /// `None` means nothing has been sent yet, so the first sample is always due.

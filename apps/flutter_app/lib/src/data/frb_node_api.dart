@@ -349,6 +349,30 @@ class FrbNodeApi implements NodeApi {
   Future<bool> isLocationMessage({required String content}) =>
       bridge.isLocationMessage(content: content);
 
+  @override
+  Future<bool> locationSessionActive({
+    required double startedAt,
+    required String mode,
+    int? durationSecs,
+    required double now,
+  }) => bridge.locationSessionActive(
+    startedAt: startedAt,
+    mode: mode,
+    durationSecs: durationSecs,
+    now: now,
+  );
+
+  @override
+  Future<bool> locationSendDue({
+    double? lastSentAt,
+    required double now,
+    required int intervalSecs,
+  }) => bridge.locationSendDue(
+    lastSentAt: lastSentAt,
+    now: now,
+    intervalSecs: intervalSecs,
+  );
+
   // ── Identity / device binding ─────────────────────────────────────────────
 
   @override

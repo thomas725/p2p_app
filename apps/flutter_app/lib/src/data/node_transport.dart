@@ -61,8 +61,7 @@ class WsRemoteTransport implements RemoteTransport {
   final Uri _httpBase;
 
   @override
-  Stream<String> get frames =>
-      _channel.stream.map((event) => event.toString());
+  Stream<String> get frames => _channel.stream.map((event) => event.toString());
 
   @override
   Future<void> get ready => _channel.ready;

@@ -284,6 +284,22 @@ abstract class NodeApi {
   /// Whether a message body is a canonical location share.
   Future<bool> isLocationMessage({required String content});
 
+  /// Whether a continued sharing session is still active at `now` (epoch
+  /// seconds). Rust owns the mode/expiry rule; Dart only supplies the clock.
+  Future<bool> locationSessionActive({
+    required double startedAt,
+    required String mode,
+    int? durationSecs,
+    required double now,
+  });
+
+  /// Whether the next sample is due at `now` (epoch seconds).
+  Future<bool> locationSendDue({
+    double? lastSentAt,
+    required double now,
+    required int intervalSecs,
+  });
+
   // --- Identity / device binding ---
 
   Future<String?> getMyUserId();

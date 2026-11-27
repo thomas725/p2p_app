@@ -693,6 +693,15 @@ class FakeNodeApi implements NodeApi {
   Future<String> Function(LocationShareInput input)?
   buildLocationMessageOverride;
   Future<bool> Function(String content)? isLocationMessageOverride;
+  Future<bool> Function(
+    double startedAt,
+    String mode,
+    int? durationSecs,
+    double now,
+  )?
+  locationSessionActiveOverride;
+  Future<bool> Function(double? lastSentAt, double now, int intervalSecs)?
+  locationSendDueOverride;
 
   @override
   Future<String> locationMapUrl({
@@ -719,6 +728,40 @@ class FakeNodeApi implements NodeApi {
     final override = isLocationMessageOverride;
     if (override != null) return override(content);
     throw UnimplementedError('set isLocationMessageOverride in this test');
+  }
+
+  @override
+  Future<bool> locationSessionActive({
+    required double startedAt,
+    required String mode,
+    int? durationSecs,
+    required double now,
+  }) {
+    _record('locationSessionActive', {
+      'startedAt': startedAt,
+      'mode': mode,
+      'durationSecs': durationSecs,
+      'now': now,
+    });
+    final override = locationSessionActiveOverride;
+    if (override != null) return override(startedAt, mode, durationSecs, now);
+    throw UnimplementedError('set locationSessionActiveOverride in this test');
+  }
+
+  @override
+  Future<bool> locationSendDue({
+    double? lastSentAt,
+    required double now,
+    required int intervalSecs,
+  }) {
+    _record('locationSendDue', {
+      'lastSentAt': lastSentAt,
+      'now': now,
+      'intervalSecs': intervalSecs,
+    });
+    final override = locationSendDueOverride;
+    if (override != null) return override(lastSentAt, now, intervalSecs);
+    throw UnimplementedError('set locationSendDueOverride in this test');
   }
 
   @override

@@ -904,6 +904,34 @@ class HttpNodeApi implements NodeApi {
   Future<bool> isLocationMessage({required String content}) async =>
       await _call('isLocationMessage', {'content': content}) as bool;
 
+  @override
+  Future<bool> locationSessionActive({
+    required double startedAt,
+    required String mode,
+    int? durationSecs,
+    required double now,
+  }) async =>
+      await _call('locationSessionActive', {
+            'startedAt': startedAt,
+            'mode': mode,
+            'durationSecs': durationSecs,
+            'now': now,
+          })
+          as bool;
+
+  @override
+  Future<bool> locationSendDue({
+    double? lastSentAt,
+    required double now,
+    required int intervalSecs,
+  }) async =>
+      await _call('locationSendDue', {
+            'lastSentAt': lastSentAt,
+            'now': now,
+            'intervalSecs': intervalSecs,
+          })
+          as bool;
+
   // ── Identity / device binding ─────────────────────────────────────────────
 
   @override

@@ -107,6 +107,8 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "locationMapUrl"
         | "buildLocationMessage"
         | "isLocationMessage"
+        | "locationSessionActive"
+        | "locationSendDue"
         | "setTheme"
         | "setNotificationSettings") => ui_helpers(m, params),
         other => Err(format!("unknown method: {other}")),
@@ -559,6 +561,23 @@ fn ui_helpers(method: &str, params: Value) -> Result<Value, String> {
             let p: IsLocationMessageParams = parse(params)?;
             ok(api::is_location_message(&p.content))
         }
+        "locationSessionActive" => {
+            let p: LocationSessionParams = parse(params)?;
+            json(api::location_session_active(
+                p.started_at,
+                &p.mode,
+                p.duration_secs,
+                p.now,
+            ))
+        }
+        "locationSendDue" => {
+            let p: LocationSendDueParams = parse(params)?;
+            ok(api::location_send_due(
+                p.last_sent_at,
+                p.now,
+                p.interval_secs,
+            ))
+        }
         "setNotificationSettings" => {
             let p: NotificationSettingsParams = parse(params)?;
             json(api::set_notification_settings(p.sound, p.desktop))
@@ -815,6 +834,23 @@ struct IsLocationMessageParams {
     content: String,
 }
 
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LocationSessionParams {
+    started_at: f64,
+    mode: String,
+    duration_secs: Option<u32>,
+    now: f64,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LocationSendDueParams {
+    last_sent_at: Option<f64>,
+    now: f64,
+    interval_secs: u32,
+}
+
 /// Web JSON mirror of the flat FRB location-share DTO (camelCase on the wire).
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1057,12 +1093,14 @@ mod tests {
 
     #[test]
     fn location_methods_are_routed_and_validate_params() {
-        // All three methods take parameters, so Null is a safe probe that each
+        // All five methods take parameters, so Null is a safe probe that each
         // is reachable through the shared dispatcher.
         for method in [
             "locationMapUrl",
             "buildLocationMessage",
             "isLocationMessage",
+            "locationSessionActive",
+            "locationSendDue",
         ] {
             let err = dispatch(method, Value::Null).expect_err("missing params must fail");
             assert!(

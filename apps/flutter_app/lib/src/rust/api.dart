@@ -470,6 +470,35 @@ Future<String> buildLocationMessage({required LocationShareInput input}) =>
 Future<bool> isLocationMessage({required String content}) =>
     RustLib.instance.api.crateApiIsLocationMessage(content: content);
 
+/// Whether a sharing session is still active at `now` (epoch seconds).
+///
+/// Lets a frontend timer ask Rust for expiry instead of duplicating mode rules.
+///
+/// # Errors
+/// Returns an error for an unknown mode name.
+Future<bool> locationSessionActive({
+  required double startedAt,
+  required String mode,
+  int? durationSecs,
+  required double now,
+}) => RustLib.instance.api.crateApiLocationSessionActive(
+  startedAt: startedAt,
+  mode: mode,
+  durationSecs: durationSecs,
+  now: now,
+);
+
+/// Whether the next location sample is due at `now` (epoch seconds).
+Future<bool> locationSendDue({
+  double? lastSentAt,
+  required double now,
+  required int intervalSecs,
+}) => RustLib.instance.api.crateApiLocationSendDue(
+  lastSentAt: lastSentAt,
+  now: now,
+  intervalSecs: intervalSecs,
+);
+
 /// Resolve this install's user ID from its stored identity and binding.
 ///
 /// Returns `None` until this install's peer ID is bound into some user's

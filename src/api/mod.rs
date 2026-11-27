@@ -577,6 +577,27 @@ pub fn is_location_message(content: &str) -> bool {
     crate::location::is_location_message(content)
 }
 
+/// Whether a sharing session is still active at `now` (epoch seconds).
+///
+/// Lets a frontend timer ask Rust for expiry instead of duplicating mode rules.
+///
+/// # Errors
+/// Returns an error for an unknown mode name.
+pub fn location_session_active(
+    started_at: f64,
+    mode: &str,
+    duration_secs: Option<u32>,
+    now: f64,
+) -> Result<bool, String> {
+    crate::location::location_session_active(started_at, mode, duration_secs, now)
+}
+
+/// Whether the next location sample is due at `now` (epoch seconds).
+#[must_use]
+pub fn location_send_due(last_sent_at: Option<f64>, now: f64, interval_secs: u32) -> bool {
+    crate::location::location_send_due(last_sent_at, now, interval_secs)
+}
+
 // --- Identity lane ---
 
 /// Resolve this install's user ID from its stored identity and binding.
