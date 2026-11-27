@@ -1227,8 +1227,8 @@ class _HomeScreenState extends State<HomeScreen> {
           peerIds: _peers.map((p) => p.peerId).toList(),
           onRequestManifest: (shareId, peerId) =>
               nodeApi.requestShareManifest(peerId: peerId, shareId: shareId),
-          onReadvertise: (peerId, offer) =>
-              nodeApi.sendShareOffer(peerIds: [peerId], offer: offer),
+          onReadvertise: (shareId, peerId) =>
+              nodeApi.readvertiseShare(shareId: shareId, peerId: peerId),
           onPublish: (peerId, baseRevision, manifest) =>
               nodeApi.publishShareSnapshot(
                 peerId: peerId,

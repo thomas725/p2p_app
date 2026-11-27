@@ -21,8 +21,7 @@ import 'package:p2p_app_flutter/src/rust/api.dart'
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
-import 'package:p2p_app_flutter/src/rust/shares.dart'
-    show ShareEntry, ShareKind, ShareOffer;
+import 'package:p2p_app_flutter/src/rust/shares.dart' show ShareEntry;
 
 /// In-memory stand-in for `WsRemoteTransport`: records outbound frames and
 /// uploads, and lets tests inject response/event frames.
@@ -865,7 +864,7 @@ void main() {
       });
     });
 
-    test('manifest/offer/publish shapes round-trip through JSON', () async {
+    test('manifest/readvertise/publish shapes round-trip through JSON', () async {
       final fake = FakeRemoteTransport();
       fake.onSend = (frame) {
         final request = fake.frame(fake.sentFrames.length - 1);
@@ -884,17 +883,12 @@ void main() {
       expect(manifest?.entries.single.path, 'a.txt');
       expect(manifest?.entries.single.size, BigInt.from(3));
 
-      final offer = ShareOffer(
-        shareId: 'share-1',
-        name: 'Photos',
-        kind: ShareKind.public,
-        revision: BigInt.from(4),
-        publicWrite: true,
-      );
-      await api.sendShareOffer(peerIds: ['peer-1'], offer: offer);
-      final offerParams = fake.frame(1)['params']! as Map<String, dynamic>;
-      expect(offerParams['peerIds'], ['peer-1']);
-      expect((offerParams['offer'] as Map)['kind'], 'public');
+      await api.readvertiseShare(shareId: 'share-1', peerId: 'peer-2');
+      final readvertiseParams = fake.frame(1)['params']! as Map<String, dynamic>;
+      expect(readvertiseParams, {
+        'shareId': 'share-1',
+        'peerId': 'peer-2',
+      });
 
       await api.publishShareSnapshot(
         peerId: 'peer-1',

@@ -174,9 +174,9 @@ Shipped after the core:
   coverage includes add, revoke, empty-ID and failure paths. Record:
   [`archive/2026-11-24_flutter_share_grant_editor.md`](archive/2026-11-24_flutter_share_grant_editor.md).
 - detail-level network actions on the same route: re-request the manifest and
-  re-advertise a canonical offer from a selected connected peer. The offer is
-  rebuilt from the share row (no local owner sentinel), stale peer selections
-  reset when the roster changes, and failures appear inline. Record:
+  re-advertise a canonical offer from a selected connected peer. The first pass
+  rebuilt the offer in Dart (never with the local owner sentinel), stale peer
+  selections reset when the roster changes, and failures appear inline. Record:
   [`archive/2026-11-26_flutter_share_network_actions.md`](archive/2026-11-26_flutter_share_network_actions.md).
 - peer-share discovery from the share list: ask a connected peer for its
   offers, keep them keyed by peer/share id in a notifier, and explicitly accept
@@ -211,6 +211,10 @@ Shipped after the core:
   TUI uses `p`/`w`, and Flutter's detail route shows owner-only controls that
   keep the returned row. Record:
   [`archive/2026-11-27_share_visibility_toggles.md`](archive/2026-11-27_share_visibility_toggles.md).
+- Rust-owned share re-advertising: `api::readvertise_share` rebuilds the
+  canonical offer and sends it to one peer; the raw `sendShareOffer` FRB/web
+  binding is gone and all Dart transports pass only share and peer IDs. Record:
+  [`archive/2026-11-27_rust_owned_share_readvertise.md`](archive/2026-11-27_rust_owned_share_readvertise.md).
 
 Still open (UI/integration, not protocol work):
 
@@ -290,6 +294,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Rust-owned share re-advertising | 2026-11-27 | [`archive/2026-11-27_rust_owned_share_readvertise.md`](archive/2026-11-27_rust_owned_share_readvertise.md) |
 | TUI private-share grant editor | 2026-11-27 | [`archive/2026-11-27_tui_share_grant_editor.md`](archive/2026-11-27_tui_share_grant_editor.md) |
 | Canonical notification focus keys | 2026-11-27 | [`archive/2026-11-27_notification_focus_key.md`](archive/2026-11-27_notification_focus_key.md) |
 | TUI message cursor + row-targeted chat verbs | 2026-11-27 | [`archive/2026-11-27_tui_message_selection.md`](archive/2026-11-27_tui_message_selection.md) |

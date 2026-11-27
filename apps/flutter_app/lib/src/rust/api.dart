@@ -785,15 +785,22 @@ Future<void> requestShareManifest({
   shareId: shareId,
 );
 
-/// Advertise one or more shares to connected peers.
+/// Re-advertise one locally known share to a connected peer.
+///
+/// The offer is rebuilt by [`crate::shares::offer_for_share`], so a local-only
+/// unknown-owner marker never becomes an ownership claim on the wire. Callers
+/// pass only ids: no frontend can supply a hand-built offer here.
 ///
 /// # Errors
-/// Returns an error if the node is not running.
-Future<void> sendShareOffer({
-  required List<String> peerIds,
-  required ShareOffer offer,
-}) =>
-    RustLib.instance.api.crateApiSendShareOffer(peerIds: peerIds, offer: offer);
+/// Returns an error for an unknown share, a DB failure, or a node that is not
+/// running.
+Future<void> readvertiseShare({
+  required String shareId,
+  required String peerId,
+}) => RustLib.instance.api.crateApiReadvertiseShare(
+  shareId: shareId,
+  peerId: peerId,
+);
 
 /// Submit a new snapshot based on a specific revision. The owner rejects stale
 /// writes so the caller must refresh and retry.

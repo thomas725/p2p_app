@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:p2p_app_flutter/src/rust/api.dart' show MobileShare;
-import 'package:p2p_app_flutter/src/rust/shares.dart'
-    show ShareKind, ShareOffer;
 import 'package:p2p_app_flutter/src/screens/share_network.dart';
 
 MobileShare makeShare() => const MobileShare(
@@ -23,7 +21,7 @@ Widget networkApp({
   required List<String> peerIds,
   required Future<void> Function(String shareId, String peerId)
   onRequestManifest,
-  required Future<void> Function(String peerId, ShareOffer offer) onReadvertise,
+  required Future<void> Function(String shareId, String peerId) onReadvertise,
   Future<void> Function()? onCompleted,
 }) => MaterialApp(
   home: Scaffold(
@@ -90,16 +88,16 @@ void main() {
     expect(completions, 1);
   });
 
-  testWidgets('readvertise sends a canonical offer without owner sentinel', (
+  testWidgets('readvertise passes only the share and peer ids', (
     tester,
   ) async {
-    final calls = <(String, ShareOffer)>[];
+    final calls = <List<String>>[];
     await tester.pumpWidget(
       networkApp(
         peerIds: const ['peer-1', 'peer-2'],
         onRequestManifest: (_, _) async {},
-        onReadvertise: (peerId, offer) async {
-          calls.add((peerId, offer));
+        onReadvertise: (shareId, peerId) async {
+          calls.add([shareId, peerId]);
         },
       ),
     );
@@ -109,15 +107,9 @@ void main() {
     await tester.tap(find.byKey(const Key('share-network-readvertise')));
     await tester.pumpAndSettle();
 
-    expect(calls.length, 1);
-    final (peerId, offer) = calls.single;
-    expect(peerId, 'peer-2');
-    expect(offer.shareId, 'share-a');
-    expect(offer.name, 'Docs');
-    expect(offer.kind, ShareKind.private);
-    expect(offer.revision, BigInt.from(4));
-    expect(offer.publicWrite, isFalse);
-    expect(offer.ownerUserId, isNull);
+    expect(calls, [
+      ['share-a', 'peer-2'],
+    ]);
   });
 
   testWidgets('a stale peer selection resets when peers change', (

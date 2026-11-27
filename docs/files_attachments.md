@@ -135,7 +135,10 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   `listShares`, `getShare`, `bindShare`, `deleteShare`, `listShareGrants`,
   `setShareGrant`, `removeShareGrant`, `loadShareManifest`, `saveShareManifest`,
   `acceptShareOffer`, `snapshotShare`, `requestPeerShares`,
-  `requestShareManifest`, `sendShareOffer` and `publishShareSnapshot`.
+  `requestShareManifest`, `readvertiseShare` and `publishShareSnapshot`.
+  Re-advertising is Rust-owned: the binding takes only share and peer IDs and
+  builds the canonical offer through `shares::offer_for_share`; the raw
+  offer-send binding is gone.
   `src/web/methods.rs` mirrors all of them: `createShare`/`snapshotShare` reject
   client-supplied server paths, `bindShare` is rejected outright (a browser has
   no folder to bind, and a null root could clear a native binding), and
@@ -160,8 +163,9 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   `setShareGrant`/`removeShareGrant` (optional callbacks keep it read-only in
   tests); public shares have no ACL rows. `lib/src/screens/share_network.dart`
   adds manifest refresh and offer re-advertise from a chosen connected peer;
-  its offer is rebuilt from the share row so the local unknown-owner sentinel
-  is never advertised. `lib/src/screens/share_publish.dart` submits a deletion
+  re-advertise passes only share and peer IDs and Rust rebuilds the offer so the
+  local unknown-owner sentinel is never advertised.
+  `lib/src/screens/share_publish.dart` submits a deletion
   revision through `publishShareSnapshot` with the loaded manifest revision as
   `baseRevision`; stale manifests/selections are blocked before the call, and a
   caller still cannot bypass the owner's ACL check. The TUI mirrors the

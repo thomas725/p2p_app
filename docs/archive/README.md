@@ -72,6 +72,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-27_notification_focus_key.md](2026-11-27_notification_focus_key.md) | One Rust mapping for notification payload and visible-chat focus keys | 2026-11-27 |
 | [2026-11-27_rust_owned_reply_drafts.md](2026-11-27_rust_owned_reply_drafts.md) | Reply snapshots frozen in Rust via FRB/web `replyDraft`; Dart only renders them | 2026-11-27 |
 | [2026-11-27_share_visibility_toggles.md](2026-11-27_share_visibility_toggles.md) | Owner-only private/public + anonymous-write setters in TUI and Flutter/web | 2026-11-27 |
+| [2026-11-27_rust_owned_share_readvertise.md](2026-11-27_rust_owned_share_readvertise.md) | Share re-advertising builds canonical offers in Rust; raw frontend offer-send binding removed | 2026-11-27 |
 | [2026-11-02_sibling_device_claims.md](2026-11-02_sibling_device_claims.md) | Sibling devices may sign device-binding claims for the same user (P0 decision) | 2026-11-02 |
 | [2026-11-12_public_bootstrap_discovery.md](2026-11-12_public_bootstrap_discovery.md) | Internet-wide discovery: Kademlia DHT, NAT traversal, network details, configurable bootstrap/relay peers (US-050) | 2026-11-12 |
 

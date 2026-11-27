@@ -485,10 +485,10 @@ class FrbNodeApi implements NodeApi {
   }) => bridge.requestShareManifest(peerId: peerId, shareId: shareId);
 
   @override
-  Future<void> sendShareOffer({
-    required List<String> peerIds,
-    required shares.ShareOffer offer,
-  }) => bridge.sendShareOffer(peerIds: peerIds, offer: offer);
+  Future<void> readvertiseShare({
+    required String shareId,
+    required String peerId,
+  }) => bridge.readvertiseShare(shareId: shareId, peerId: peerId);
 
   @override
   Future<void> publishShareSnapshot({

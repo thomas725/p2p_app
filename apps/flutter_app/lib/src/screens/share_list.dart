@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:p2p_app_flutter/src/rust/api.dart'
     show MobileShare, MobileShareGrant;
-import 'package:p2p_app_flutter/src/rust/shares.dart'
-    show ShareManifest, ShareOffer;
+import 'package:p2p_app_flutter/src/rust/shares.dart' show ShareManifest;
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/share_network.dart';
 import 'package:p2p_app_flutter/src/screens/share_publish.dart';
@@ -187,7 +186,7 @@ class ShareDetailScreen extends StatefulWidget {
   /// appear; Home supplies the currently connected peer IDs alongside them.
   final List<String> peerIds;
   final Future<void> Function(String shareId, String peerId)? onRequestManifest;
-  final Future<void> Function(String peerId, ShareOffer offer)? onReadvertise;
+  final Future<void> Function(String shareId, String peerId)? onReadvertise;
   final Future<void> Function(
     String peerId,
     BigInt baseRevision,

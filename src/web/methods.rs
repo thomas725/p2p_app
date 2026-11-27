@@ -96,7 +96,7 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "snapshotShare"
         | "requestPeerShares"
         | "requestShareManifest"
-        | "sendShareOffer"
+        | "readvertiseShare"
         | "publishShareSnapshot") => shares(m, params),
         "getTheme" => ok(api::get_theme()),
         "getNotificationSettings" => ok(api::get_notification_settings()),
@@ -279,12 +279,9 @@ fn shares(method: &str, params: Value) -> Result<Value, String> {
             let p: RequestShareManifestParams = parse(params)?;
             json(api::request_share_manifest(&p.peer_id, &p.share_id))
         }
-        "sendShareOffer" => {
-            let p: SendShareOfferParams = parse(params)?;
-            json(api::send_share_offer(
-                p.peer_ids,
-                crate::shares::ShareOffer::from(p.offer),
-            ))
+        "readvertiseShare" => {
+            let p: RequestShareManifestParams = parse(params)?;
+            json(api::readvertise_share(&p.share_id, &p.peer_id))
         }
         "publishShareSnapshot" => {
             let p: PublishShareSnapshotParams = parse(params)?;
@@ -964,13 +961,6 @@ struct RequestShareManifestParams {
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct SendShareOfferParams {
-    peer_ids: Vec<String>,
-    offer: crate::shares_json::ShareOfferJson,
-}
-
-#[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct PublishShareSnapshotParams {
     peer_id: String,
     base_revision: i64,
@@ -1015,7 +1005,7 @@ mod tests {
             "snapshotShare",
             "requestPeerShares",
             "requestShareManifest",
-            "sendShareOffer",
+            "readvertiseShare",
             "publishShareSnapshot",
         ] {
             let err = dispatch(method, Value::Null).expect_err("missing params must fail");

@@ -1080,14 +1080,11 @@ class HttpNodeApi implements NodeApi {
   }
 
   @override
-  Future<void> sendShareOffer({
-    required List<String> peerIds,
-    required ShareOffer offer,
+  Future<void> readvertiseShare({
+    required String shareId,
+    required String peerId,
   }) async {
-    await _call('sendShareOffer', {
-      'peerIds': peerIds,
-      'offer': shareOfferToJson(offer),
-    });
+    await _call('readvertiseShare', {'shareId': shareId, 'peerId': peerId});
   }
 
   @override

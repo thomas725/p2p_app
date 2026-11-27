@@ -1037,16 +1037,21 @@ pub fn request_share_manifest(peer_id: &str, share_id: &str) -> Result<(), Strin
     })
 }
 
-/// Advertise one or more shares to connected peers.
+/// Re-advertise one locally known share to a connected peer.
+///
+/// The offer is rebuilt by [`crate::shares::offer_for_share`], so a local-only
+/// unknown-owner marker never becomes an ownership claim on the wire. Callers
+/// pass only ids: no frontend can supply a hand-built offer here.
 ///
 /// # Errors
-/// Returns an error if the node is not running.
-pub fn send_share_offer(
-    peer_ids: Vec<String>,
-    offer: crate::shares::ShareOffer,
-) -> Result<(), String> {
+/// Returns an error for an unknown share, a DB failure, or a node that is not
+/// running.
+pub fn readvertise_share(share_id: &str, peer_id: &str) -> Result<(), String> {
+    let offer = crate::shares::offer_for_share(share_id)
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| format!("unknown share: {share_id}"))?;
     crate::mobile_node::queue_share_command(crate::SwarmCommand::SendShareOffer {
-        peer_ids,
+        peer_ids: vec![peer_id.to_string()],
         offer: Box::new(offer),
     })
 }
@@ -1228,6 +1233,11 @@ mod tests {
             "Photos"
         );
         assert!(get_share("missing").expect("get missing").is_none());
+
+        // Re-advertising is Rust-owned: the caller supplies ids only, and an
+        // unknown share fails before any command can be queued.
+        let err = readvertise_share("missing", "peer-1").expect_err("unknown share");
+        assert!(err.contains("unknown share"), "{err}");
 
         let root = dir.path().join("photos");
         std::fs::create_dir(&root).expect("root dir");

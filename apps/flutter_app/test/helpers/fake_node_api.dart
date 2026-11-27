@@ -843,9 +843,9 @@ class FakeNodeApi implements NodeApi {
   }) => throw UnimplementedError();
 
   @override
-  Future<void> sendShareOffer({
-    required List<String> peerIds,
-    required ShareOffer offer,
+  Future<void> readvertiseShare({
+    required String shareId,
+    required String peerId,
   }) => throw UnimplementedError();
 
   @override

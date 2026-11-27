@@ -373,9 +373,12 @@ abstract class NodeApi {
     required String shareId,
   });
 
-  Future<void> sendShareOffer({
-    required List<String> peerIds,
-    required ShareOffer offer,
+  /// Re-advertise a locally known share using Rust's canonical offer builder.
+  /// Rust rebuilds the offer, so callers pass only ids and cannot leak the
+  /// local unknown-owner marker onto the wire.
+  Future<void> readvertiseShare({
+    required String shareId,
+    required String peerId,
   });
 
   Future<void> publishShareSnapshot({

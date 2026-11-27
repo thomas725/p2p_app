@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:p2p_app_flutter/src/rust/api.dart' show MobileShare;
-import 'package:p2p_app_flutter/src/rust/shares.dart'
-    show ShareKind, ShareOffer;
 
 /// Network actions for one share: ask a connected peer for the latest manifest
 /// and re-advertise our copy of the offer to that peer.
@@ -23,7 +21,7 @@ class ShareNetworkSection extends StatefulWidget {
   final MobileShare share;
   final List<String> peerIds;
   final Future<void> Function(String shareId, String peerId) onRequestManifest;
-  final Future<void> Function(String peerId, ShareOffer offer) onReadvertise;
+  final Future<void> Function(String shareId, String peerId) onReadvertise;
 
   /// Called after a successful action so the detail page can reload the
   /// manifest/grants Rust just persisted from the network.
@@ -55,18 +53,6 @@ class _ShareNetworkSectionState extends State<ShareNetworkSection> {
 
   String? _firstPeer() => widget.peerIds.isEmpty ? null : widget.peerIds.first;
 
-  /// The offer is rebuilt from the share row, not from a Dart-side guess.
-  /// `ownerUserId` stays null: the local `unknown:share:<id>` sentinel is
-  /// bookkeeping and must never be advertised as an ownership claim.
-  ShareOffer _offer() => ShareOffer(
-    shareId: widget.share.shareId,
-    name: widget.share.name,
-    kind: ShareKind.values.byName(widget.share.kind),
-    revision: BigInt.from(widget.share.revision.toInt()),
-    publicWrite: widget.share.publicWrite,
-    ownerUserId: null,
-  );
-
   Future<void> _perform(
     String label,
     Future<void> Function(String peerId) action,
@@ -95,7 +81,7 @@ class _ShareNetworkSectionState extends State<ShareNetworkSection> {
 
   Future<void> _readvertise() => _perform(
     'Re-advertise',
-    (peerId) => widget.onReadvertise(peerId, _offer()),
+    (peerId) => widget.onReadvertise(widget.share.shareId, peerId),
   );
 
   @override

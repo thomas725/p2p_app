@@ -808,7 +808,7 @@ mod tests {
             "snapshotShare",
             "requestPeerShares",
             "requestShareManifest",
-            "sendShareOffer",
+            "readvertiseShare",
             "publishShareSnapshot",
             "formatTimeHhmm",
             "isAtBottom",
