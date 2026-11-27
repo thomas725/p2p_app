@@ -1662,7 +1662,7 @@ pub fn build_broadcast_message_with_reply(
         nickname,
         msg_id,
         attachment,
-        reply_to,
+        reply_to: crate::reply::canonicalized_option(reply_to),
     }
 }
 
@@ -1683,7 +1683,7 @@ pub fn build_group_message_with_reply(
         nickname,
         msg_id,
         attachment,
-        reply_to,
+        reply_to: crate::reply::canonicalized_option(reply_to),
     }
 }
 
@@ -1960,6 +1960,10 @@ fn flush_pending_outbox(swarm: &mut Swarm<AppBehaviour>) {
 }
 
 fn send_dm(peer_id: &str, mut msg: crate::DirectMessage, swarm: &mut Swarm<AppBehaviour>) {
+    // The command may come from FRB's generated decoder, which writes ReplyRef
+    // fields directly and bypasses serde. Re-establish the canonical quote
+    // before anything seals, caches or transmits the snapshot.
+    msg.reply_to = crate::reply::canonicalized_option(msg.reply_to.take());
     if let Ok(peer) = peer_id.parse::<libp2p::PeerId>() {
         if crate::blocklist::is_blocked(&peer.to_string()) {
             p2plog_debug(format!("Refusing to send to blocked peer {peer_id}"));

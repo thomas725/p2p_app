@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        71 |
-| Total Rust Lines      |    41,064 |
-| Total Rust Chars      | 1,556,034 |
-| Avg Lines/Rust File   |       578 |
-| Avg Chars/Rust File   |    21,915 |
+| Total Rust Lines      |    41,117 |
+| Total Rust Chars      | 1,558,427 |
+| Avg Lines/Rust File   |       579 |
+| Avg Chars/Rust File   |    21,949 |
 | Total Dart Files      |        50 |
 | Total Dart Lines      |    22,610 |
 | Total Dart Chars      |   726,445 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       153 |
 | Avg Chars/Kotlin File |     5,524 |
 
-**Grand Total:** 125 files, 64,286 lines, 2,304,578 characters
+**Grand Total:** 125 files, 64,339 lines, 2,306,971 characters
 
 ## Rust Source Files
 
@@ -54,7 +54,7 @@
 | src                     | mobile_node.rs       |     5 | 96442 |  2565 |        - |       - | Mobile node lifecycle & swarm                      |
 | src                     | mod.rs               |     5 | 45231 |  1300 |        - |       - | FRB API surface                                    |
 | src                     | mod.rs               |     4 | 12881 |   330 |        - |       - | TUI render chrome & dispatch                       |
-| src                     | mod.rs               |     7 | 64724 |  1689 |        - |       - | Web server (axum HTTP+WS)                          |
+| src                     | mod.rs               |     7 | 64763 |  1689 |        - |       - | Web server (axum HTTP+WS)                          |
 | src                     | net_diag.rs          |     4 | 21449 |   596 |        - |       - | Source file                                        |
 | src                     | network.rs           |     3 |  2655 |    84 |        - |       - | Network size classification                        |
 | src                     | network_config.rs    |     3 |  7751 |   216 |        - |       - | Source file                                        |
@@ -65,13 +65,13 @@
 | src                     | peers.rs             |     5 |  5890 |   136 |        - |       - | TUI peers-table renderer                           |
 | src                     | reactions.rs         |     5 | 17473 |   463 |        - |       - | Source file                                        |
 | src                     | relay.rs             |     5 |  3764 |    95 |        - |       - | Source file                                        |
-| src                     | reply.rs             |     4 |  5781 |   157 |        - |       - | Source file                                        |
+| src                     | reply.rs             |     4 |  7747 |   206 |        - |       - | Source file                                        |
 | src                     | settings.rs          |     3 |  6614 |   168 |        - |       - | Source file                                        |
 | src                     | settings.rs          |     5 | 16413 |   469 |        - |       - | TUI settings renderer                              |
 | src                     | shares.rs            |     6 | 46830 |  1262 |        - |       - | File shares & folder sync (ACLs, manifests, apply) |
 | src                     | shares.rs            |     5 |  4709 |   122 |        - |       - | File shares & folder sync (ACLs, manifests, apply) |
 | src                     | shares_json.rs       |     4 |  6336 |   195 |        - |       - | Source file                                        |
-| src                     | swarm_handler.rs     |     7 | 100219 |  2616 |        - |       - | Network event translation                          |
+| src                     | swarm_handler.rs     |     7 | 100607 |  2620 |        - |       - | Network event translation                          |
 | src                     | theme.rs             |     4 |  7223 |   234 |        - |       - | Source file                                        |
 | src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities                   |
 | src                     | tui_render_state.rs  |     4 | 26478 |   706 |        - |       - | TUI render state & tab content                     |
@@ -98,7 +98,7 @@
 | src/generated           | models_queryable.rs  |     1 | 14539 |   397 |        - |       - | Queryable data models                              |
 | src/generated           | schema.rs            |     2 |  9786 |   330 |        - |       - | Database schema (Diesel)                           |
 
-**Total:** 71 files, 41,064 lines, 1,556,034 characters
+**Total:** 71 files, 41,117 lines, 1,558,427 characters
 
 ## Rust Test Files
 
@@ -162,17 +162,17 @@
 | unit   | unit_nickname.rs                   |   236 |  8550 |     3 | Unit tests for nickname module        |
 | unit   | unit_peers.rs                      |   113 |  3428 |     3 | Unit tests for peers module           |
 | unit   | unit_relay.rs                      |    51 |  1450 |     2 | Test file                             |
-| unit   | unit_reply.rs                      |   134 |  4907 |     3 | Test file                             |
+| unit   | unit_reply.rs                      |   214 |  7641 |     3 | Test file                             |
 | unit   | unit_settings.rs                   |   104 |  3289 |     3 | Test file                             |
 | unit   | unit_shares.rs                     |  1009 | 36216 |     4 | shares module tests                   |
-| unit   | unit_swarm_handler.rs              |   422 | 14373 |     4 | Unit tests for swarm_handler module   |
+| unit   | unit_swarm_handler.rs              |   461 | 15592 |     4 | Unit tests for swarm_handler module   |
 | unit   | unit_tui_helpers.rs                |   694 | 23223 |     5 | Unit tests for TUI helpers            |
 | unit   | unit_tui_render_state.rs           |   365 | 11174 |     2 | Unit tests for TUI render state       |
 | unit   | unit_tui_tabs.rs                   |   340 | 10961 |     3 | Unit tests for TUI tabs               |
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   400 | 12098 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 29,925 lines, 1,006,375 characters
+**Total:** 67 test files, 30,044 lines, 1,010,328 characters
 
 ## Dart Source Files
 

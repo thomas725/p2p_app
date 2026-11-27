@@ -816,7 +816,7 @@ mod tests {
 
     #[test]
     #[serial(db)]
-    fn save_incoming_message_frame_carries_msg_id_and_reply_to() {
+    fn save_incoming_message_frame_carries_msg_id_and_canonical_reply_to() {
         let _guard = db_lock();
         let dir = tempfile::tempdir().expect("tempdir");
         let db_path = dir
@@ -846,7 +846,7 @@ mod tests {
                 r#"{"id": 14, "method": "saveIncomingMessage", "params": {
                     "content": "reply body", "peerId": "peer-reply", "isDirect": false,
                     "latency": "5ms", "msgId": "incoming-9", "encrypted": true,
-                    "replyTo": {"msgId": "old-9", "sender": "Alice", "preview": "earlier text"}
+                    "replyTo": {"msgId": "old-9", "sender": "Alice\nInjected", "preview": "earlier\ntext"}
                 }}"#,
             )
             .await;
@@ -867,7 +867,7 @@ mod tests {
         assert_eq!(response["ok"]["msgId"], "incoming-9");
         assert_eq!(response["ok"]["encrypted"], true);
         assert_eq!(response["ok"]["replyTo"]["msgId"], "old-9");
-        assert_eq!(response["ok"]["replyTo"]["sender"], "Alice");
+        assert_eq!(response["ok"]["replyTo"]["sender"], "Alice Injected");
         assert_eq!(response["ok"]["replyTo"]["preview"], "earlier text");
         let (msg_id, reply_json, encrypted) =
             persisted.expect("row saved through the web dispatch");
@@ -877,7 +877,7 @@ mod tests {
             crate::reply::decode(&reply_json.expect("reply snapshot")),
             Some(crate::ReplyRef::new(
                 "old-9".to_string(),
-                "Alice".to_string(),
+                "Alice Injected".to_string(),
                 "earlier text"
             ))
         );

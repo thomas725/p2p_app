@@ -16,14 +16,22 @@ const PREVIEW_CHARS: usize = 80;
 /// `msg_id` is the stable wire id of the source message. `sender` and `preview`
 /// are display strings frozen when the reply is composed; they are never looked
 /// up again, so a local tombstone cannot blank the quote.
+///
+/// The fields stay public because FRB's generated SSE codec constructs the
+/// struct directly. Every ingress that can bypass serde (FRB decoding) and every
+/// egress (persistence, outbound wire, rendering) therefore runs both display
+/// strings through [`preview_line`], so a hostile peer or client cannot smuggle
+/// a multi-line label or preview into a TUI transcript line.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ReplyRef {
     /// Stable wire id of the message being replied to.
     pub msg_id: String,
     /// Sender label of the quoted message at reply time.
+    #[serde(deserialize_with = "deserialize_preview_line")]
     pub sender: String,
     /// Short single-line preview of the quoted message body.
+    #[serde(deserialize_with = "deserialize_preview_line")]
     pub preview: String,
 }
 
@@ -37,9 +45,38 @@ impl ReplyRef {
             preview: preview_line(preview),
         }
     }
+
+    /// Return an equivalent snapshot with canonical display strings.
+    ///
+    /// FRB's generated decoder writes the fields directly, so this is the
+    /// escape hatch that lets Rust re-establish the invariant before a
+    /// frontend-supplied snapshot is persisted or sent.
+    #[must_use]
+    pub fn canonicalized(&self) -> Self {
+        Self {
+            msg_id: self.msg_id.clone(),
+            sender: preview_line(&self.sender),
+            preview: preview_line(&self.preview),
+        }
+    }
 }
 
-/// Collapse whitespace and bound a preview to 80 characters.
+/// Canonicalize an optional snapshot at a non-serde boundary.
+#[must_use]
+pub fn canonicalized_option(reply: Option<ReplyRef>) -> Option<ReplyRef> {
+    reply.map(|reply| reply.canonicalized())
+}
+
+/// Deserialize a display string through the canonical one-line formatter.
+fn deserialize_preview_line<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw = String::deserialize(deserializer)?;
+    Ok(preview_line(&raw))
+}
+
+/// Collapse whitespace and bound a quote display string to 80 characters.
 #[must_use]
 pub fn preview_line(value: &str) -> String {
     let flat = value.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -52,15 +89,27 @@ pub fn preview_line(value: &str) -> String {
 }
 
 /// Format the quoted header shown above a reply's body.
+///
+/// Both display strings are re-canonicalized here so even an in-memory snapshot
+/// built by a non-serde decoder can never inject a newline into a TUI
+/// transcript line.
 #[must_use]
 pub fn quoted_header(reply: &ReplyRef) -> String {
-    format!("↳ {}: {}", reply.sender, reply.preview)
+    format!(
+        "↳ {}: {}",
+        preview_line(&reply.sender),
+        preview_line(&reply.preview)
+    )
 }
 
 /// Serialize a snapshot for the `reply_to_json` persistence column.
+///
+/// Canonicalizes first: FRB's generated decoder can hand us a snapshot whose
+/// preview never passed through [`ReplyRef::new`], and a stored quote must not
+/// inherit a multi-line or unbounded preview.
 #[must_use]
 pub fn encode(reply: &ReplyRef) -> Option<String> {
-    serde_json::to_string(reply).ok()
+    serde_json::to_string(&reply.canonicalized()).ok()
 }
 
 /// Read a snapshot persisted in `reply_to_json`.

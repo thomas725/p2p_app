@@ -1,6 +1,6 @@
 use crate::reply::{
-    ReplyRef, decode, display_body, encode, from_display_line, preview_line, quoted_header,
-    split_display_line, with_body,
+    ReplyRef, canonicalized_option, decode, display_body, encode, from_display_line, preview_line,
+    quoted_header, split_display_line, with_body,
 };
 
 #[test]
@@ -23,6 +23,86 @@ fn snapshot_round_trips_through_storage_json() {
 fn quoted_header_uses_stored_snapshot() {
     let reply = ReplyRef::new("msg-1".into(), "Alice".into(), "hello");
     assert_eq!(quoted_header(&reply), "↳ Alice: hello");
+}
+
+#[test]
+fn serde_ingress_canonicalizes_both_display_strings() {
+    // Wire, web and DB ingress all go through serde. A peer can put newlines in
+    // either display field; neither may survive into a transcript line.
+    let reply: ReplyRef = serde_json::from_str(
+        r#"{"msgId":"source-1","sender":"Alice\nInjected","preview":"line one\nline two"}"#,
+    )
+    .expect("deserialize crafted reply");
+    assert_eq!(
+        reply,
+        ReplyRef {
+            msg_id: "source-1".into(),
+            sender: "Alice Injected".into(),
+            preview: "line one line two".into(),
+        }
+    );
+}
+
+#[test]
+fn wire_payload_deserialize_canonicalizes_nested_reply() {
+    // The actual chat wire structs use JSON serde, so a nested reply snapshot
+    // is covered by the same field-level canonicalization.
+    let wire: crate::behavior::BroadcastMessage = serde_json::from_str(
+        r#"{"content":"body","reply_to":{"msgId":"source-2","sender":"Bob\nInjected","preview":"first\nsecond"}}"#,
+    )
+    .expect("deserialize wire broadcast");
+    assert_eq!(
+        wire.reply_to,
+        Some(ReplyRef {
+            msg_id: "source-2".into(),
+            sender: "Bob Injected".into(),
+            preview: "first second".into(),
+        })
+    );
+}
+
+#[test]
+fn storage_encode_canonicalizes_a_non_serde_snapshot() {
+    // FRB's generated decoder writes public fields directly, bypassing the
+    // constructor and serde. Persistence must still flatten both strings.
+    let crafted = ReplyRef {
+        msg_id: "source-3".into(),
+        sender: "Alice\nInjected".into(),
+        preview: "line one\nline two".into(),
+    };
+    let raw = serde_json::to_string(&crafted).expect("serialize crafted reply");
+    assert!(raw.contains("\\n"), "crafted snapshot keeps its newline");
+
+    let stored = encode(&crafted).expect("canonical storage json");
+    assert!(!stored.contains("\\n"), "stored quote is single-line");
+    assert_eq!(decode(&stored), Some(crafted.canonicalized()));
+}
+
+#[test]
+fn quoted_header_canonicalizes_a_bypassed_snapshot() {
+    let crafted = ReplyRef {
+        msg_id: "source-4".into(),
+        sender: "Alice\nInjected".into(),
+        preview: "line one\nline two".into(),
+    };
+    assert_eq!(
+        quoted_header(&crafted),
+        "↳ Alice Injected: line one line two"
+    );
+}
+
+#[test]
+fn optional_canonicalization_handles_none_and_some() {
+    assert_eq!(canonicalized_option(None), None);
+    let crafted = ReplyRef {
+        msg_id: "source-5".into(),
+        sender: "Alice\nInjected".into(),
+        preview: "line one\nline two".into(),
+    };
+    assert_eq!(
+        canonicalized_option(Some(crafted.clone())),
+        Some(crafted.canonicalized())
+    );
 }
 
 #[test]

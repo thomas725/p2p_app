@@ -113,6 +113,45 @@ fn apply_inbound_reaction_reports_rejection() {
 }
 
 #[test]
+fn outbound_wire_builders_canonicalize_crafted_reply_snapshots() {
+    // FRB callers can hand us a ReplyRef whose public fields were written
+    // directly (no constructor, no serde). Broadcast, group and DM egress all
+    // canonicalize before serialization; these two builders cover the
+    // gossipsub lanes and `canonicalized_option` covers the DM lane.
+    let crafted = crate::ReplyRef {
+        msg_id: "source-1".into(),
+        sender: "Alice\nInjected".into(),
+        preview: "line one\nline two".into(),
+    };
+    let expected = Some(crafted.canonicalized());
+
+    let broadcast = build_broadcast_message_with_reply(
+        "body".into(),
+        None,
+        Some("msg-1".into()),
+        None,
+        Some(crafted.clone()),
+    );
+    assert_eq!(broadcast.reply_to, expected);
+
+    let group = build_group_message_with_reply(
+        "group-1".into(),
+        "body".into(),
+        None,
+        Some("msg-2".into()),
+        None,
+        Some(crafted),
+    );
+    assert_eq!(group.reply_to, expected);
+
+    let json = serde_json::to_string(&broadcast).expect("serialize broadcast");
+    assert!(
+        !json.contains("\\n"),
+        "crafted quote must not reach the wire"
+    );
+}
+
+#[test]
 fn announced_connections_balance_connects_and_disconnects() {
     // A blocked peer is never announced, so its close must not emit an
     // unmatched PeerDisconnected. Multi-connection peers must stay balanced:
