@@ -464,6 +464,77 @@ fn test_add_peer_to_state_list_skips_local_peer() {
     );
 }
 
+// ── notification focus ────────────────────────────────────────────────
+
+/// A notification for the visible broadcast chat is suppressed, while a DM
+/// arriving at the same moment still reaches the render queue. This exercises
+/// the TUI half of the canonical focus-key rule (`conversation_key_for_tab`).
+#[test]
+fn test_queue_notification_suppresses_only_the_active_broadcast_chat() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().unwrap();
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    p2p_app::notifications::set_settings(true, true).unwrap();
+
+    let mut state = test_app_state();
+    queue_notification(&mut state, "broadcast", "", Some("Alice"), "in chat", None);
+    assert_eq!(state.pending_notifications.len(), 0);
+
+    queue_notification(
+        &mut state,
+        "dm",
+        "peer-42",
+        Some("Alice"),
+        "elsewhere",
+        None,
+    );
+    assert_eq!(state.pending_notifications.len(), 1);
+    assert_eq!(
+        state.pending_notifications[0].conversation_key,
+        "dm:peer-42"
+    );
+    assert_eq!(state.pending_notifications[0].body, "elsewhere");
+
+    p2p_app::db::reset_db_url();
+}
+
+/// A dynamic DM tab owns the `dm:<peer>` focus key only while it is active.
+#[test]
+fn test_queue_notification_follows_the_active_dm_tab() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().unwrap();
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    p2p_app::notifications::set_settings(true, true).unwrap();
+
+    let mut state = test_app_state();
+    let dm_tab = state.dynamic_tabs.add_dm_tab("peer-42".to_string());
+    state.switch_to_tab(dm_tab);
+
+    queue_notification(&mut state, "dm", "peer-42", Some("Alice"), "in dm", None);
+    assert_eq!(state.pending_notifications.len(), 0);
+
+    queue_notification(
+        &mut state,
+        "broadcast",
+        "",
+        Some("Alice"),
+        "other chat",
+        None,
+    );
+    assert_eq!(state.pending_notifications.len(), 1);
+    assert_eq!(state.pending_notifications[0].conversation_key, "broadcast");
+
+    p2p_app::db::reset_db_url();
+}
+
 // ── handle_incoming_message ───────────────────────────────────────────
 
 #[test]
