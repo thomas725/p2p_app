@@ -108,13 +108,13 @@
 | shared | tui_test_state.rs                  |   250 |  7360 |     6 | TUI test state builders               |
 | tests  | additional_coverage.rs             |   146 |  4516 |     2 | Additional coverage tests             |
 | tests  | behavior.rs                        |   252 |  7228 |     5 | behavior module tests                 |
-| tests  | db.rs                              |   281 |  8625 |     4 | database module tests                 |
+| tests  | db.rs                              |   263 |  8079 |     4 | database module tests                 |
 | tests  | db_selection.rs                    |    73 |  2253 |     3 | Database selection tests              |
 | tests  | fmt.rs                             |   301 |  8151 |     2 | fmt module tests                      |
 | tests  | logging.rs                         |   335 |  9679 |     3 | logging module tests                  |
-| tests  | messages.rs                        |   495 | 15274 |     4 | messages module tests                 |
+| tests  | messages.rs                        |   475 | 14630 |     4 | messages module tests                 |
 | tests  | network.rs                         |    49 |  1638 |     1 | network module tests                  |
-| tests  | nickname.rs                        |   433 | 14063 |     4 | nickname module tests                 |
+| tests  | nickname.rs                        |   413 | 13419 |     4 | nickname module tests                 |
 | tests  | p2p_integration.rs                 |  1099 | 39657 |    10 | P2P integration tests                 |
 | tests  | peers.rs                           |   317 |  9240 |     4 | peers module tests                    |
 | tests  | swarm_handler.rs                   |  1292 | 44723 |     8 | swarm_handler module tests            |
@@ -170,7 +170,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   422 | 12805 |     3 | Unit tests for types module           |
 
-**Total:** 65 test files, 31,547 lines, 1,066,342 characters
+**Total:** 65 test files, 31,489 lines, 1,064,508 characters
 
 ## Dart Source Files
 

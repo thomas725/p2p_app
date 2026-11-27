@@ -65,6 +65,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-27_rust_owned_seen_timestamps.md](2026-11-27_rust_owned_seen_timestamps.md) | Flutter Contacts/Peer Info render Rust-formatted seen strings verbatim; the second Dart formatter is gone | 2026-11-27 |
 | [2026-11-27_last_connection_rust_label.md](2026-11-27_last_connection_rust_label.md) | Settings names the last-lost peer from Rust's disconnect-event label instead of the live roster | 2026-11-27 |
 | [2026-11-27_orphan_generated_model_tests.md](2026-11-27_orphan_generated_model_tests.md) | Removed two never-compiled generated-model test files and their stale metrics entries | 2026-11-27 |
+| [2026-11-27_shared_integration_db_helper.md](2026-11-27_shared_integration_db_helper.md) | Three integration suites now share the canonical isolated-SQLite test helper | 2026-11-27 |
 | [2026-11-02_sibling_device_claims.md](2026-11-02_sibling_device_claims.md) | Sibling devices may sign device-binding claims for the same user (P0 decision) | 2026-11-02 |
 | [2026-11-12_public_bootstrap_discovery.md](2026-11-12_public_bootstrap_discovery.md) | Internet-wide discovery: Kademlia DHT, NAT traversal, network details, configurable bootstrap/relay peers (US-050) | 2026-11-12 |
 

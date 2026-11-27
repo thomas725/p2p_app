@@ -11,30 +11,10 @@
     clippy::unimplemented
 )]
 
+mod test_utils;
 use diesel::RunQueryDsl as _;
 use serial_test::serial;
-use std::sync::{Mutex, OnceLock};
-use tempfile::TempDir;
-
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-fn test_db_lock() -> &'static Mutex<()> {
-    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-    LOCK.get_or_init(|| Mutex::new(()))
-}
-
-fn with_test_db(f: impl FnOnce()) {
-    let _guard = test_db_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let dir = TempDir::new().unwrap();
-    let db_path = dir.path().join("test.db");
-    p2p_app::db::set_db_url(db_path.to_str().unwrap());
-    p2p_app::db::init_database().unwrap();
-    f();
-    p2p_app::db::release_db_lock();
-    p2p_app::db::reset_db_url();
-}
+use test_utils::with_test_db;
 
 // ── generate_self_nickname ───────────────────────────────────────────────────
 
