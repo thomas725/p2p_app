@@ -378,6 +378,20 @@ pub fn list_user_devices(user_id: &str) -> color_eyre::Result<Vec<DeviceBinding>
 /// Returns an error if the database query fails.
 pub fn find_user_id_for_peer(peer_id: &str) -> color_eyre::Result<Option<String>> {
     let conn = &mut crate::sqlite_connect()?;
+    find_user_id_for_peer_conn(conn, peer_id)
+}
+
+/// Resolve a peer's user on an existing connection.
+///
+/// Share submissions run this inside their write transaction, so the ACL sees
+/// the same committed state as the revision check and the manifest write.
+///
+/// # Errors
+/// Returns an error if the binding query fails.
+pub(crate) fn find_user_id_for_peer_conn(
+    conn: &mut diesel::SqliteConnection,
+    peer_id: &str,
+) -> color_eyre::Result<Option<String>> {
     device_bindings::table
         .filter(device_bindings::peer_id.eq(peer_id))
         .filter(device_bindings::revoked_at.is_null())

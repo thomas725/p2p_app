@@ -160,12 +160,15 @@ Shipped after the core:
   use an explicit camelCase DTO boundary (`src/shares_json.rs`) for the web and
   mobile event transports, keeping the domain/wire types snake_case;
 - correctness hardening: received manifests are monotonic (a lower revision or
-  unknown share is rejected), `accept_submitted_manifest` checks ACL and base
-  revision in one transaction, untrusted offers can no longer rewrite the ACL,
-  root or revision of a share we own/bound/have materialised, manifests with all
-  blobs local apply immediately, blob-arrival applies are attributed to the
-  delivering peer, `delete_share` is transactional and drops in-flight applies,
-  and a failed file install no longer strands a `.part` staging file;
+  unknown share is rejected) and an equal revision is accepted only for a
+  byte-identical re-fetch (different content at the same revision is a conflict),
+  `accept_submitted_manifest` resolves the ACL and checks the base revision on
+  the write transaction's connection so a revoke cannot slip between check and
+  write, untrusted offers can no longer rewrite the ACL, root or revision of a
+  share we own/bound/have materialised, manifests with all blobs local apply
+  immediately, blob-arrival applies are attributed to the delivering peer,
+  `delete_share` is transactional and drops in-flight applies, and a failed file
+  install no longer strands a `.part` staging file;
 - wire-level coverage for offer → list → manifest → stale rejection → retry
   with the refreshed revision, plus unit coverage for grant revocation,
   superseded/deferred applies, disconnect cleanup, spoofed offers, manifest
@@ -312,6 +315,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Share manifest revision/ACL hardening | 2026-11-27 | [`archive/2026-11-27_share_manifest_hardening.md`](archive/2026-11-27_share_manifest_hardening.md) |
 | TUI share creation | 2026-11-27 | [`archive/2026-11-27_tui_share_creation.md`](archive/2026-11-27_tui_share_creation.md) |
 | Notification focus lifecycle + connected-only share pickers | 2026-11-27 | [`archive/2026-11-27_notification_focus_lifecycle.md`](archive/2026-11-27_notification_focus_lifecycle.md) |
 | Device-centric location sharing (US-055) | 2026-11-27 | [`archive/2026-11-27_device_location_sharing.md`](archive/2026-11-27_device_location_sharing.md) |

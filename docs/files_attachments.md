@@ -111,16 +111,20 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   are keyed by verified `user_id` from `identity::find_user_id_for_peer`.
   `can_read`/`can_write` fail closed on DB errors and unbound peers.
 - **Snapshots and writes**: `shares::snapshot_tree` stores every regular file
-  content-addressed and skips symlinks. `accept_submitted_manifest` checks the
-  ACL and `base_revision` and writes the new manifest in one transaction, so a
-  concurrent submit cannot slip between the two; a writer whose base is stale
-  refreshes and retries instead of silently overwriting another device's
-  changes. A remote `ShareOffer` is untrusted: for a share we own, have bound, or
-  already hold a manifest for, accepting a repeated offer is a no-op — it can
-  never rewrite our ACL, root or revision. Received manifests are monotonic:
-  `save_manifest` rejects a lower revision (and an unknown share) so a replayed
-  peer response cannot roll local state back; an equal revision is an idempotent
-  re-fetch.
+  content-addressed and skips symlinks. `accept_submitted_manifest` resolves the
+  requester's ACL on the write transaction's connection and checks `base_revision`
+  there too, so a grant revoked or a revision advanced between the check and the
+  write is observed and denied; a writer whose base is stale refreshes and
+  retries instead of silently overwriting another device's changes. Permission
+  resolution shares the connection through `identity::find_user_id_for_peer_conn`
+  and `shares::permission_for_share`, both fail-closed. A remote `ShareOffer` is
+  untrusted: for a share we own, have bound, or already hold a manifest for,
+  accepting a repeated offer is a no-op — it can never rewrite our ACL, root or
+  revision. Received manifests are monotonic: `save_manifest` rejects a lower
+  revision (and an unknown share) so a replayed peer response cannot roll local
+  state back; an equal revision is accepted only as an idempotent re-fetch — if
+  cached JSON exists it must be byte-identical, otherwise the differing snapshot
+  is rejected as a conflict rather than overwriting the cached one.
 - **Bound folders and path safety**: a share may bind a real `local_root`.
   Applying a manifest writes only through `resolve_share_path`, rejecting
   absolute paths, `.`/`..` or empty segments, backslashes, colons, control
@@ -139,10 +143,12 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   folder convergence does not depend on a frontend.
 - **Coverage**: `tests/swarm_handler.rs` drives the offer/list/manifest wire
   handshake and a stale submission followed by a successful retry;
-  `tests/unit/unit_shares.rs` covers revocation, stale writes with changed
-  entries, superseded pending applies and disconnect cleanup. A real blob-pull
-  → apply test drives two nodes on separate OS threads with per-thread DB and
-  blob stores, covering blob delivery, manifest apply and folder contents.
+  `tests/unit/unit_shares.rs` covers revocation (including ACL reads on the
+  write connection and a denied submission after a committed revoke), same-
+  revision conflicts with different content, stale writes with changed entries,
+  superseded pending applies and disconnect cleanup. A real blob-pull → apply
+  test drives two nodes on separate OS threads with per-thread DB and blob
+  stores, covering blob delivery, manifest apply and folder contents.
 - **Facade**: `src/api/mod.rs` exposes the share store as `createShare`,
   `listShares`, `getShare`, `bindShare`, `deleteShare`, `listShareGrants`,
   `setShareGrant`, `removeShareGrant`, `loadShareManifest`, `saveShareManifest`,

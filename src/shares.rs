@@ -485,6 +485,17 @@ fn create_share_with_id(
 /// Returns an error if the DB query fails.
 pub fn get_share(share_id: &str) -> color_eyre::Result<Option<Share>> {
     let conn = &mut crate::sqlite_connect()?;
+    get_share_conn(conn, share_id)
+}
+
+/// Look up one share using an existing connection.
+///
+/// Keeping the read on the caller's connection lets permission checks inside a
+/// write transaction observe the same committed state as the write itself.
+fn get_share_conn(
+    conn: &mut diesel::SqliteConnection,
+    share_id: &str,
+) -> color_eyre::Result<Option<Share>> {
     let row = shares::table
         .filter(shares::share_id.eq(share_id))
         .select(ShareRow::as_select())
@@ -720,26 +731,36 @@ fn write_manifest_rows(
 /// refresh the cached JSON.
 ///
 /// The share must exist and the manifest revision must not move backwards — a
-/// replayed or stale peer response must never roll local state back. Equal
-/// revisions are accepted as an idempotent re-fetch.
+/// replayed or stale peer response must never roll local state back. An equal
+/// revision is accepted only as an idempotent re-fetch of the cached manifest:
+/// when cached JSON exists it must be byte-identical to this manifest.
 ///
 /// # Errors
 /// Returns an error for an invalid/mismatched manifest, an unknown share, a
-/// rollback attempt, or a DB failure.
+/// rollback or same-revision conflict, or a DB failure.
 pub fn save_manifest(share_id: &str, manifest: &ShareManifest) -> color_eyre::Result<()> {
     let (entries, json, revision) = prepare_manifest_rows(share_id, manifest)?;
     let conn = &mut crate::sqlite_connect()?;
     conn.transaction::<(), color_eyre::Report, _>(|conn| {
-        let current: Option<i64> = shares::table
+        let current: Option<(i64, Option<String>)> = shares::table
             .filter(shares::share_id.eq(share_id))
-            .select(shares::revision)
+            .select((shares::revision, shares::manifest_json))
             .first(conn)
             .optional()
             .wrap_err("failed to check share revision")?;
-        let current = current.ok_or_else(|| eyre!("unknown share: {share_id}"))?;
+        let (current, cached_json) = current.ok_or_else(|| eyre!("unknown share: {share_id}"))?;
         if revision < current {
             return Err(eyre!(
                 "manifest revision {revision} would roll back share {share_id} (current {current})"
+            ));
+        }
+        if revision == current
+            && cached_json
+                .as_deref()
+                .is_some_and(|cached| cached != json.as_str())
+        {
+            return Err(eyre!(
+                "manifest revision {revision} conflicts with cached content for share {share_id}"
             ));
         }
         write_manifest_rows(conn, share_id, &entries, &json, revision)
@@ -773,13 +794,18 @@ pub fn referenced_file_ids() -> color_eyre::Result<std::collections::HashSet<Str
     Ok(ids.into_iter().collect())
 }
 
-/// Effective permission for a requester peer on a share, or `None` when denied.
+/// Effective permission for a requester peer on a loaded share, resolved on
+/// `conn`, or `None` when denied.
 ///
-/// Fail closed everywhere: a missing share, unbound peer, unknown enum value,
-/// or any DB error yields `None`.
-fn permission_for(share_id: &str, peer_id: &str) -> Option<ShareMode> {
-    let share = get_share(share_id).ok()??;
-    let requester = crate::identity::find_user_id_for_peer(peer_id).ok()?;
+/// Fail closed everywhere: an unbound peer, unknown enum value, or any DB error
+/// yields `None`. Passing the caller's connection lets a write transaction see
+/// the same grant state it is about to commit alongside.
+fn permission_for_share(
+    conn: &mut diesel::SqliteConnection,
+    share: &Share,
+    peer_id: &str,
+) -> Option<ShareMode> {
+    let requester = crate::identity::find_user_id_for_peer_conn(conn, peer_id).ok()?;
     if requester.as_deref() == Some(share.owner_user_id.as_str()) {
         return Some(ShareMode::ReadWrite);
     }
@@ -790,15 +816,21 @@ fn permission_for(share_id: &str, peer_id: &str) -> Option<ShareMode> {
             ShareMode::ReadOnly
         });
     }
-    let conn = &mut crate::sqlite_connect().ok()?;
     let mode = share_grants::table
-        .filter(share_grants::share_id.eq(share_id))
+        .filter(share_grants::share_id.eq(&share.share_id))
         .filter(share_grants::user_id.eq(requester?))
         .select(share_grants::mode)
         .first::<i32>(conn)
         .optional()
         .ok()??;
     Some(ShareMode::from_i32(mode))
+}
+
+/// Effective permission for a requester peer on a share, or `None` when denied.
+fn permission_for(share_id: &str, peer_id: &str) -> Option<ShareMode> {
+    let conn = &mut crate::sqlite_connect().ok()?;
+    let share = get_share_conn(conn, share_id).ok()??;
+    permission_for_share(conn, &share, peer_id)
 }
 
 /// Whether `peer_id` may fetch this share (manifest plus blobs).
@@ -1055,9 +1087,6 @@ pub fn accept_submitted_manifest(
     base_revision: u64,
     manifest: &ShareManifest,
 ) -> color_eyre::Result<ApplyStats> {
-    if !can_write(share_id, peer_id) {
-        return Err(eyre!("peer {peer_id} may not write share {share_id}"));
-    }
     if manifest.share_id != share_id {
         return Err(eyre!("manifest id does not match the share"));
     }
@@ -1066,8 +1095,9 @@ pub fn accept_submitted_manifest(
     next.revision = next_revision;
     let (entries, json, revision) = prepare_manifest_rows(share_id, &next)?;
 
-    // Atomic check-and-write: reload the share and verify its revision inside
-    // the same transaction that persists the new manifest.
+    // Atomic check-and-write: resolve the ACL and verify the base revision on
+    // the same connection that persists the new manifest. A grant revoked
+    // concurrently with this submission is therefore visible before the write.
     let (previous, local_root) = {
         let conn = &mut crate::sqlite_connect()?;
         conn.transaction::<(Option<ShareManifest>, Option<String>), color_eyre::Report, _>(
@@ -1080,6 +1110,9 @@ pub fn accept_submitted_manifest(
                     .wrap_err("failed to load share")?
                     .ok_or_else(|| eyre!("unknown share: {share_id}"))?;
                 let share = Share::from(share);
+                if permission_for_share(conn, &share, peer_id) != Some(ShareMode::ReadWrite) {
+                    return Err(eyre!("peer {peer_id} may not write share {share_id}"));
+                }
                 let expected = share.revision;
                 if base_revision != expected {
                     return Err(eyre!(

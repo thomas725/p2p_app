@@ -9,7 +9,7 @@
 
 use super::*;
 use crate::generated::models_insertable::{NewDeviceBinding, NewPeer, NewUser};
-use crate::generated::schema::{device_bindings, peers, users};
+use crate::generated::schema::{device_bindings, peers, share_grants, users};
 use serial_test::serial;
 use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;
@@ -432,6 +432,45 @@ fn save_manifest_persists_entries_and_revision() {
 
 #[test]
 #[serial(db)]
+fn save_manifest_rejects_same_revision_with_different_content() {
+    with_test_db(|| {
+        let share =
+            create_share("Docs", "owner", ShareKind::Private, false, None).expect("create share");
+        let first_id = crate::files::hash_bytes(b"abc");
+        let conflicting_id = crate::files::hash_bytes(b"xyz");
+        let first = ShareManifest {
+            share_id: share.share_id.clone(),
+            name: share.name.clone(),
+            revision: 1,
+            entries: vec![entry("a.txt", first_id.clone())],
+        };
+        save_manifest(&share.share_id, &first).expect("save first");
+        save_manifest(&share.share_id, &first).expect("idempotent re-fetch");
+
+        let conflicting = ShareManifest {
+            name: "Renamed".to_string(),
+            entries: vec![entry("b.txt", conflicting_id.clone())],
+            ..first.clone()
+        };
+        let error = save_manifest(&share.share_id, &conflicting)
+            .expect_err("same revision with different content");
+        assert!(error.to_string().contains("conflicts"), "{error}");
+        assert_eq!(load_manifest(&share.share_id).expect("load"), first);
+        assert_eq!(
+            get_share(&share.share_id)
+                .expect("get")
+                .expect("present")
+                .revision,
+            1
+        );
+        let refs = referenced_file_ids().expect("gc refs");
+        assert!(refs.contains(&first_id));
+        assert!(!refs.contains(&conflicting_id));
+    });
+}
+
+#[test]
+#[serial(db)]
 fn snapshot_tree_stores_blobs_and_skips_symlinks() {
     with_test_db(|| {
         let dir = TempDir::new().expect("tree dir");
@@ -587,6 +626,74 @@ fn accept_submitted_manifest_enforces_permission_and_revision() {
 
         // An unbound peer cannot write even with a stale revision.
         assert!(accept_submitted_manifest(&share.share_id, "stranger", 1, &first).is_err());
+    });
+}
+
+#[test]
+#[serial(db)]
+fn accept_submitted_manifest_reads_acl_on_the_write_connection() {
+    with_test_db(|| {
+        use diesel::{Connection as _, ExpressionMethods as _, QueryDsl as _, RunQueryDsl as _};
+
+        let dir = TempDir::new().expect("root dir");
+        let share = create_share(
+            "Revocable",
+            "owner-user",
+            ShareKind::Private,
+            false,
+            Some(dir.path().to_str().expect("root path")),
+        )
+        .expect("create share");
+        bind_peer("writer-peer", "writer-user");
+        set_grant(&share.share_id, "writer-user", ShareMode::ReadWrite).expect("grant");
+
+        let first = ShareManifest {
+            share_id: share.share_id.clone(),
+            name: share.name.clone(),
+            revision: 0,
+            entries: vec![],
+        };
+        accept_submitted_manifest(&share.share_id, "writer-peer", 0, &first).expect("first submit");
+
+        // Permission reads follow the caller's connection: a revoke staged in
+        // this transaction is visible to `permission_for_share` before commit,
+        // which is exactly what the submission path relies on.
+        {
+            let conn = &mut crate::sqlite_connect().expect("db connection");
+            conn.transaction::<(), color_eyre::Report, _>(|conn| {
+                let loaded = get_share_conn(conn, &share.share_id)
+                    .expect("load share")
+                    .expect("present");
+                assert_eq!(
+                    permission_for_share(conn, &loaded, "writer-peer"),
+                    Some(ShareMode::ReadWrite)
+                );
+                diesel::delete(
+                    share_grants::table
+                        .filter(share_grants::share_id.eq(&share.share_id))
+                        .filter(share_grants::user_id.eq("writer-user")),
+                )
+                .execute(conn)
+                .expect("stage revoke");
+                assert_eq!(permission_for_share(conn, &loaded, "writer-peer"), None);
+                Ok(())
+            })
+            .expect("transaction");
+        }
+
+        // With the revoke committed, the same submission is denied and leaves
+        // the persisted manifest and revision untouched.
+        let denied = accept_submitted_manifest(&share.share_id, "writer-peer", 1, &first)
+            .expect_err("revoked writer");
+        assert!(denied.to_string().contains("may not write"), "{denied}");
+        assert_eq!(
+            get_share(&share.share_id)
+                .expect("get")
+                .expect("present")
+                .revision,
+            1
+        );
+        assert_eq!(load_manifest(&share.share_id).expect("load").revision, 1);
     });
 }
 
