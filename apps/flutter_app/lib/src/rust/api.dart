@@ -15,7 +15,7 @@ import 'reply.dart';
 import 'shares.dart';
 import 'theme.dart';
 
-// These functions are ignored because they are not marked as `pub`: `local_share_owner`, `parse_share_kind`, `parse_share_mode`, `share_kind_label`, `share_mode_label`
+// These functions are ignored because they are not marked as `pub`: `local_share_owner`, `parse_share_kind`, `parse_share_mode`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`
 
 /// Initialize the mobile database at the given path and return peer info.
@@ -188,9 +188,10 @@ Future<List<ChatMessage>> loadDmMessages({
   required PlatformInt64 limit,
 }) => RustLib.instance.api.crateApiLoadDmMessages(peerId: peerId, limit: limit);
 
-/// Broadcasts newer than the persisted "last viewed" marker, for the "N new"
-/// badge. The marker lives in Rust `app_settings` so the TUI, Flutter and web
-/// frontends agree after a restart; an install that never viewed reports zero.
+/// Count unread broadcasts for the "N new" badge.
+///
+/// The marker lives in Rust `app_settings` so TUI, Flutter and web agree after
+/// a restart; an install that never viewed reports zero.
 Future<int> getBroadcastUnreadCount() =>
     RustLib.instance.api.crateApiGetBroadcastUnreadCount();
 
@@ -426,6 +427,14 @@ Future<bool> validateNickname({required String nickname}) =>
 /// is purely an early, user-facing check.
 Future<bool> validateEmoji({required String emoji}) =>
     RustLib.instance.api.crateApiValidateEmoji(emoji: emoji);
+
+/// Default reaction choices offered by the UI.
+///
+/// The list comes from [`crate::reactions::QUICK_REACTIONS`] so Flutter's menu
+/// and the TUI's number shortcuts cannot drift; both still validate tokens
+/// through the same Rust rule before writing anything.
+Future<List<String>> quickReactions() =>
+    RustLib.instance.api.crateApiQuickReactions();
 
 /// Human-readable network-size class ("Small" / "Medium" / "Large") for a peer
 /// count. Mirrors [`crate::network::NetworkSize`] so the Flutter UI doesn't

@@ -31,7 +31,8 @@ import 'package:p2p_app_flutter/src/rust/notifications.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
-import 'package:p2p_app_flutter/src/rust/shares.dart' show ShareManifest, ShareOffer;
+import 'package:p2p_app_flutter/src/rust/shares.dart'
+    show ShareManifest, ShareOffer;
 import 'package:p2p_app_flutter/src/rust/theme.dart';
 
 /// The active transport. Defaults to the in-process FFI bridge; `main()`
@@ -116,10 +117,7 @@ abstract class NodeApi {
 
   /// Send a transient DM typing state (`true` = started, `false` = stopped)
   /// over the dedicated fire-and-forget lane (US-009).
-  Future<void> sendTyping({
-    required String peerId,
-    required bool isTyping,
-  });
+  Future<void> sendTyping({required String peerId, required bool isTyping});
 
   /// Toggle this install's reaction on a message and return the fresh
   /// aggregated chips (US-008). The canonical summaries come from Rust on every
@@ -135,6 +133,9 @@ abstract class NodeApi {
   /// Validate a custom reaction token against the canonical Rust rule before
   /// sending it through [toggleReaction] (empty/overlong rejected, max 32 chars).
   Future<bool> validateEmoji({required String emoji});
+
+  /// Default quick-reaction tokens, owned by Rust and shared with the TUI.
+  Future<List<String>> quickReactions();
 
   /// Send a broadcast. Attachments arrive either as a server-local path (FFI)
   /// or as raw [attachmentBytes] + [attachmentName] that the remote transport
@@ -304,18 +305,12 @@ abstract class NodeApi {
 
   /// Open the media session for an accepted call; peer audio then arrives as a
   /// `call_media` event with decoded PCM in `audio` (calls lane, US-044).
-  Future<void> startCallMedia({
-    required String callId,
-    required String peerId,
-  });
+  Future<void> startCallMedia({required String callId, required String peerId});
 
   Future<void> stopCallMedia();
 
   /// Encode and send one 16 kHz mono PCM block (i16 samples) on the session.
-  Future<void> sendCallMedia({
-    required String callId,
-    required List<int> pcm,
-  });
+  Future<void> sendCallMedia({required String callId, required List<int> pcm});
 
   /// Mute or unmute outgoing audio; inbound audio keeps playing.
   Future<void> setCallMediaMute({required bool muted});

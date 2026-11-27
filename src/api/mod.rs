@@ -524,6 +524,16 @@ pub fn validate_emoji(emoji: &str) -> bool {
     crate::reactions::validate_emoji(emoji).is_ok()
 }
 
+/// Default reaction choices offered by the UI.
+///
+/// The list comes from [`crate::reactions::QUICK_REACTIONS`] so Flutter's menu
+/// and the TUI's number shortcuts cannot drift; both still validate tokens
+/// through the same Rust rule before writing anything.
+#[must_use]
+pub fn quick_reactions() -> Vec<String> {
+    crate::reactions::quick_reactions()
+}
+
 /// Human-readable network-size class ("Small" / "Medium" / "Large") for a peer
 /// count. Mirrors [`crate::network::NetworkSize`] so the Flutter UI doesn't
 /// re-derive the thresholds in Dart.

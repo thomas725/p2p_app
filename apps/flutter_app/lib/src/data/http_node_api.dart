@@ -22,7 +22,8 @@ import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/theme.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
-import 'package:p2p_app_flutter/src/rust/shares.dart' show ShareManifest, ShareOffer;
+import 'package:p2p_app_flutter/src/rust/shares.dart'
+    show ShareManifest, ShareOffer;
 
 /// [NodeApi] over a running `p2p_chat_server`: every call is one JSON
 /// request frame on the WebSocket (`{id, method, params}` answered by
@@ -607,10 +608,7 @@ class HttpNodeApi implements NodeApi {
     required String msgId,
     required String emoji,
   }) async {
-    final raw = await _call('toggleReaction', {
-      'msgId': msgId,
-      'emoji': emoji,
-    });
+    final raw = await _call('toggleReaction', {'msgId': msgId, 'emoji': emoji});
     return reactionSummariesFromJson(raw);
   }
 
@@ -623,6 +621,10 @@ class HttpNodeApi implements NodeApi {
   @override
   Future<bool> validateEmoji({required String emoji}) async =>
       await _call('validateEmoji', {'emoji': emoji}) as bool;
+
+  @override
+  Future<List<String>> quickReactions() async =>
+      _list(await _call('quickReactions'), (raw) => raw as String);
 
   @override
   Future<ChatMessage> saveOutgoingBroadcast({
@@ -733,7 +735,10 @@ class HttpNodeApi implements NodeApi {
       HttpNodeApi.appThemeFromJson(await _call('getTheme'));
 
   @override
-  Future<void> setTheme({required bool dark, required String accentName}) async {
+  Future<void> setTheme({
+    required bool dark,
+    required String accentName,
+  }) async {
     await _call('setTheme', {'dark': dark, 'accentName': accentName});
   }
 
@@ -960,7 +965,10 @@ class HttpNodeApi implements NodeApi {
 
   @override
   Future<void> bindShare({required BindShareParams params}) async {
-    await _call('bindShare', bindShareParamsToJson(params.shareId, params.localRoot));
+    await _call(
+      'bindShare',
+      bindShareParamsToJson(params.shareId, params.localRoot),
+    );
   }
 
   @override
@@ -970,7 +978,8 @@ class HttpNodeApi implements NodeApi {
 
   @override
   Future<List<MobileShareGrant>> listShareGrants(String shareId) async {
-    final raw = await _call('listShareGrants', {'shareId': shareId}) as List<dynamic>;
+    final raw =
+        await _call('listShareGrants', {'shareId': shareId}) as List<dynamic>;
     return raw
         .map((row) => mobileShareGrantFromJson(row as Map<String, dynamic>))
         .toList();
@@ -1027,11 +1036,10 @@ class HttpNodeApi implements NodeApi {
   Future<ShareManifest> snapshotShare({
     required String shareId,
     required String root,
-  }) async =>
-      shareManifestFromJson(
-        (await _call('snapshotShare', {'shareId': shareId, 'root': root})
-            as Map<String, dynamic>),
-      );
+  }) async => shareManifestFromJson(
+    (await _call('snapshotShare', {'shareId': shareId, 'root': root})
+        as Map<String, dynamic>),
+  );
 
   @override
   Future<void> requestPeerShares(String peerId) async {
@@ -1043,10 +1051,7 @@ class HttpNodeApi implements NodeApi {
     required String peerId,
     required String shareId,
   }) async {
-    await _call('requestShareManifest', {
-      'peerId': peerId,
-      'shareId': shareId,
-    });
+    await _call('requestShareManifest', {'peerId': peerId, 'shareId': shareId});
   }
 
   @override

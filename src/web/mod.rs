@@ -696,6 +696,13 @@ mod tests {
         .await;
         assert_eq!(response, json!({"id": 4, "ok": 0}));
 
+        // The quick palette is Rust-owned so the TUI and Flutter cannot drift.
+        let response = frame(r#"{"id": 11, "method": "quickReactions", "params": null}"#).await;
+        assert_eq!(
+            response,
+            json!({"id": 11, "ok": ["👍", "❤️", "😂", "🎉", "😮", "😢"]})
+        );
+
         // Network-size buckets (the label rule lives in Rust only).
         let response =
             frame(r#"{"id": 5, "method": "networkSizeLabel", "params": {"peerCount": 2}}"#).await;
@@ -1053,6 +1060,7 @@ mod tests {
             "getMyUserId",
             "listNetworkPeers",
             "getLanOnly",
+            "quickReactions",
             "getBroadcastUnreadCount",
             "markBroadcastViewed",
             "getTheme",

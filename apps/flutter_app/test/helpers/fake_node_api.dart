@@ -19,7 +19,8 @@ import 'package:p2p_app_flutter/src/rust/notifications.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
-import 'package:p2p_app_flutter/src/rust/shares.dart' show ShareManifest, ShareOffer;
+import 'package:p2p_app_flutter/src/rust/shares.dart'
+    show ShareManifest, ShareOffer;
 import 'package:p2p_app_flutter/src/rust/theme.dart';
 
 class FakeNodeApi implements NodeApi {
@@ -241,7 +242,10 @@ class FakeNodeApi implements NodeApi {
   final List<({String peerId, bool isTyping})> typingSends = [];
 
   @override
-  Future<void> sendTyping({required String peerId, required bool isTyping}) async {
+  Future<void> sendTyping({
+    required String peerId,
+    required bool isTyping,
+  }) async {
     _record('sendTyping', (peerId: peerId, isTyping: isTyping));
     typingSends.add((peerId: peerId, isTyping: isTyping));
   }
@@ -467,7 +471,10 @@ class FakeNodeApi implements NodeApi {
   }
 
   @override
-  Future<void> setTheme({required bool dark, required String accentName}) async {
+  Future<void> setTheme({
+    required bool dark,
+    required String accentName,
+  }) async {
     _record('setTheme', {'dark': dark, 'accentName': accentName});
     final swatch = theme.accents
         .where((a) => a.name == accentName)
@@ -623,6 +630,18 @@ class FakeNodeApi implements NodeApi {
     final override = validateEmojiOverride;
     if (override != null) return override(emoji);
     return Future.value(emoji.trim().isNotEmpty && emoji.trim().length <= 32);
+  }
+
+  /// Override the Rust-owned palette so a widget test can prove the menu reads
+  /// it from the API rather than a Dart constant.
+  Future<List<String>> Function()? quickReactionsOverride;
+
+  @override
+  Future<List<String>> quickReactions() {
+    _record('quickReactions');
+    final override = quickReactionsOverride;
+    if (override != null) return override();
+    return Future.value(const ['👍', '❤️', '😂', '🎉', '😮', '😢']);
   }
 
   /// Override the network-size label returned by the Rust boundary helper.

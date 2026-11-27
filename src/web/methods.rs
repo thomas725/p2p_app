@@ -75,6 +75,7 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
             network_config(m, params)
         }
         "getLanOnly" => ok(api::get_lan_only()),
+        "quickReactions" => ok(api::quick_reactions()),
         "getBroadcastUnreadCount" => ok(api::get_broadcast_unread_count()),
         "markBroadcastViewed" => json(api::mark_broadcast_viewed()),
         m @ ("isPeerBlocked" | "blockPeer" | "unblockPeer" | "listBlockedPeers") => {

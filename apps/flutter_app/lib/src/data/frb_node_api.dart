@@ -148,6 +148,9 @@ class FrbNodeApi implements NodeApi {
       bridge.validateEmoji(emoji: emoji);
 
   @override
+  Future<List<String>> quickReactions() => bridge.quickReactions();
+
+  @override
   Future<ChatMessage> saveOutgoingBroadcast({
     required String content,
     String? attachmentPath,
@@ -410,8 +413,9 @@ class FrbNodeApi implements NodeApi {
       bridge.getShare(shareId: shareId);
 
   @override
-  Future<bridge.MobileShare> createShare({required bridge.CreateShareParams params}) =>
-      bridge.createShare(params: params);
+  Future<bridge.MobileShare> createShare({
+    required bridge.CreateShareParams params,
+  }) => bridge.createShare(params: params);
 
   @override
   Future<void> bindShare({required bridge.BindShareParams params}) =>
@@ -449,8 +453,9 @@ class FrbNodeApi implements NodeApi {
   }) => bridge.saveShareManifest(shareId: shareId, manifest: manifest);
 
   @override
-  Future<bridge.MobileShare> acceptShareOffer({required shares.ShareOffer offer}) =>
-      bridge.acceptShareOffer(offer: offer);
+  Future<bridge.MobileShare> acceptShareOffer({
+    required shares.ShareOffer offer,
+  }) => bridge.acceptShareOffer(offer: offer);
 
   @override
   Future<shares.ShareManifest> snapshotShare({

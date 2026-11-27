@@ -5,22 +5,22 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        71 |
-| Total Rust Lines      |    40,878 |
-| Total Rust Chars      | 1,549,113 |
-| Avg Lines/Rust File   |       575 |
-| Avg Chars/Rust File   |    21,818 |
+| Total Rust Lines      |    41,019 |
+| Total Rust Chars      | 1,554,392 |
+| Avg Lines/Rust File   |       577 |
+| Avg Chars/Rust File   |    21,892 |
 | Total Dart Files      |        50 |
-| Total Dart Lines      |    22,559 |
-| Total Dart Chars      |   725,228 |
-| Avg Lines/Dart File   |       451 |
-| Avg Chars/Dart File   |    14,504 |
+| Total Dart Lines      |    22,610 |
+| Total Dart Chars      |   726,445 |
+| Avg Lines/Dart File   |       452 |
+| Avg Chars/Dart File   |    14,528 |
 | Total Kotlin Files    |         4 |
 | Total Kotlin Lines    |       612 |
 | Total Kotlin Chars    |    22,099 |
 | Avg Lines/Kotlin File |       153 |
 | Avg Chars/Kotlin File |     5,524 |
 
-**Grand Total:** 125 files, 64,049 lines, 2,296,440 characters
+**Grand Total:** 125 files, 64,241 lines, 2,302,936 characters
 
 ## Rust Source Files
 
@@ -41,7 +41,7 @@
 | src                     | file_transfer.rs     |     5 | 20140 |   507 |        - |       - | Source file                                        |
 | src                     | files.rs             |     6 | 30295 |   791 |        - |       - | Content-addressed attachment store                 |
 | src                     | fmt.rs               |     4 |  6204 |   192 |        - |       - | Formatting & display utilities                     |
-| src                     | frb_generated.rs     |     6 | 251637 |  6066 |        - |       - | flutter_rust_bridge codegen                        |
+| src                     | frb_generated.rs     |     6 | 252959 |  6099 |        - |       - | flutter_rust_bridge codegen                        |
 | src                     | groups.rs            |     3 | 23346 |   618 |        - |       - | Group management & persistence                     |
 | src                     | groups.rs            |     5 |  4846 |   131 |        - |       - | TUI groups renderer                                |
 | src                     | identity.rs          |     4 | 28935 |   763 |        - |       - | Users, account keys & device bindings              |
@@ -49,12 +49,12 @@
 | src                     | log.rs               |     2 |   907 |    31 |        - |       - | TUI log renderer                                   |
 | src                     | logging.rs           |     5 | 13949 |   426 |        - |       - | Logging utilities & setup                          |
 | src                     | messages.rs          |     5 | 22794 |   587 |        - |       - | Message persistence & retrieval                    |
-| src                     | methods.rs           |     4 | 34326 |  1070 |        - |       - | Web JSON method dispatch                           |
+| src                     | methods.rs           |     4 | 34382 |  1071 |        - |       - | Web JSON method dispatch                           |
 | src                     | mobile_api.rs        |     4 | 36782 |  1049 |        - |       - | Mobile FRB API surface                             |
 | src                     | mobile_node.rs       |     5 | 96435 |  2565 |        - |       - | Mobile node lifecycle & swarm                      |
-| src                     | mod.rs               |     5 | 44870 |  1290 |        - |       - | FRB API surface                                    |
-| src                     | mod.rs               |     4 | 12814 |   329 |        - |       - | TUI render chrome & dispatch                       |
-| src                     | mod.rs               |     7 | 64394 |  1681 |        - |       - | Web server (axum HTTP+WS)                          |
+| src                     | mod.rs               |     5 | 45231 |  1300 |        - |       - | FRB API surface                                    |
+| src                     | mod.rs               |     4 | 12881 |   330 |        - |       - | TUI render chrome & dispatch                       |
+| src                     | mod.rs               |     7 | 64724 |  1689 |        - |       - | Web server (axum HTTP+WS)                          |
 | src                     | net_diag.rs          |     4 | 21449 |   596 |        - |       - | Source file                                        |
 | src                     | network.rs           |     3 |  2655 |    84 |        - |       - | Network size classification                        |
 | src                     | network_config.rs    |     3 |  7751 |   216 |        - |       - | Source file                                        |
@@ -63,7 +63,7 @@
 | src                     | peer_info.rs         |     3 |  3104 |    88 |        - |       - | TUI peer-info renderer                             |
 | src                     | peers.rs             |     4 | 10590 |   294 |        - |       - | Peer management & tracking                         |
 | src                     | peers.rs             |     5 |  5890 |   136 |        - |       - | TUI peers-table renderer                           |
-| src                     | reactions.rs         |     5 | 15921 |   419 |        - |       - | Source file                                        |
+| src                     | reactions.rs         |     5 | 17473 |   463 |        - |       - | Source file                                        |
 | src                     | relay.rs             |     5 |  3764 |    95 |        - |       - | Source file                                        |
 | src                     | reply.rs             |     4 |  5781 |   157 |        - |       - | Source file                                        |
 | src                     | settings.rs          |     3 |  6614 |   168 |        - |       - | Source file                                        |
@@ -84,13 +84,13 @@
 | src/bin/tui             | click_handlers.rs    |     7 | 25366 |   604 |        - |       - | Click handlers & index mapping                     |
 | src/bin/tui             | command_processor.rs |     6 | 31877 |   867 |        - |       - | Event routing & state updates                      |
 | src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)                    |
-| src/bin/tui             | input_processor.rs   |     7 | 73500 |  1891 |        - |       - | Input event routing & processing                   |
+| src/bin/tui             | input_processor.rs   |     7 | 75017 |  1932 |        - |       - | Input event routing & processing                   |
 | src/bin/tui             | key_probe.rs         |     6 |  6272 |   172 |        - |       - | Keyboard enhancement probe                         |
 | src/bin/tui             | main_loop.rs         |     6 | 15979 |   400 |        - |       - | Task orchestration & async                         |
 | src/bin/tui             | message_handlers.rs  |     4 | 17117 |   522 |        - |       - | Message sending logic                              |
 | src/bin/tui             | scroll_handlers.rs   |     6 | 18157 |   482 |        - |       - | Scroll & hover-aware navigation                    |
 | src/bin/tui             | state.rs             |     8 | 66192 |  1560 |        - |       - | Shared application state                           |
-| src/bin/tui/render_loop | layout.rs            |     5 |  3173 |    89 |        - |       - | UI layout component rendering                      |
+| src/bin/tui/render_loop | layout.rs            |     5 |  3247 |    92 |        - |       - | UI layout component rendering                      |
 | src/bin/tui/render_loop | mod.rs               |     6 | 15298 |   390 |        - |       - | Render loop orchestration (60 FPS)                 |
 | src/generated           | columns.rs           |     1 |  4561 |   108 |        - |       - | Auto-generated column definitions                  |
 | src/generated           | mod.rs               |     0 |   488 |    11 |        - |       - | Module declarations                                |
@@ -98,7 +98,7 @@
 | src/generated           | models_queryable.rs  |     1 | 14539 |   397 |        - |       - | Queryable data models                              |
 | src/generated           | schema.rs            |     2 |  9786 |   330 |        - |       - | Database schema (Diesel)                           |
 
-**Total:** 71 files, 40,878 lines, 1,549,113 characters
+**Total:** 71 files, 41,019 lines, 1,554,392 characters
 
 ## Rust Test Files
 
@@ -133,7 +133,7 @@
 | unit   | unit_bin_tui_click_handlers.rs     |   866 | 32143 |     4 | Unit tests for TUI click handlers     |
 | unit   | unit_bin_tui_command_processor.rs  |  1442 | 48963 |     4 | Unit tests for TUI command processor  |
 | unit   | unit_bin_tui_event_source.rs       |    44 |  1352 |     2 | Unit tests for TUI event source       |
-| unit   | unit_bin_tui_input_processor.rs    |  3712 | 128313 |     5 | Unit tests for TUI input processor    |
+| unit   | unit_bin_tui_input_processor.rs    |  3829 | 132484 |     5 | Unit tests for TUI input processor    |
 | unit   | unit_bin_tui_main_loop.rs          |   233 |  7007 |     3 | Unit tests for TUI main loop          |
 | unit   | unit_bin_tui_message_handlers.rs   |   467 | 15073 |     5 | Unit tests for TUI message handlers   |
 | unit   | unit_bin_tui_render_loop_layout.rs |    70 |  2251 |     2 | Test file                             |
@@ -172,7 +172,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   400 | 12098 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 29,783 lines, 1,001,252 characters
+**Total:** 67 test files, 29,900 lines, 1,005,423 characters
 
 ## Dart Source Files
 
@@ -180,13 +180,13 @@
 |:-------------|:---------------------------------|------:|------:|------:|---------:|--------:|---------------------------------:|
 | lib          | main.dart                        |     5 |  3163 |   108 |        - |       - | Flutter app entry point          |
 | lib          | chat_message_ext.dart            |     3 |  2342 |    60 |        - |       - | Hand-written message helpers     |
-| lib          | frb_node_api.dart                |     5 | 15668 |   525 |        - |       - | In-process FRB transport         |
-| lib          | http_node_api.dart               |     7 | 36096 |  1112 |        - |       - | WebSocket/HTTP transport         |
-| lib          | node_api.dart                    |     2 | 13989 |   407 |        - |       - | Transport-agnostic node API      |
+| lib          | frb_node_api.dart                |     5 | 15755 |   530 |        - |       - | In-process FRB transport         |
+| lib          | http_node_api.dart               |     7 | 36214 |  1117 |        - |       - | WebSocket/HTTP transport         |
+| lib          | node_api.dart                    |     2 | 14072 |   402 |        - |       - | Transport-agnostic node API      |
 | lib          | node_transport.dart              |     4 |  3396 |   106 |        - |       - | Duplex transport abstraction     |
 | lib          | shares_json.dart                 |     5 |  3389 |    93 |        - |       - | Dart source file                 |
-| lib/src/rust | api.dart                         |     5 | 34760 |   992 |        - |       - | FRB API bindings (generated)     |
-| lib/src/rust | frb_generated.dart               |     6 | 197258 |  6302 |        - |       - | flutter_rust_bridge codegen      |
+| lib/src/rust | api.dart                         |     5 | 35033 |  1001 |        - |       - | FRB API bindings (generated)     |
+| lib/src/rust | frb_generated.dart               |     6 | 198048 |  6331 |        - |       - | flutter_rust_bridge codegen      |
 | lib/src/rust | frb_generated.io.dart            |     3 | 26933 |  1121 |        - |       - | FRB IO bindings (generated)      |
 | lib/src/rust | frb_generated.web.dart           |     2 | 26853 |  1121 |        - |       - | FRB web bindings (generated)     |
 | lib/src/rust | messages.dart                    |     5 |  1067 |    32 |        - |       - | Rust bindings (hand-maintained)  |
@@ -206,7 +206,7 @@
 | lib          | group_list.dart                  |    17 |  7931 |   235 |        - |       - | Group list screen                |
 | lib          | home.dart                        |     8 | 46227 |  1362 |        - |       - | App shell & broadcast chat       |
 | lib          | log_tab.dart                     |    10 |  3493 |   123 |        - |       - | Log tab screen                   |
-| lib          | messages.dart                    |    15 | 45724 |  1320 |        - |       - | Shared chat widgets              |
+| lib          | messages.dart                    |    15 | 45590 |  1328 |        - |       - | Shared chat widgets              |
 | lib          | nav_bar.dart                     |     3 |  1252 |    34 |        - |       - | Tab navigation bar               |
 | lib          | peer_info.dart                   |    11 | 17257 |   500 |        - |       - | Peer Info screen                 |
 | lib          | settings.dart                    |    16 | 41440 |  1208 |        - |       - | Settings screen                  |
@@ -229,26 +229,26 @@
 | lib          | theme.dart                       |     2 |  1821 |    49 |        - |       - | Dart source file                 |
 | lib          | ui_utils.dart                    |     2 |  1603 |    37 |        - |       - | Shared formatting & env helpers  |
 
-**Total:** 50 files, 22,559 lines, 725,228 characters
+**Total:** 50 files, 22,610 lines, 726,445 characters
 
 ## Dart Test Files
 
 | Folder  | File                             | Lines | Chars | Depth | Description                           |
 |:--------|:---------------------------------|------:|------:|------:|--------------------------------------:|
-| helpers | fake_node_api.dart               |   813 | 24595 |     4 | In-memory node fake                   |
+| helpers | fake_node_api.dart               |   825 | 25030 |     4 | In-memory node fake                   |
 | unit    | api_test.dart                    |    61 |  2389 |     4 | Dart API layer unit tests             |
 | unit    | attachments_test.dart            |   132 |  4053 |     5 | Attachment helper tests               |
 | unit    | blocklist_test.dart              |    47 |  1429 |     4 | Dart test file                        |
 | unit    | call_audio_android_test.dart     |   167 |  5393 |     5 | Dart test file                        |
 | unit    | call_audio_test.dart             |    93 |  3466 |     5 | Dart test file                        |
-| unit    | http_node_api_test.dart          |   904 | 29576 |    10 | Web transport wire-contract tests     |
+| unit    | http_node_api_test.dart          |   897 | 29404 |    10 | Web transport wire-contract tests     |
 | unit    | notifications_test.dart          |    99 |  3572 |     3 | Dart test file                        |
 | widget  | attachment_chip_test.dart        |    91 |  2630 |     7 | Attachment chip widget tests          |
 | widget  | call_screen_test.dart            |   593 | 18895 |    12 | Call screen widget tests              |
 | widget  | contact_list_test.dart           |   661 | 22484 |     7 | Contacts roster widget tests          |
 | widget  | device_binding_test.dart         |    72 |  1990 |     5 | Device-binding prompt tests           |
 | widget  | group_list_test.dart             |   233 |  7128 |     5 | Group list widget tests               |
-| widget  | messages_test.dart               |  1352 | 40012 |    10 | Chat widget tests                     |
+| widget  | messages_test.dart               |  1383 | 41063 |    10 | Chat widget tests                     |
 | widget  | peer_info_test.dart              |   306 |  9464 |     6 | Peer Info widget tests                |
 | widget  | settings_network_peers_test.dart |   128 |  4028 |     3 | Dart test file                        |
 | widget  | settings_test.dart               |   426 | 13105 |     6 | Settings widget tests                 |
@@ -258,7 +258,7 @@
 | widget  | share_publish_test.dart          |   292 |  8500 |     6 | Dart test file                        |
 | test    | widget_test.dart                 |    21 |   624 |     2 | Widget smoke tests                    |
 
-**Total:** 22 test files, 7,351 lines, 229,863 characters
+**Total:** 22 test files, 7,387 lines, 231,177 characters
 
 ## Kotlin Source Files
 

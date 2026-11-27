@@ -340,12 +340,6 @@ Future<int> _copyMessages(
 int confirmedMessageIndex(List<ChatMessage> messages, String msgId) =>
     messages.indexWhere((m) => m.sent && m.msgId == msgId);
 
-/// The small palette offered when a user adds a reaction. Kept as a plain
-/// constant in the UI: the canonical *counts* and `mine` flags always come from
-/// Rust, so a frontend palette is purely an affordance and can never diverge
-/// from the stored data.
-const List<String> quickReactions = ['👍', '❤️', '😂', '🎉', '😮', '😢'];
-
 /// Toggle [emoji] on the message at [index] through Rust and replace just that
 /// row with the returned canonical chips. The owning [messages] list is mutated
 /// in place so the caller can `setState`; a reply that arrives after the row was
@@ -366,7 +360,10 @@ Future<void> toggleReactionAt(
 /// Apply fresh chips from a live `reaction` event (US-008) to every row with the
 /// matching wire id. Mirrors the TUI's `msg_id`-keyed in-memory chip map: the
 /// event carries only the id, and Rust is the single source of the summary.
-Future<void> applyReactionEvent(List<ChatMessage> messages, String msgId) async {
+Future<void> applyReactionEvent(
+  List<ChatMessage> messages,
+  String msgId,
+) async {
   final summaries = await nodeApi.getReactions(msgId: msgId);
   for (var i = 0; i < messages.length; i++) {
     if (messages[i].msgId == msgId) {
@@ -884,19 +881,30 @@ class MessageBubble extends StatelessWidget {
   /// token (which Rust validates as trimmed, non-empty text) can collide with it.
   static const String _customReaction = '\u0000custom';
 
-  /// Show the quick-reaction palette plus a "Custom…" entry and forward the
-  /// chosen token to the owning screen. Custom tokens are validated by Rust
-  /// before they reach [react], so Dart never duplicates the rule. Kept here so
-  /// every bubble gets the same affordance without the three chat screens
-  /// duplicating a menu.
-  Future<void> _pickReaction(BuildContext context, void Function(String) react) async {
+  /// Show the Rust-owned quick-reaction palette plus a "Custom…" entry and
+  /// forward the chosen token to the owning screen. Custom tokens are validated
+  /// by Rust before they reach [react], so Dart never duplicates the rule or the
+  /// emoji list. Kept here so every bubble gets the same affordance without the
+  /// three chat screens duplicating a menu.
+  Future<void> _pickReaction(
+    BuildContext context,
+    void Function(String) react,
+  ) async {
+    final palette = await nodeApi.quickReactions();
+    if (!context.mounted) return;
     final choice = await showMenu<String>(
       context: context,
       position: const RelativeRect.fromLTRB(0, 0, 0, 0),
       items: [
-        for (final token in quickReactions)
-          PopupMenuItem<String>(value: token, child: Text(token, style: const TextStyle(fontSize: 18))),
-        const PopupMenuItem<String>(value: _customReaction, child: Text('Custom…')),
+        for (final token in palette)
+          PopupMenuItem<String>(
+            value: token,
+            child: Text(token, style: const TextStyle(fontSize: 18)),
+          ),
+        const PopupMenuItem<String>(
+          value: _customReaction,
+          child: Text('Custom…'),
+        ),
       ],
     );
     if (choice == null) return;

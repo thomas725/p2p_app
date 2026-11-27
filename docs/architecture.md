@@ -154,9 +154,13 @@ only the `msg_id`; each frontend fetches typed `ReactionSummary` values from Rus
 Rust-owned too: `reactions::validate_emoji` (non-empty, ≤32 chars after trim) is
 re-applied on write and exposed to both frontends — the TUI reaction editor and
 Flutter's "Custom…" token dialog (`validateEmoji` binding) call the same rule,
-so neither frontend duplicates it. See
-[`archive/2026-11-21_message_reactions.md`](archive/2026-11-21_message_reactions.md)
-for the full slice.
+so neither frontend duplicates it. The *quick* palette is Rust-owned too:
+`reactions::QUICK_REACTIONS` is exposed as the no-param `quickReactions()`
+FRB/web method for Flutter's menu, and the TUI's `1`–`6` shortcuts read the
+same list after `Ctrl+Y`, committing through the same path as a custom token.
+See [`archive/2026-11-21_message_reactions.md`](archive/2026-11-21_message_reactions.md)
+and [`archive/2026-11-27_quick_reaction_palette_parity.md`](archive/2026-11-27_quick_reaction_palette_parity.md)
+for the full slices.
 
 Replies (US-006) carry a canonical `ReplyRef { msg_id, sender, preview }` in the
 message payload rather than a foreign key. `src/reply.rs` owns the bounded

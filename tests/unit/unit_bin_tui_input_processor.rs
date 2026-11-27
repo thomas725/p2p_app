@@ -3573,6 +3573,123 @@ fn test_enter_persists_reaction_and_refreshes_chips() {
 
 #[test]
 #[serial]
+fn test_quick_reaction_digits_apply_the_rust_palette() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+    p2p_app::identity::provision_my_user(None, None).expect("provision");
+    let local_peer = p2p_app::peers::local_peer_id_string().expect("local peer id");
+    p2p_app::messages::save_message_with_meta(
+        "hello",
+        Some("react-peer"),
+        "dm",
+        true,
+        None,
+        p2p_app::messages::MessageMeta {
+            msg_id: Some("dm-0".to_string()),
+            ..Default::default()
+        },
+    )
+    .expect("seed dm message");
+
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let mut state = app_state_with_dm_messages("react-peer", 1);
+        focus_dm_tab(&mut state);
+        let state = Arc::new(Mutex::new(state));
+        let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(4);
+        let (render_tx, _render_rx) = mpsc::channel(4);
+
+        // Open the editor and use both ends of the palette without typing.
+        for (digit, emoji) in [('1', "👍"), ('6', "😢")] {
+            let _ = process_key_event(
+                KeyEvent::new(KeyCode::Char('y'), KeyModifiers::CONTROL),
+                &state,
+                &swarm_cmd_tx,
+                &render_tx,
+            )
+            .await;
+            assert!(state.lock().await.is_adding_reaction(), "editor opened");
+
+            let _ = process_key_event(
+                KeyEvent::new(KeyCode::Char(digit), KeyModifiers::empty()),
+                &state,
+                &swarm_cmd_tx,
+                &render_tx,
+            )
+            .await;
+
+            let cmd =
+                tokio::time::timeout(std::time::Duration::from_millis(100), swarm_cmd_rx.recv())
+                    .await
+                    .expect("timeout")
+                    .expect("expected SendReaction");
+            match cmd {
+                SwarmCommand::SendReaction { peer_ids, signal } => {
+                    assert_eq!(peer_ids, vec!["react-peer".to_string()]);
+                    assert_eq!(signal.msg_id, "dm-0");
+                    assert_eq!(signal.emoji, emoji);
+                    assert_eq!(signal.actor, local_peer);
+                    assert!(!signal.remove, "palette digit adds a new reaction");
+                }
+                _ => panic!("expected SendReaction"),
+            }
+            let s = state.lock().await;
+            assert!(!s.is_adding_reaction(), "palette consumed the editor");
+            assert_eq!(s.chat_input.lines().join(""), "", "digit was not typed");
+        }
+
+        assert!(
+            p2p_app::reactions::has_reaction("dm-0", &local_peer, "👍").expect("has_reaction"),
+            "first palette token persisted"
+        );
+        assert!(
+            p2p_app::reactions::has_reaction("dm-0", &local_peer, "😢").expect("has_reaction"),
+            "last palette token persisted"
+        );
+        let chips = state
+            .lock()
+            .await
+            .reactions
+            .get("dm-0")
+            .expect("chips")
+            .clone();
+        assert_eq!(chips.len(), 2);
+    });
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
+
+#[tokio::test]
+async fn test_digit_outside_the_reaction_editor_types_normally() {
+    let mut state = app_state_with_dm_messages("react-peer", 1);
+    focus_dm_tab(&mut state);
+    let state = Arc::new(Mutex::new(state));
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(4);
+    let (render_tx, _render_rx) = mpsc::channel(4);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Char('1'), KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert_eq!(s.chat_input.lines().join(""), "1");
+    assert!(
+        !s.is_adding_reaction(),
+        "plain digits never open the editor"
+    );
+}
+
+#[test]
+#[serial]
 fn test_reapplying_reaction_toggles_off_and_signals_remove() {
     let _guard = p2p_app::db::shared_db_test_lock()
         .lock()

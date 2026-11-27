@@ -28,6 +28,39 @@ use std::hash::BuildHasher;
 /// short enough that a hostile peer cannot stuff arbitrary text into a chip.
 pub const MAX_EMOJI_LEN: usize = 32;
 
+/// Default tokens offered when a user adds a reaction.
+///
+/// The TUI's `1`–`6` shortcuts and Flutter's palette menu both read this list,
+/// so the affordance cannot drift between frontends. Tokens are still passed
+/// through [`validate_emoji`] before they reach the database.
+pub const QUICK_REACTIONS: [&str; 6] = ["👍", "❤️", "😂", "🎉", "😮", "😢"];
+
+/// Return the palette token at a zero-based position.
+#[must_use]
+pub fn quick_reaction(index: usize) -> Option<&'static str> {
+    QUICK_REACTIONS.get(index).copied()
+}
+
+/// Owned palette for the FRB/web boundaries, which cannot expose a static slice.
+#[must_use]
+pub fn quick_reactions() -> Vec<String> {
+    QUICK_REACTIONS
+        .iter()
+        .map(|token| (*token).to_string())
+        .collect()
+}
+
+/// Compact `1 token  2 token …` hint for the TUI reaction editor title.
+#[must_use]
+pub fn quick_reaction_hint() -> String {
+    QUICK_REACTIONS
+        .iter()
+        .enumerate()
+        .map(|(index, token)| format!("{} {token}", index.saturating_add(1)))
+        .collect::<Vec<_>>()
+        .join("  ")
+}
+
 /// Aggregated reactions on one message, ready for either frontend to render.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -310,6 +343,17 @@ mod tests {
         assert!(validate_emoji("   ").is_err());
         let too_long = "x".repeat(MAX_EMOJI_LEN + 1);
         assert!(validate_emoji(&too_long).is_err());
+    }
+
+    #[test]
+    fn quick_reaction_palette_is_indexable_and_valid() {
+        assert_eq!(quick_reaction(0), Some("👍"));
+        assert_eq!(quick_reaction(QUICK_REACTIONS.len()), None);
+        assert_eq!(quick_reactions(), vec!["👍", "❤️", "😂", "🎉", "😮", "😢"]);
+        assert_eq!(quick_reaction_hint(), "1 👍  2 ❤️  3 😂  4 🎉  5 😮  6 😢");
+        for token in QUICK_REACTIONS {
+            assert_eq!(validate_emoji(token).expect("valid palette token"), token);
+        }
     }
 
     #[test]

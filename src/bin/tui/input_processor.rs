@@ -444,19 +444,20 @@ fn confirm_edit_message(s: &mut super::state::AppState) {
     }
 }
 
-/// Apply the emoji typed in the shared editor as a reaction on the newest
-/// message of the active chat (US-008). The local change is applied before the
-/// signal is queued, so chips refresh even when the node is offline; a failed
-/// queue only delays peer sync.
-async fn confirm_reaction(
+/// Apply one reaction token to the prompt's message. Both the typed custom
+/// token and the quick palette go through this single commit path, so
+/// validation, persistence, fan-out and chip refresh cannot drift. The local
+/// change is applied before the signal is queued, so chips refresh even when
+/// the node is offline; a failed queue only delays peer sync.
+async fn commit_reaction(
     s: &mut super::state::AppState,
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    raw: &str,
 ) {
     let Some(prompt) = s.adding_reaction.clone() else {
         return;
     };
-    let raw = s.chat_input.lines().join("\n").trim().to_string();
-    let emoji = match p2p_app::reactions::validate_emoji(&raw) {
+    let emoji = match p2p_app::reactions::validate_emoji(raw) {
         Ok(emoji) => emoji,
         Err(e) => {
             s.popup = Some(format!("Invalid reaction: {e}"));
@@ -506,6 +507,43 @@ async fn confirm_reaction(
     s.input_mode = p2p_app::InputMode::Chat;
     s.chat_input = super::TextArea::default();
     p2plog_debug(format!("{action} reaction {emoji} on {}", prompt.msg_id));
+}
+
+/// Apply the emoji typed in the shared editor as a reaction on the newest
+/// message of the active chat (US-008).
+async fn confirm_reaction(
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) {
+    let raw = s.chat_input.lines().join("\n");
+    commit_reaction(s, swarm_cmd_tx, &raw).await;
+}
+
+/// Apply one of the canonical quick-reaction tokens while the reaction editor
+/// owns input. Returns `true` only when a plain `1`–`6` key was consumed, so
+/// ordinary chat characters and every modifier chord keep their normal paths.
+async fn handle_quick_reaction_key(
+    key_event: &crossterm::event::KeyEvent,
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) -> bool {
+    if !s.is_adding_reaction() || !key_event.modifiers.is_empty() {
+        return false;
+    }
+    let index = match key_event.code {
+        crossterm::event::KeyCode::Char('1') => 0,
+        crossterm::event::KeyCode::Char('2') => 1,
+        crossterm::event::KeyCode::Char('3') => 2,
+        crossterm::event::KeyCode::Char('4') => 3,
+        crossterm::event::KeyCode::Char('5') => 4,
+        crossterm::event::KeyCode::Char('6') => 5,
+        _ => return false,
+    };
+    let Some(token) = p2p_app::reactions::quick_reaction(index) else {
+        return false;
+    };
+    commit_reaction(s, swarm_cmd_tx, token).await;
+    true
 }
 
 /// Handles Ctrl+W (close DM or Peer Info tab)
@@ -1332,6 +1370,9 @@ async fn handle_key_dispatch(
     let input_enabled = tab.is_input_enabled();
 
     if handle_global_navigation(&key_event, is_ctrl, on_direct, s).await {
+        return;
+    }
+    if handle_quick_reaction_key(&key_event, s, swarm_cmd_tx).await {
         return;
     }
     if handle_clipboard_shortcut(key_event.code, is_ctrl, s, &tab) {

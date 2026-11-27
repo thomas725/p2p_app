@@ -238,6 +238,7 @@ Enter  Send / open / save   Shift+Enter  Newline   Esc  Cancel / back
 Chat / DM / Group: click a message -> sender's Peer Info
 Chat / DM / Group: Ctrl+R -> reply to newest message (Esc clears)
 Chat / DM / Group: Ctrl+Y -> react to newest message with an emoji
+Reaction prompt: 1-6 quick emoji | Enter custom token | Esc cancel
 Chat / DM / Group: Ctrl+C -> copy newest message (OSC 52)
 Chat / DM / Group: Ctrl+O -> open newest downloaded attachment
 Chat / DM / Group: Del -> delete newest sent message (local only)

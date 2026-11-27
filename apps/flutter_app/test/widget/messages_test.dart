@@ -214,19 +214,20 @@ void main() {
 
     expect(find.byKey(const Key('edit-message-field')), findsOneWidget);
     expect(
-      tester.widget<TextField>(find.byKey(const Key('edit-message-field')))
+      tester
+          .widget<TextField>(find.byKey(const Key('edit-message-field')))
           .controller
           ?.text,
       'original',
     );
-    await tester.enterText(find.byKey(const Key('edit-message-field')), 'fixed');
+    await tester.enterText(
+      find.byKey(const Key('edit-message-field')),
+      'fixed',
+    );
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    expect(
-      fake.calls.where((c) => c.method == 'editMessage'),
-      hasLength(1),
-    );
+    expect(fake.calls.where((c) => c.method == 'editMessage'), hasLength(1));
     expect(find.text('fixed'), findsOneWidget);
     expect(find.byKey(const Key('edited-marker')), findsOneWidget);
   });
@@ -317,8 +318,8 @@ void main() {
   ) async {
     final fake = FakeNodeApi();
     fake.loadDmMessagesOverride = (_, _) => [];
-    fake.saveOutgoingDmOverride =
-        (peerId, content, replyTo) => chatMessage(id: 9, content: content);
+    fake.saveOutgoingDmOverride = (peerId, content, replyTo) =>
+        chatMessage(id: 9, content: content);
     nodeApi = fake;
     startEventPolling();
 
@@ -333,11 +334,9 @@ void main() {
     await tester.pump();
     await tester.enterText(composer, 'hi');
     await tester.pump();
-    expect(
-      fake.typingSends.map((signal) => signal.isTyping).toList(),
-      [true],
-      reason: 'rapid edits are throttled',
-    );
+    expect(fake.typingSends.map((signal) => signal.isTyping).toList(), [
+      true,
+    ], reason: 'rapid edits are throttled');
 
     await tester.enterText(composer, '');
     await tester.pump();
@@ -346,10 +345,12 @@ void main() {
     await tester.tap(find.byIcon(Icons.send));
     await tester.pumpAndSettle();
 
-    expect(
-      fake.typingSends.map((signal) => signal.isTyping).toList(),
-      [true, false, true, false],
-    );
+    expect(fake.typingSends.map((signal) => signal.isTyping).toList(), [
+      true,
+      false,
+      true,
+      false,
+    ]);
     expect(
       fake.typingSends.every((signal) => signal.peerId == 'peer-abc'),
       isTrue,
@@ -361,8 +362,8 @@ void main() {
   ) async {
     final fake = FakeNodeApi();
     fake.loadDmMessagesOverride = (_, _) => [];
-    fake.saveOutgoingDmOverride =
-        (peerId, content, replyTo) => chatMessage(id: 10, content: content);
+    fake.saveOutgoingDmOverride = (peerId, content, replyTo) =>
+        chatMessage(id: 10, content: content);
     nodeApi = fake;
     startEventPolling();
 
@@ -396,7 +397,9 @@ void main() {
     expect(fake.dmSends.single.content, body);
   });
 
-  testWidgets('a bubble renders every line of a multiline body', (tester) async {
+  testWidgets('a bubble renders every line of a multiline body', (
+    tester,
+  ) async {
     const body = 'line one\nline two\nline three';
     await tester.pumpWidget(
       MaterialApp(
@@ -495,10 +498,10 @@ void main() {
       )
       ..broadcastUnreadCount = 2
       ..loadBroadcastMessagesOverride = (_) => [
-            chatMessage(id: 1, msgId: 'old', content: 'old'),
-            chatMessage(id: 2, msgId: 'new-1', content: 'new one'),
-            chatMessage(id: 3, msgId: 'new-2', content: 'new two'),
-          ];
+        chatMessage(id: 1, msgId: 'old', content: 'old'),
+        chatMessage(id: 2, msgId: 'new-1', content: 'new one'),
+        chatMessage(id: 3, msgId: 'new-2', content: 'new two'),
+      ];
     nodeApi = fake;
 
     await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
@@ -636,10 +639,7 @@ void main() {
         attachment: attachment,
       ),
     );
-    expect(
-      mixed?.preview,
-      'see attached [file] notes.txt (2 KiB)',
-    );
+    expect(mixed?.preview, 'see attached [file] notes.txt (2 KiB)');
   });
 
   test('a reply to our own message freezes the self nickname as sender', () {
@@ -657,10 +657,7 @@ void main() {
     );
     expect(draft?.sender, 'Alice (abc)');
     // Rows without a resolved nickname still fall back to "Me".
-    expect(
-      replyDraftFor(chatMessage(id: 2, msgId: 'own-2'))?.sender,
-      'Me',
-    );
+    expect(replyDraftFor(chatMessage(id: 2, msgId: 'own-2'))?.sender, 'Me');
   });
 
   testWidgets('a reply bubble renders the canonical quoted header', (
@@ -804,44 +801,47 @@ void main() {
     expect(find.text('private hello'), findsOneWidget);
   });
 
-  testWidgets('a live broadcast from the open peer is mirrored without being persisted twice', (
-    tester,
-  ) async {
-    final forwarded = <SwarmEventJson>[];
-    setEventSink(forwarded.add);
-    final fake = FakeNodeApi();
-    fake.loadDmMessagesOverride = (_, _) => [];
-    fake.loadBroadcastMessagesOverride = (_) => [];
-    nodeApi = fake;
-    startEventPolling();
+  testWidgets(
+    'a live broadcast from the open peer is mirrored without being persisted twice',
+    (tester) async {
+      final forwarded = <SwarmEventJson>[];
+      setEventSink(forwarded.add);
+      final fake = FakeNodeApi();
+      fake.loadDmMessagesOverride = (_, _) => [];
+      fake.loadBroadcastMessagesOverride = (_) => [];
+      nodeApi = fake;
+      startEventPolling();
 
-    await tester.pumpWidget(
-      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DmChatScreen(peer: peerRecord(), serviceRunning: true),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    fake.deliverEvent(
-      const SwarmEventJson(
-        eventType: 'broadcast',
-        peerId: 'peer-abc',
-        content: 'live public hello',
-        msgId: 'bc-live',
-        encrypted: false,
-      ),
-    );
-    await tester.pumpAndSettle();
+      fake.deliverEvent(
+        const SwarmEventJson(
+          eventType: 'broadcast',
+          peerId: 'peer-abc',
+          content: 'live public hello',
+          msgId: 'bc-live',
+          encrypted: false,
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('live public hello'), findsOneWidget);
-    // The DM screen never persists broadcasts itself (home owns that via the
-    // forwarded sink), so there is exactly one persistence path.
-    expect(
-      fake.calls.where((c) => c.method == 'saveIncomingMessage'),
-      isEmpty,
-    );
-    // The event is still forwarded so the broadcast tab underneath stays live.
-    expect(forwarded, hasLength(1));
-    expect(forwarded.single.eventType, 'broadcast');
-  });
+      expect(find.text('live public hello'), findsOneWidget);
+      // The DM screen never persists broadcasts itself (home owns that via the
+      // forwarded sink), so there is exactly one persistence path.
+      expect(
+        fake.calls.where((c) => c.method == 'saveIncomingMessage'),
+        isEmpty,
+      );
+      // The event is still forwarded so the broadcast tab underneath stays live.
+      expect(forwarded, hasLength(1));
+      expect(forwarded.single.eventType, 'broadcast');
+    },
+  );
 
   testWidgets('the reply action builds a draft and a DM send forwards it', (
     tester,
@@ -1131,7 +1131,9 @@ void main() {
         home: Scaffold(
           body: MessageBubble(
             message: chatMessage(
-              reactions: const [ReactionSummary(emoji: '👍', count: 1, mine: false)],
+              reactions: const [
+                ReactionSummary(emoji: '👍', count: 1, mine: false),
+              ],
             ),
             isOwn: true,
             onReact: (emoji) => toggled = emoji,
@@ -1145,6 +1147,7 @@ void main() {
   });
 
   testWidgets('the reaction menu offers a Custom entry', (tester) async {
+    nodeApi = FakeNodeApi(isRemoteTransport: true);
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -1160,6 +1163,36 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Custom…'), findsOneWidget);
     expect(find.text('👍'), findsOneWidget);
+  });
+
+  testWidgets('the quick-reaction palette comes from the Rust-backed API', (
+    tester,
+  ) async {
+    final fake = FakeNodeApi(isRemoteTransport: true)
+      ..quickReactionsOverride = () async => const ['🔥', '🙌'];
+    nodeApi = fake;
+    String? toggled;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MessageBubble(
+            message: chatMessage(),
+            isOwn: true,
+            onReact: (emoji) => toggled = emoji,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('add-reaction')));
+    await tester.pumpAndSettle();
+    expect(find.text('🔥'), findsOneWidget);
+    expect(find.text('🙌'), findsOneWidget);
+    expect(find.text('👍'), findsNothing);
+    expect(fake.calls.where((c) => c.method == 'quickReactions'), hasLength(1));
+
+    await tester.tap(find.text('🔥'));
+    await tester.pumpAndSettle();
+    expect(toggled, '🔥');
   });
 
   testWidgets('a valid custom reaction token is forwarded trimmed', (
@@ -1265,9 +1298,7 @@ void main() {
 
     await toggleReactionAt(messages, 0, '❤️');
 
-    expect(fake.reactionToggles, [
-      (msgId: 'm-tgl', emoji: '❤️'),
-    ]);
+    expect(fake.reactionToggles, [(msgId: 'm-tgl', emoji: '❤️')]);
     expect(messages[0].reactions, [
       const ReactionSummary(emoji: '❤️', count: 1, mine: true),
     ]);

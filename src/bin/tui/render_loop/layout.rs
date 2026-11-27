@@ -15,7 +15,10 @@ pub fn render_input_section(
     tab_content: &TabContent,
 ) {
     let title = if state.is_adding_reaction() {
-        "Reaction emoji - Enter to toggle, Esc to cancel".to_string()
+        format!(
+            "Reaction {} - number/Enter: toggle, Esc: cancel",
+            p2p_app::reactions::quick_reaction_hint()
+        )
     } else if state.is_editing_message() {
         "Edit sent message - Enter to save locally, Esc to cancel".to_string()
     } else if state.is_dialing_peer() {

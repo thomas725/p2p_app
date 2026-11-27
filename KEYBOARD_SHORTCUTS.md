@@ -78,6 +78,7 @@ Flutter's "N new" jump button in DM and group chats.
 | `Ctrl+P` in **Log** | Nothing — log lines have no sender |
 | `Ctrl+R` in **Chat** / **DM** / **Group chat** | Quote the newest message in that conversation |
 | `Ctrl+Y` in **Chat** / **DM** / **Group chat** | Add or remove an emoji reaction on the newest message in that conversation |
+| `1`–`6` in the reaction prompt | Apply the matching quick-reaction emoji (`👍`, `❤️`, `😂`, `🎉`, `😮`, `😢`) |
 | `Ctrl+C` in **Chat** / **DM** / **Group chat** | Copy the newest message's rendered line to the terminal clipboard |
 | `Ctrl+C` in **Log** | Copy all log lines to the terminal clipboard (same as Flutter's "Copy All") |
 | `Ctrl+O` in **Chat** / **DM** / **Group chat** | Open the newest downloaded attachment with the system default app |
@@ -97,9 +98,11 @@ clears the draft without sending; switching tabs keeps drafts separate.
 ### Reactions
 
 `Ctrl+Y` opens a prompt to react to the newest message with a stable wire id in
-the current conversation. Type an emoji and press `Enter` to add it; applying
-the same emoji again removes it. The reaction is stored locally and fanned out
-to the message's recipients over the swarm, so it appears as a chip after the
+the current conversation. Press `1`–`6` for the quick palette (`👍`, `❤️`, `😂`,
+`🎉`, `😮`, `😢`), or type any valid token and press `Enter` for a custom one;
+applying the same emoji again removes it. The palette is Rust-owned and shared
+with Flutter's reaction menu. The reaction is stored locally and fanned out to
+the message's recipients over the swarm, so it appears as a chip after the
 message body in the TUI and Flutter. `Esc` cancels without saving. Only the
 newest message can be reacted to from the TUI; Flutter's per-message chips can
 target any message.
