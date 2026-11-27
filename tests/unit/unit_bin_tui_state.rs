@@ -1620,6 +1620,34 @@ fn share_creation_prompt_is_modal_and_cancels_on_tab_switch() {
 }
 
 #[test]
+fn share_binding_prompt_captures_its_target_and_prefills_the_root() {
+    let mut s = test_app_state();
+    assert!(!s.is_binding_share());
+    assert!(!s.is_modal_editor());
+
+    s.begin_bind_share("share-a".to_string(), Some("/tmp/shared"));
+    assert!(s.is_binding_share());
+    assert!(s.is_modal_editor());
+    assert_eq!(
+        s.share_binding_prompt
+            .as_ref()
+            .map(|prompt| prompt.share_id.as_str()),
+        Some("share-a")
+    );
+    assert_eq!(s.chat_input.lines().join("\n"), "/tmp/shared");
+
+    s.finalize_tab_input();
+    assert!(!s.is_binding_share());
+    assert!(s.share_binding_prompt.is_none());
+    assert_eq!(s.chat_input.lines().join("\n"), "");
+
+    s.begin_bind_share("share-b".to_string(), None);
+    assert_eq!(s.chat_input.lines().join("\n"), "");
+    assert!(s.cancel_share_binding());
+    assert!(!s.cancel_share_binding(), "cancel is idempotent");
+}
+
+#[test]
 fn share_peer_selection_uses_canonical_order_and_clamps() {
     use crossterm::event::KeyCode;
 

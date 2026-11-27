@@ -344,9 +344,12 @@ pane and stay transient until accepted with `Enter`. The latest
 event" line. Locally owned shares can be toggled between private/public and can
 allow anonymous writes while public; the canonical store refuses changes to
 accepted peer shares. Grants are editable here too, and connected peers are
-ordered by peer ID. `c` creates a private, read-only share. Manifest files can
-be marked for deletion and the next revision submitted to a connected peer;
-binding, snapshots and adding files remain Flutter/web actions.
+ordered by peer ID. `c` creates a private, read-only share, `b` binds or clears
+its local folder, `s` snapshots that folder into the next revision, and `u`
+publishes the cached snapshot to the selected peer. Manifest files can be marked
+for deletion and the next revision submitted to a connected peer. Adding files
+from an explicit picker remains a Flutter/web action; the TUI snapshots a bound
+folder.
 
 | Key | Action |
 |-----|--------|
@@ -360,6 +363,9 @@ binding, snapshots and adding files remain Flutter/web actions.
 | `Home` / `End` | Jump to the first / last share |
 | `Click` in the list pane | Select that share (the detail pane follows) |
 | `c` | Create a private, read-only share from a name prompt |
+| `b` | Bind or clear a local folder for the selected share |
+| `s` | Snapshot the bound folder into the next manifest revision |
+| `u` | Publish the cached snapshot to the selected connected peer |
 | `a` | Add or upgrade a grant on the selected private share |
 | `x` | Revoke the highlighted grant |
 | `p` | Toggle the selected owned share between private and public |
@@ -375,6 +381,16 @@ binding, snapshots and adding files remain Flutter/web actions.
 The creation prompt takes a share name. Rust validates it through
 `shares::validate_share_name`; invalid names keep the prompt open with an error
 popup, and a successful create selects the new row in the list.
+
+The binding prompt is prefilled with the current folder and opens with the
+cursor at its end. `Enter` stores the canonical absolute path through Rust; an
+empty line clears the binding, and a rejected path keeps the text open with an
+error popup. The target share id is captured when the prompt opens, so moving
+the selection or reloading cannot redirect the write; `Esc` cancels. `s` refuses
+to guess a path when no folder is bound and reloads the manifest after Rust
+walks the folder. `u` requires a fresh, non-initial snapshot and a connected
+peer: it sends the previous revision as the base and leaves ACL and stale-write
+enforcement to the receiving peer.
 
 The add prompt takes a verified user id. `Tab` switches between `readonly`
 and `readwrite`, `Enter` saves through Rust's canonical grant store, and `Esc`

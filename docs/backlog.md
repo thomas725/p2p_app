@@ -130,7 +130,7 @@ Still open (device adapters, not protocol work):
   both un-gated. Do **not** gate either behind it; that happened once and was
   corrected.
 
-### File shares / folder sync UI — **Rust core, both frontends' list/detail/grant editor, discovery, network actions and deletion publishing shipped; TUI creation shipped; binding/native snapshots deferred**
+### File shares / folder sync UI — **Rust core, both frontends' list/detail/grant editor, discovery, network actions and deletion publishing shipped; TUI creation, folder binding, snapshotting and snapshot publishing shipped; adding files deferred**
 
 The Rust core landed in `7dfaefe` (domain, DB, ACLs) and the share-lane
 follow-up (`/p2p-chat/shares/1.0.0` wire protocol, swarm handlers, events, GC
@@ -256,12 +256,20 @@ Shipped after the core:
   `(peer, share id)` in Rust, never persisted until accepted, and keep an
   advertised owner claim as a local-only marker. Record:
   [`archive/2026-11-27_tui_share_discovery.md`](archive/2026-11-27_tui_share_discovery.md).
+- TUI share folder workflow: `b` opens a modal folder editor that captures the
+  selected share id, prefills its current root and stores a canonical absolute
+  path (or clears the binding on an empty line); `s` snapshots the bound folder
+  into the next revision, and `u` submits a fresh, non-initial cached manifest to
+  the selected peer with the previous revision as the base. Invalid roots keep
+  the prompt open, modal keys cannot retarget it, and Rust owns validation, blob
+  storage, ACLs and stale-write rejection. Record:
+  [`archive/2026-11-27_tui_share_folder_binding.md`](archive/2026-11-27_tui_share_folder_binding.md).
 
 Still open (UI/integration, not protocol work):
 
-- TUI Shares tab actions: bind/snapshot and adding files (the list, detail,
-  event notice, creation, grant/visibility editors, network refresh/re-advertise,
-  deletion publishing and discovery already ship);
+- TUI Shares tab action for adding files (the list, detail, event notice,
+  creation, folder binding/snapshot/publish, grant/visibility editors, network
+  refresh/re-advertise, deletion publishing and discovery already ship);
 - Native share creation/binding and folder snapshot UI. Deletion publishing,
   discovery, manifest refresh and re-advertise already ship on both transports;
   the browser remains a display client — adding new files needs a real local

@@ -1190,11 +1190,8 @@ pub fn accept_share_offer(offer: crate::shares::ShareOffer) -> Result<MobileShar
 /// # Errors
 /// Returns an error if the folder cannot be read, a blob cannot be stored, or
 /// the share is unknown.
-pub fn snapshot_share(
-    share_id: String,
-    root: &str,
-) -> Result<crate::shares::ShareManifest, String> {
-    crate::shares::snapshot_share(&share_id, std::path::Path::new(root))
+pub fn snapshot_share(share_id: &str, root: &str) -> Result<crate::shares::ShareManifest, String> {
+    crate::shares::snapshot_share(share_id, std::path::Path::new(root))
         .map_err(|error| error.to_string())
 }
 

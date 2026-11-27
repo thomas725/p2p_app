@@ -768,6 +768,8 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
         p2plog_debug("Cancelled reaction".to_string());
     } else if s.cancel_share_grant() {
         p2plog_debug("Cancelled share grant edit".to_string());
+    } else if s.cancel_share_binding() {
+        p2plog_debug("Cancelled share folder binding".to_string());
     } else if s.cancel_create_share() {
         p2plog_debug("Cancelled share creation".to_string());
     } else if s.is_exporting_location_track() {
@@ -1871,6 +1873,128 @@ fn confirm_create_share(s: &mut super::state::AppState) {
     }
 }
 
+/// Arm the folder editor for the highlighted share. Binding a peer-owned share
+/// as a local mirror is valid, so ownership is deliberately not checked here;
+/// Rust validates and canonicalises the folder when the prompt is committed.
+fn arm_bind_share(s: &mut super::state::AppState) {
+    let Some(share) = s.shares.get(s.share_selection).cloned() else {
+        s.popup = Some("No share selected".to_string());
+        return;
+    };
+    s.begin_bind_share(share.share_id, share.local_root.as_deref());
+}
+
+/// Commit the active folder editor to the share captured when it opened. An
+/// empty line clears the binding; a rejected path keeps the editor open with its
+/// text so the operator can correct it without retargeting another share.
+fn confirm_share_binding(s: &mut super::state::AppState) {
+    let Some(prompt) = s.share_binding_prompt.clone() else {
+        return;
+    };
+    let root = s.chat_input.lines().join("\n").trim().to_string();
+    let binding = (!root.is_empty()).then_some(root.as_str());
+    let notice = if binding.is_some() {
+        format!("Folder bound for {}", prompt.share_id)
+    } else {
+        format!("Local folder cleared for {}", prompt.share_id)
+    };
+    match p2p_app::shares::set_local_root(&prompt.share_id, binding) {
+        Ok(()) => {
+            s.cancel_share_binding();
+            s.share_event_notice = Some(notice.clone());
+            s.reload_shares();
+            select_share_by_id(s, &prompt.share_id);
+            p2plog_debug(format!("Share binding: {notice}"));
+        }
+        Err(error) => {
+            s.popup = Some(format!("Could not bind share folder: {error}"));
+        }
+    }
+}
+
+/// Snapshot the highlighted share's bound folder into the next canonical
+/// manifest revision. A missing binding stays a UI hint instead of guessing a
+/// path; all folder walking and blob storage live in Rust.
+fn snapshot_share_folder(s: &mut super::state::AppState) {
+    let Some(share) = s.shares.get(s.share_selection).cloned() else {
+        s.popup = Some("No share selected".to_string());
+        return;
+    };
+    let Some(root) = share.local_root.clone() else {
+        s.popup = Some("Bind a local folder with b first".to_string());
+        return;
+    };
+    match p2p_app::shares::snapshot_share(&share.share_id, std::path::Path::new(&root)) {
+        Ok(manifest) => {
+            s.share_event_notice = Some(format!(
+                "Snapshot saved for {} (revision {})",
+                share.name, manifest.revision
+            ));
+            s.reload_shares();
+            select_share_by_id(s, &share.share_id);
+            p2plog_debug(format!("Snapshotted share: {}", share.share_id));
+        }
+        Err(error) => {
+            s.popup = Some(format!("Could not snapshot share folder: {error}"));
+        }
+    }
+}
+
+/// Publish the cached snapshot of the highlighted share to the selected peer.
+/// The local revision is accepted by a peer whose copy is one behind, so the
+/// base sent on the wire is exactly `manifest.revision - 1`; ACLs and the stale
+/// check remain in the receiving Rust peer.
+fn publish_share_snapshot(
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) {
+    let Some(share) = s.shares.get(s.share_selection).cloned() else {
+        s.popup = Some("No share selected".to_string());
+        return;
+    };
+    let Some(manifest) = share.manifest.clone() else {
+        s.popup = Some("Snapshot the shared folder with s first".to_string());
+        return;
+    };
+    if !p2p_app::shares::manifest_matches_share(&share) || manifest.revision != share.revision {
+        s.popup = Some("Snapshot is stale: refresh it with r or s".to_string());
+        return;
+    }
+    let Some(base_revision) = manifest.revision.checked_sub(1) else {
+        s.popup = Some("The initial revision has no previous version to publish".to_string());
+        return;
+    };
+    let Some(peer_id) = s.selected_share_peer_id() else {
+        s.popup = Some("Select a connected peer before publishing".to_string());
+        return;
+    };
+    let revision = manifest.revision;
+    match swarm_cmd_tx.try_send(SwarmCommand::PublishShareSnapshot {
+        peer_id: peer_id.clone(),
+        base_revision,
+        manifest: Box::new(manifest),
+    }) {
+        Ok(()) => {
+            s.share_event_notice = Some(format!("Revision {revision} submitted to {peer_id}"));
+        }
+        Err(error) => {
+            s.popup = Some(format!("Could not publish share snapshot: {error}"));
+        }
+    }
+}
+
+/// Re-highlight `share_id` after an action reloads the store. The fallback keeps
+/// the previous cursor when the share vanished (for example, a peer removed it).
+fn select_share_by_id(s: &mut super::state::AppState, share_id: &str) {
+    let fallback = s.share_selection;
+    let position = s
+        .shares
+        .iter()
+        .position(|row| row.share_id == share_id)
+        .unwrap_or(fallback);
+    s.select_share(position);
+}
+
 /// Commit the active grant editor through the canonical store, then re-read the
 /// Shares pane. Any validation or DB failure keeps the editor open with a hint.
 fn confirm_share_grant(s: &mut super::state::AppState) {
@@ -2275,6 +2399,8 @@ async fn handle_enter_dispatch(
         confirm_share_grant(s);
     } else if s.is_creating_share() {
         confirm_create_share(s);
+    } else if s.is_binding_share() {
+        confirm_share_binding(s);
     } else if s.is_exporting_location_track() {
         let root = super::location_export::default_export_root();
         super::location_export::submit_location_export(s, &root);
@@ -2290,8 +2416,66 @@ async fn handle_enter_dispatch(
     }
 }
 
-/// Shortcuts owned by Peer Info, Settings, Groups and Log (in that order of
-/// precedence). Returns `true` when the key was consumed.
+/// Plain (non-modified) shortcuts owned by the Shares tab. Splitting them out
+/// keeps the tab dispatcher small without giving any handler a lint allowance.
+fn handle_shares_tab_shortcut(
+    code: crossterm::event::KeyCode,
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) -> bool {
+    match code {
+        crossterm::event::KeyCode::Char('c') => {
+            s.begin_create_share();
+            true
+        }
+        crossterm::event::KeyCode::Char('b') => {
+            arm_bind_share(s);
+            true
+        }
+        crossterm::event::KeyCode::Char('s') => {
+            snapshot_share_folder(s);
+            true
+        }
+        crossterm::event::KeyCode::Char('u') => {
+            publish_share_snapshot(s, swarm_cmd_tx);
+            true
+        }
+        crossterm::event::KeyCode::Char('a') => {
+            arm_add_share_grant(s);
+            true
+        }
+        crossterm::event::KeyCode::Char('x') => {
+            arm_revoke_share_grant(s);
+            true
+        }
+        crossterm::event::KeyCode::Char('p') => {
+            toggle_share_visibility(s);
+            true
+        }
+        crossterm::event::KeyCode::Char('w') => {
+            toggle_share_public_write(s);
+            true
+        }
+        crossterm::event::KeyCode::Char('m') => {
+            request_share_manifest(s, swarm_cmd_tx);
+            true
+        }
+        crossterm::event::KeyCode::Char('o') => {
+            readvertise_share(s, swarm_cmd_tx);
+            true
+        }
+        // Live share events also reload the store, but a manual refresh keeps
+        // the view authoritative after an asynchronously delivered change.
+        crossterm::event::KeyCode::Char('r') => {
+            s.reload_shares();
+            true
+        }
+        _ => false,
+    }
+}
+
+/// Shortcuts owned by Peer Info, Settings, Groups, Shares and Log (in that
+/// order of precedence). Returns `true` when the key was consumed.
 fn handle_tab_specific_shortcut(
     code: crossterm::event::KeyCode,
     s: &mut super::state::AppState,
@@ -2300,6 +2484,11 @@ fn handle_tab_specific_shortcut(
 ) -> bool {
     if s.is_modal_editor() {
         return false;
+    }
+    if matches!(tab, p2p_app::tui_tabs::TabContent::Shares)
+        && handle_shares_tab_shortcut(code, s, swarm_cmd_tx)
+    {
+        return true;
     }
     match code {
         crossterm::event::KeyCode::Char('n')
@@ -2315,48 +2504,6 @@ fn handle_tab_specific_shortcut(
                 && matches!(tab, p2p_app::tui_tabs::TabContent::Settings) =>
         {
             handle_settings_shortcut(c, s);
-            true
-        }
-        crossterm::event::KeyCode::Char('c')
-            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
-        {
-            s.begin_create_share();
-            true
-        }
-        crossterm::event::KeyCode::Char('a')
-            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
-        {
-            arm_add_share_grant(s);
-            true
-        }
-        crossterm::event::KeyCode::Char('x')
-            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
-        {
-            arm_revoke_share_grant(s);
-            true
-        }
-        crossterm::event::KeyCode::Char('p')
-            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
-        {
-            toggle_share_visibility(s);
-            true
-        }
-        crossterm::event::KeyCode::Char('w')
-            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
-        {
-            toggle_share_public_write(s);
-            true
-        }
-        crossterm::event::KeyCode::Char('m')
-            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
-        {
-            request_share_manifest(s, swarm_cmd_tx);
-            true
-        }
-        crossterm::event::KeyCode::Char('o')
-            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
-        {
-            readvertise_share(s, swarm_cmd_tx);
             true
         }
         crossterm::event::KeyCode::Char(c)
@@ -2375,15 +2522,6 @@ fn handle_tab_specific_shortcut(
             if matches!(tab, p2p_app::tui_tabs::TabContent::Log) =>
         {
             p2p_app::clear_tui_logs();
-            true
-        }
-        // `r` re-reads the shares table on the Shares tab. Live share events
-        // also reload it, but a manual refresh keeps the view authoritative
-        // after an action whose result arrives asynchronously.
-        crossterm::event::KeyCode::Char('r')
-            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
-        {
-            s.reload_shares();
             true
         }
         _ => false,

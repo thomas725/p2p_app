@@ -9,9 +9,10 @@ This document is the lane's reference: the wire design, the store surface, and
 the blob lifecycle. It also covers the versioned file-share/folder-sync
 extension built on the same store. Its Rust core and both frontends' list,
 detail, private-share grant and visibility editors have shipped, along with
-discovery, network actions and deletion publishing in both frontends; native
-creation/binding/snapshot UI and adding files stay open in
-[`backlog.md`](backlog.md). The code is the authority.
+discovery, network actions, deletion publishing and (in the TUI) creation,
+folder binding, snapshotting and snapshot publishing; adding files from an
+explicit picker stays open in [`backlog.md`](backlog.md). The code is the
+authority.
 
 ## Wire design
 
@@ -213,8 +214,12 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   marked deletions with `Ctrl+D`: Rust rebuilds the next revision from the
   canonical store via `shares::manifest_with_deletions`, using the displayed
   manifest revision as the base and rejecting stale or moved snapshots before a
-  command is queued. Native creation/binding/folder snapshots and share
-  discovery remain deferred in the TUI.
+  command is queued. The TUI also binds or clears a canonical local folder with
+  `b`, snapshots it into the next revision with `s`, and submits a fresh snapshot
+  to the selected peer with `u`; the target share is captured when the binding
+  prompt opens, and ACL and stale-revision checks stay in receiving Rust. Share
+  creation and discovery are available too. Adding files from an explicit picker
+  remains the open TUI gap.
 
 ## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
 

@@ -3,6 +3,7 @@ use super::{DynamicTabs, TextArea};
 use p2p_app::contacts::ContactDeviceInput;
 use p2p_app::messages::PeerMessageStats;
 use p2p_app::tui_helpers::PeerMessageMap;
+use ratatui_textarea::CursorMove;
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::sync::Arc;
@@ -235,6 +236,10 @@ pub struct AppState {
     pub share_manifest_revision: Option<u64>,
     /// Grant being added/revoked in the shared editor (`None` outside it).
     pub share_grant_prompt: Option<ShareGrantPrompt>,
+    /// Share whose local folder is being bound in the shared editor (`None`
+    /// outside it). The target id is captured rather than re-read from the
+    /// cursor when `Enter` commits.
+    pub share_binding_prompt: Option<ShareBindingPrompt>,
     /// Latest share-lane event text, shown on the Shares tab.
     pub share_event_notice: Option<String>,
     /// Peer targeted by the Shares tab's network actions. Indexes the canonical
@@ -419,6 +424,14 @@ pub struct ReactionPrompt {
     pub msg_id: String,
 }
 
+/// The share being bound to a local folder in the shared editor. The id is
+/// captured when `b` opens the prompt, so a later reload or cursor change cannot
+/// retarget the canonical `set_local_root` write.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ShareBindingPrompt {
+    pub share_id: String,
+}
+
 /// What the share-grant editor is doing. The mode belongs to the add action
 /// only; a revoke prompt carries the user id it will remove so the typed text
 /// is only a confirmation, never the authority for the target.
@@ -553,6 +566,7 @@ impl AppState {
     pub fn finalize_tab_input(&mut self) {
         self.cancel_nickname_edit();
         self.cancel_share_grant();
+        self.cancel_share_binding();
         self.cancel_create_share();
         self.cancel_export_location_track();
         self.end_contact_search(true);
@@ -1084,6 +1098,34 @@ impl AppState {
             self.chat_input = TextArea::default();
         }
         was_editing
+    }
+
+    /// True while the shared input captures a share's local folder.
+    #[must_use]
+    pub const fn is_binding_share(&self) -> bool {
+        matches!(self.input_mode, p2p_app::InputMode::BindingShare)
+    }
+
+    /// Open the folder-binding editor for one share. The target is stored so a
+    /// cursor move or reload cannot redirect the write; the current root is
+    /// prefilled, and an empty submission clears the binding.
+    pub fn begin_bind_share(&mut self, share_id: String, current_root: Option<&str>) {
+        self.input_mode = p2p_app::InputMode::BindingShare;
+        self.share_binding_prompt = Some(ShareBindingPrompt { share_id });
+        let mut input = TextArea::new(vec![current_root.unwrap_or_default().to_string()]);
+        input.move_cursor(CursorMove::End);
+        self.chat_input = input;
+    }
+
+    /// Close the folder-binding prompt without touching the canonical store.
+    pub fn cancel_share_binding(&mut self) -> bool {
+        let was_binding = self.is_binding_share();
+        if was_binding {
+            self.input_mode = p2p_app::InputMode::Chat;
+            self.share_binding_prompt = None;
+            self.chat_input = TextArea::default();
+        }
+        was_binding
     }
 
     /// Move the highlighted grant in the selected share's detail pane. Bare
@@ -2100,6 +2142,7 @@ impl AppState {
             share_deleted_paths: BTreeSet::new(),
             share_manifest_revision: None,
             share_grant_prompt: None,
+            share_binding_prompt: None,
             share_event_notice: None,
             share_peer_selection: 0,
             discovered_shares: Vec::new(),

@@ -225,7 +225,7 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Ctrl+C: copy all | c: clear logs | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Shares => {
-            "Tab: next | Up/Down: share | Left/Right: peer | Ctrl+Up/Down: grant | Ctrl+Left/Right: file | j/k: offer | Enter: accept | f: discover | d: mark delete | Ctrl+D: publish | a: add grant | x: revoke grant | m: refresh manifest | o: re-advertise | r: refresh | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Up/Down: share | Left/Right: peer | Ctrl+Up/Down: grant | Ctrl+Left/Right: file | j/k: offer | Enter: accept | c: create | b: bind folder | s: snapshot | u: publish | f: discover | d: mark delete | Ctrl+D: publish deletions | a: add grant | x: revoke grant | m: refresh manifest | o: re-advertise | r: refresh | F12: mouse | ?: help | Ctrl+Q: quit"
         }
     }
 }

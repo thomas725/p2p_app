@@ -6522,3 +6522,290 @@ fn test_share_discovery_enter_without_offer_does_not_accept_any_share() {
     });
     close_share_grant_db();
 }
+
+// ── local folder binding / snapshot / publishing (Flutter parity) ────────
+
+#[test]
+#[serial]
+fn test_share_bind_snapshot_and_publish_through_real_keys() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_db_dir, mut state, share_id) =
+            share_db_state("owner", p2p_app::shares::ShareKind::Public, false, &[]);
+        let root_dir = TempDir::new().expect("root dir");
+        std::fs::write(root_dir.path().join("a.txt"), b"alpha").expect("write file");
+        let root = root_dir.path().to_str().expect("root path");
+        let canonical = root_dir
+            .path()
+            .canonicalize()
+            .expect("canonical root")
+            .to_string_lossy()
+            .into_owned();
+        state.connected.on_peer_connected("peer-a".to_string());
+        state.clamp_share_peer_selection();
+        let mut session = KeySession::new(state);
+
+        let frame = session.frame_text().await;
+        assert!(
+            frame.contains("b: bind folder | s: snapshot | u: publish"),
+            "frame: {frame}"
+        );
+
+        assert!(!session.press_char('b').await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.is_binding_share());
+            assert!(s.is_modal_editor());
+            assert_eq!(
+                s.share_binding_prompt
+                    .as_ref()
+                    .map(|prompt| prompt.share_id.as_str()),
+                Some(share_id.as_str())
+            );
+        }
+        let bind_frame = session.frame_text().await;
+        assert!(
+            bind_frame.contains("Bind folder for"),
+            "frame: {bind_frame}"
+        );
+
+        // A modal prompt owns navigation keys and the wheel until it commits.
+        assert!(!session.press_code(KeyCode::Tab).await);
+        assert!(!session.press_code(KeyCode::Down).await);
+        assert!(
+            !session
+                .press_mouse(wheel_event(MouseEventKind::ScrollDown))
+                .await
+        );
+        assert!(!session.type_text(root).await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+
+        let stored = p2p_app::shares::get_share(&share_id)
+            .expect("get share")
+            .expect("present");
+        assert_eq!(stored.local_root.as_deref(), Some(canonical.as_str()));
+        {
+            let s = session.state.lock().await;
+            assert!(!s.is_binding_share());
+            assert!(s.share_binding_prompt.is_none());
+            assert!(
+                s.share_event_notice
+                    .as_deref()
+                    .is_some_and(|notice| notice.starts_with("Folder bound for"))
+            );
+        }
+
+        assert!(!session.press_char('s').await);
+        let stored = p2p_app::shares::get_share(&share_id)
+            .expect("get share")
+            .expect("present");
+        assert_eq!(stored.revision, 1);
+        let manifest = stored.manifest.expect("manifest");
+        assert_eq!(manifest.share_id, share_id);
+        assert_eq!(manifest.revision, 1);
+        assert_eq!(manifest.entries.len(), 1);
+        assert_eq!(manifest.entries[0].path, "a.txt");
+
+        assert!(!session.press_char('u').await);
+        let commands = session.drain_commands();
+        assert_eq!(commands.len(), 1, "one publish command per keypress");
+        match commands.first().expect("publish command") {
+            SwarmCommand::PublishShareSnapshot {
+                peer_id,
+                base_revision,
+                manifest,
+            } => {
+                assert_eq!(peer_id, "peer-a");
+                assert_eq!(*base_revision, 0, "the peer accepts base + 1");
+                assert_eq!(manifest.revision, 1);
+                assert_eq!(manifest.share_id, share_id);
+                assert_eq!(manifest.entries.len(), 1);
+            }
+            other => panic!("unexpected swarm command: {other:?}"),
+        }
+        let frame = session.frame_text().await;
+        assert!(
+            frame.contains("Revision 1 submitted to peer-a"),
+            "frame: {frame}"
+        );
+
+        // The prompt prefills the live binding; an emptied line clears it in the
+        // same canonical store without deleting any manifest or blob.
+        assert!(!session.press_char('b').await);
+        assert_eq!(
+            session.state.lock().await.chat_input.lines().join("\n"),
+            canonical
+        );
+        for _ in 0..canonical.chars().count() {
+            assert!(!session.press_code(KeyCode::Backspace).await);
+        }
+        assert!(!session.press_code(KeyCode::Enter).await);
+        let cleared = p2p_app::shares::get_share(&share_id)
+            .expect("get share")
+            .expect("present");
+        assert_eq!(cleared.local_root, None);
+        assert_eq!(
+            cleared.revision, 1,
+            "clearing a binding must not re-version"
+        );
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_binding_keeps_captured_target_after_reload_and_rejects_bad_root() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_db_dir, mut state, first_id) =
+            share_db_state("owner", p2p_app::shares::ShareKind::Private, false, &[]);
+        let other = p2p_app::shares::create_share(
+            "Other",
+            "owner",
+            p2p_app::shares::ShareKind::Private,
+            false,
+            None,
+        )
+        .expect("create other share");
+        state.reload_shares();
+        let first_index = state
+            .shares
+            .iter()
+            .position(|share| share.share_id == first_id)
+            .expect("first share");
+        state.select_share(first_index);
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('b').await);
+        // Simulate a share event that reloads the store and moves the cursor
+        // while the prompt is open: Enter must still write the captured share.
+        {
+            let mut s = session.state.lock().await;
+            s.reload_shares();
+            let other_index = s
+                .shares
+                .iter()
+                .position(|share| share.share_id == other.share_id)
+                .expect("other share");
+            s.select_share(other_index);
+        }
+
+        let bad_root = "/definitely/not/a/folder";
+        assert!(!session.type_text(bad_root).await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.is_binding_share());
+            assert_eq!(
+                s.share_binding_prompt
+                    .as_ref()
+                    .map(|prompt| prompt.share_id.as_str()),
+                Some(first_id.as_str())
+            );
+            assert!(
+                s.popup
+                    .as_deref()
+                    .is_some_and(|hint| hint.starts_with("Could not bind share folder:"))
+            );
+        }
+        assert_eq!(
+            p2p_app::shares::get_share(&first_id)
+                .expect("get share")
+                .expect("present")
+                .local_root,
+            None,
+            "a rejected path must not write anything"
+        );
+
+        for _ in 0..bad_root.chars().count() {
+            assert!(!session.press_code(KeyCode::Backspace).await);
+        }
+        let root_dir = TempDir::new().expect("root dir");
+        let root = root_dir.path().to_str().expect("root path");
+        let canonical = root_dir
+            .path()
+            .canonicalize()
+            .expect("canonical root")
+            .to_string_lossy()
+            .into_owned();
+        assert!(!session.type_text(root).await);
+        assert!(!session.press_code(KeyCode::Enter).await);
+
+        assert_eq!(
+            p2p_app::shares::get_share(&first_id)
+                .expect("get share")
+                .expect("present")
+                .local_root
+                .as_deref(),
+            Some(canonical.as_str())
+        );
+        assert_eq!(
+            p2p_app::shares::get_share(&other.share_id)
+                .expect("get share")
+                .expect("present")
+                .local_root,
+            None,
+            "the moved selection must never become the write target"
+        );
+        {
+            let s = session.state.lock().await;
+            assert!(!s.is_binding_share());
+            assert_eq!(
+                s.shares
+                    .get(s.share_selection)
+                    .map(|share| share.share_id.as_str()),
+                Some(first_id.as_str()),
+                "the committed share is re-highlighted after the reload"
+            );
+        }
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_bind_snapshot_and_publish_keys_are_inert_while_a_prompt_is_open() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_db_dir, mut state, share_id) =
+            share_db_state("owner", p2p_app::shares::ShareKind::Public, false, &[]);
+        state.connected.on_peer_connected("peer-a".to_string());
+        state.clamp_share_peer_selection();
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_char('b').await);
+        assert!(!session.press_char('s').await);
+        assert!(!session.press_char('u').await);
+        assert!(session.drain_commands().is_empty());
+        let stored = p2p_app::shares::get_share(&share_id)
+            .expect("get share")
+            .expect("present");
+        assert_eq!(stored.revision, 0, "s must not snapshot inside the editor");
+        assert_eq!(
+            stored.local_root, None,
+            "u must not publish inside the editor"
+        );
+
+        assert!(!session.press_code(KeyCode::Esc).await);
+        assert!(!session.state.lock().await.is_binding_share());
+        assert_eq!(
+            p2p_app::shares::get_share(&share_id)
+                .expect("get share")
+                .expect("present")
+                .local_root,
+            None,
+            "Esc must leave the canonical store untouched"
+        );
+    });
+    close_share_grant_db();
+}

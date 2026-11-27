@@ -22,11 +22,11 @@
     clippy::borrow_deref_ref,
     clippy::uninlined_format_args,
     clippy::needless_borrow,
+    mismatched_lifetime_syntaxes,
     clippy::all,
     clippy::pedantic,
     clippy::nursery,
-    clippy::restriction,
-    mismatched_lifetime_syntaxes
+    clippy::restriction
 )]
 
 // Section: imports
@@ -3341,7 +3341,7 @@ fn wire__crate__api__snapshot_share_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::snapshot_share(api_share_id, &api_root)?;
+                    let output_ok = crate::api::snapshot_share(&api_share_id, &api_root)?;
                     std::result::Result::Ok(output_ok)
                 })())
             }

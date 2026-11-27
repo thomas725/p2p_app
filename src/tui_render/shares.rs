@@ -31,6 +31,7 @@ fn detail_lines(share: Option<&Share>, state: &TuiRenderState) -> Vec<String> {
         lines.push(String::new());
     }
     lines.push("c: create a private share".to_string());
+    lines.push("b: bind folder | s: snapshot | u: publish".to_string());
     if let Some(share) = share {
         let grants: &[ShareGrant] = state
             .share_grants

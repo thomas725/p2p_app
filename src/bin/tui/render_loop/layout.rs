@@ -49,6 +49,14 @@ pub fn render_input_section(
         )
     } else if state.is_creating_share() {
         "Create share (name) - Enter to create, Esc to cancel".to_string()
+    } else if state.is_binding_share() {
+        format!(
+            "Bind folder for {} - Enter to save (empty clears), Esc to cancel",
+            state
+                .share_binding_prompt
+                .as_ref()
+                .map_or("share", |prompt| prompt.share_id.as_str())
+        )
     } else if state.is_exporting_location_track() {
         "Export location track (from;to) - Enter to export, Esc to cancel".to_string()
     } else if state.is_creating_group() {
