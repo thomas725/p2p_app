@@ -929,7 +929,7 @@ fn install_share_file(target: &Path, bytes: &[u8]) -> color_eyre::Result<()> {
 /// files that the previous manifest tracked but the new one no longer does.
 ///
 /// This is the only path that mutates a synced local folder. Every write goes
-/// through [`resolve_share_path`] (no absolute paths, no `..`, no symlinks), and
+/// through the canonical path validator (no absolute paths, no `..`, no symlinks), and
 /// a blob's bytes are re-hashed before they are written.
 ///
 /// # Errors

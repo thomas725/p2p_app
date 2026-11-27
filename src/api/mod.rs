@@ -517,7 +517,7 @@ pub fn validate_nickname(nickname: &str) -> bool {
 /// Single source of truth shared with the TUI/TUI reaction editor
 /// ([`crate::reactions::validate_emoji`]). Exposed so the Flutter "Custom…"
 /// reaction dialog can reject empty or overlong tokens without re-implementing
-/// the rules in Dart. [`crate::toggle_reaction`] re-validates on write, so this
+/// the rules in Dart. [`toggle_reaction`] re-validates on write, so this
 /// is purely an early, user-facing check.
 #[must_use]
 pub fn validate_emoji(emoji: &str) -> bool {

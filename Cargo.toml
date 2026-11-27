@@ -57,7 +57,7 @@ nat = [ "dep:libp2p", "libp2p/autonat", "libp2p/dcutr" ]
 sqlite_bundled = [ "dep:libp2p", "dep:libsqlite3-sys" ]
 quic = [ "dep:libp2p" ]
 tracing = [ "dep:libp2p", "dep:tracing", "dep:tracing-subscriber", "tracing-subscriber/env-filter" ]
-tui = [ "dep:ratatui", "dep:ratatui-textarea", "dep:crossterm" ]
+tui = [ "dep:ratatui", "dep:ratatui-textarea", "dep:crossterm", "dep:unicode-width" ]
 # Desktop microphone/speaker adapter for the TUI calls overlay. Deliberately
 # opt-in and NOT part of `default`/`tui`: `cpal` pulls in host audio libraries
 # (ALSA on Linux) that the headless server and the Android lib neither need nor
@@ -146,7 +146,7 @@ libp2p-identity = "=0.3.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 petname = "3.0"
-unicode-width = "0.2"
+unicode-width = { version = "0.2", optional = true }
 # OS network-interface enumeration (name, MAC, IPv4/IPv6) for the network
 # details views in both frontends (US-050). Supports Linux/Android/macOS/Windows.
 network-interface = "=2.0.5"

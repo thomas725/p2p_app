@@ -55,7 +55,7 @@ version; `Cargo.toml` is the authority on the *requirement*.
 | Crate | Requirement | Resolved | Why it is here |
 |---|---|---|---|
 | `petname` | `3.0` | 3.2.0 | Generates the fallback display names for peers with no nickname. |
-| `unicode-width` | `0.2` | 0.2.3 | Display-width measurement, so table cells pad correctly for wide characters. |
+| `unicode-width` | `0.2` | 0.2.3 | Display-width measurement, so table cells pad correctly for wide characters. Optional — behind `tui`, so the minimal headless build compiles no unused dependency. |
 | `num-traits` | `0.2` | 0.2.19 | `ToPrimitive` for safe `f64 → i64` timestamp truncation — the project denies `as` conversions. |
 | `tracing` | `=0.1.44` | 0.1.44 | Structured logging; libp2p emits through it. Optional — behind `tracing`. |
 | `tracing-subscriber` | `=0.3.23` | 0.3.23 | The log formatter/filter. Optional — behind `tracing`. |
