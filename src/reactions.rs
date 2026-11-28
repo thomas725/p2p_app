@@ -426,6 +426,17 @@ mod tests {
 
     #[test]
     #[serial]
+    fn unknown_message_reaction_fanout_is_empty() {
+        with_test_db(|| {
+            assert!(
+                recipients_for_message("no-such-message-id").is_empty(),
+                "an unknown id must fan out to nobody (fail-open, never block a local reaction)"
+            );
+        });
+    }
+
+    #[test]
+    #[serial]
     fn group_reaction_fanout_excludes_local_peer() {
         with_test_db(|| {
             let local = crate::get_local_peer_id()

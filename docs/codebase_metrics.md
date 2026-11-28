@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        75 |
-| Total Rust Lines      |    44,857 |
-| Total Rust Chars      | 1,712,592 |
+| Total Rust Lines      |    44,868 |
+| Total Rust Chars      | 1,712,921 |
 | Avg Lines/Rust File   |       598 |
-| Avg Chars/Rust File   |    22,834 |
+| Avg Chars/Rust File   |    22,838 |
 | Total Dart Files      |        62 |
 | Total Dart Lines      |    27,260 |
 | Total Dart Chars      |   879,599 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 142 files, 73,177 lines, 2,631,771 characters
+**Grand Total:** 142 files, 73,188 lines, 2,632,100 characters
 
 ## Rust Source Files
 
@@ -56,7 +56,7 @@
 | src                     | nickname.rs          |     5 | 13241 |   343 |        - |       - | Nickname management                                |
 | src                     | notifications.rs     |     4 | 10791 |   303 |        - |       - | Source file                                        |
 | src                     | peers.rs             |     4 | 10590 |   294 |        - |       - | Peer management & tracking                         |
-| src                     | reactions.rs         |     5 | 17473 |   463 |        - |       - | Source file                                        |
+| src                     | reactions.rs         |     5 | 17802 |   474 |        - |       - | Source file                                        |
 | src                     | relay.rs             |     5 |  3764 |    95 |        - |       - | Source file                                        |
 | src                     | reply.rs             |     4 |  7747 |   206 |        - |       - | Source file                                        |
 | src                     | settings.rs          |     4 |  9991 |   251 |        - |       - | Source file                                        |
@@ -102,7 +102,7 @@
 | src/web                 | methods.rs           |     5 | 44877 |  1379 |        - |       - | Web JSON method dispatch                           |
 | src/web                 | mod.rs               |     7 | 20622 |   520 |        - |       - | Web server (axum HTTP+WS)                          |
 
-**Total:** 75 files, 44,857 lines, 1,712,592 characters
+**Total:** 75 files, 44,868 lines, 1,712,921 characters
 
 ## Rust Test Files
 
