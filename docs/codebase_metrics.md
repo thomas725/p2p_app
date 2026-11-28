@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        75 |
-| Total Rust Lines      |    44,787 |
-| Total Rust Chars      | 1,709,986 |
-| Avg Lines/Rust File   |       597 |
-| Avg Chars/Rust File   |    22,799 |
+| Total Rust Lines      |    44,857 |
+| Total Rust Chars      | 1,712,592 |
+| Avg Lines/Rust File   |       598 |
+| Avg Chars/Rust File   |    22,834 |
 | Total Dart Files      |        62 |
 | Total Dart Lines      |    27,260 |
 | Total Dart Chars      |   879,599 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 142 files, 73,107 lines, 2,629,165 characters
+**Grand Total:** 142 files, 73,177 lines, 2,631,771 characters
 
 ## Rust Source Files
 
@@ -78,7 +78,7 @@
 | src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)                    |
 | src/bin/tui             | input_processor.rs   |     7 | 84277 |  2153 |        - |       - | Input event routing & processing                   |
 | src/bin/tui             | key_probe.rs         |     6 |  6272 |   172 |        - |       - | Keyboard enhancement probe                         |
-| src/bin/tui             | location_export.rs   |     5 | 16342 |   429 |        - |       - | Source file                                        |
+| src/bin/tui             | location_export.rs   |     5 | 18948 |   499 |        - |       - | Source file                                        |
 | src/bin/tui             | main_loop.rs         |     6 | 15979 |   400 |        - |       - | Task orchestration & async                         |
 | src/bin/tui             | message_handlers.rs  |     4 | 17819 |   536 |        - |       - | Message sending logic                              |
 | src/bin/tui             | scroll_handlers.rs   |     4 | 22994 |   621 |        - |       - | Scroll & hover-aware navigation                    |
@@ -102,7 +102,7 @@
 | src/web                 | methods.rs           |     5 | 44877 |  1379 |        - |       - | Web JSON method dispatch                           |
 | src/web                 | mod.rs               |     7 | 20622 |   520 |        - |       - | Web server (axum HTTP+WS)                          |
 
-**Total:** 75 files, 44,787 lines, 1,709,986 characters
+**Total:** 75 files, 44,857 lines, 1,712,592 characters
 
 ## Rust Test Files
 

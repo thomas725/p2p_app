@@ -426,4 +426,74 @@ mod tests {
         assert_eq!(s.input_mode, InputMode::ExportingLocationTrack);
         assert_eq!(s.location_export_peer_id.as_deref(), Some("device-filter"));
     }
+
+    #[test]
+    fn test_submit_without_a_captured_device_is_a_no_op() {
+        let dir = TempDir::new().unwrap();
+        let mut state = test_app_state();
+        submit_location_export_with(
+            &mut state,
+            dir.path(),
+            |_peer: String, _from: Option<String>, _to: Option<String>| {
+                panic!("no loader call without a captured device")
+            },
+        );
+        assert!(!state.is_exporting_location_track());
+        assert_eq!(
+            state.popup.as_deref(),
+            Some("No device selected for a location export")
+        );
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn test_malformed_filter_keeps_the_prompt_and_never_calls_the_loader() {
+        let dir = TempDir::new().unwrap();
+        let mut state = test_app_state();
+        state.begin_export_location_track("device-filter".to_string());
+        state.chat_input = TextArea::new(vec!["a;b;c".to_string()]);
+        submit_location_export_with(
+            &mut state,
+            dir.path(),
+            |_peer: String, _from: Option<String>, _to: Option<String>| {
+                panic!("a malformed filter must never reach the loader")
+            },
+        );
+        assert!(state.is_exporting_location_track());
+        assert_eq!(
+            state.popup.as_deref(),
+            Some("Location export filter: use at most one ';' in 'from;to'")
+        );
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn test_write_failure_reports_the_path_and_keeps_the_prompt() {
+        let dir = TempDir::new().unwrap();
+        // A regular file cannot be used as a directory, so the write fails.
+        let file_root = dir.path().join("not-a-directory");
+        std::fs::write(&file_root, "occupied").unwrap();
+
+        let mut state = test_app_state();
+        state.begin_export_location_track("device-laptop".to_string());
+        state.chat_input = TextArea::new(vec!["all".to_string()]);
+        submit_location_export_with(
+            &mut state,
+            &file_root,
+            |_peer: String, from: Option<String>, to: Option<String>| {
+                assert_eq!(from, None);
+                assert_eq!(to, None);
+                Ok(vec![point(51.5, 100.0)])
+            },
+        );
+        assert!(state.is_exporting_location_track());
+        assert!(
+            state
+                .popup
+                .as_deref()
+                .is_some_and(|popup| popup.contains("Could not write")),
+            "popup: {:?}",
+            state.popup
+        );
+    }
 }
