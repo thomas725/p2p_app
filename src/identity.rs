@@ -492,8 +492,8 @@ pub fn set_my_user_nickname(nickname: &str) -> color_eyre::Result<()> {
 /// Returns an error if the local user is unavailable, the target is not a known
 /// user, the nickname is invalid, or the upsert fails.
 pub fn set_contact_nickname(
-    contact_user_id: &str,
-    nickname: Option<&str>,
+    contact_user_id: String,
+    nickname: Option<String>,
 ) -> color_eyre::Result<()> {
     let Some(owner_user_id) = my_user_id()? else {
         bail!("cannot set a contact nickname before this install is bound to a user");
@@ -502,10 +502,10 @@ pub fn set_contact_nickname(
         contact_user_id != owner_user_id,
         "an install cannot nickname itself as a contact"
     );
-    if find_user(contact_user_id)?.is_none() {
+    if find_user(&contact_user_id)?.is_none() {
         bail!("contact user {contact_user_id} is unknown");
     }
-    if let Some(name) = nickname {
+    if let Some(name) = &nickname {
         ensure!(
             crate::nickname::validate_nickname(name),
             "invalid contact nickname: letters, numbers or dashes (max 20 characters)"
@@ -515,13 +515,13 @@ pub fn set_contact_nickname(
     let conn = &mut crate::sqlite_connect()?;
     let target = contacts::table
         .filter(contacts::owner_user_id.eq(&owner_user_id))
-        .filter(contacts::contact_user_id.eq(contact_user_id));
+        .filter(contacts::contact_user_id.eq(&contact_user_id));
     match nickname {
         Some(name) => {
             let new_contact = NewContact {
                 owner_user_id,
-                contact_user_id: contact_user_id.to_string(),
-                nickname_override: Some(name.to_string()),
+                contact_user_id,
+                nickname_override: Some(name.clone()),
             };
             diesel::insert_into(contacts::table)
                 .values(&new_contact)

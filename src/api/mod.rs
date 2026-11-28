@@ -504,6 +504,22 @@ pub fn set_peer_local_nickname(peer_id: &str, nickname: &str) -> Result<(), Stri
     crate::nickname::set_peer_local_nickname(peer_id, nickname).map_err(|e| e.to_string())
 }
 
+/// Set the owner-side display name this install uses for a user contact.
+///
+/// The owner is derived in Rust from the local device binding; `None` clears
+/// the override. Validation and upsert live in [`crate::identity`] so no
+/// frontend can supply an owner or bypass the nickname rules.
+///
+/// # Errors
+/// Returns an error if the local user is unavailable, the contact is unknown,
+/// the nickname is invalid, or the write fails.
+pub fn set_contact_nickname(
+    contact_user_id: String,
+    nickname: Option<String>,
+) -> Result<(), String> {
+    crate::identity::set_contact_nickname(contact_user_id, nickname).map_err(|e| e.to_string())
+}
+
 /// Validate a nickname before persisting it.
 ///
 /// Single source of truth shared with the desktop/TUI path

@@ -258,6 +258,7 @@ fn documented_params_methods_are_routed() {
         "deleteGroup",
         "setSelfNickname",
         "setPeerLocalNickname",
+        "setContactNickname",
         "validateNickname",
         "networkSizeLabel",
         "getPeerQuality",

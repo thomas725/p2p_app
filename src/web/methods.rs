@@ -54,6 +54,7 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "acceptGroupInvite" | "deleteGroup") => groups(m, params),
         m @ ("setSelfNickname"
         | "setPeerLocalNickname"
+        | "setContactNickname"
         | "validateNickname"
         | "networkSizeLabel"
         | "getMyUserId"
@@ -448,6 +449,10 @@ fn identity(method: &str, params: Value) -> Result<Value, String> {
             let p: PeerNickParams = parse(params)?;
             json(api::set_peer_local_nickname(&p.peer_id, &p.nickname))
         }
+        "setContactNickname" => {
+            let p: ContactNicknameParams = parse(params)?;
+            json(api::set_contact_nickname(p.contact_user_id, p.nickname))
+        }
         "validateNickname" => {
             let p: NameParams = parse(params)?;
             ok(api::validate_nickname(&p.name))
@@ -733,6 +738,15 @@ struct EmojiParams {
 struct PeerNickParams {
     peer_id: String,
     nickname: String,
+}
+
+/// Owner-side contact nickname set: the caller supplies only the contact and
+/// the optional override; the owner is derived in Rust.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ContactNicknameParams {
+    contact_user_id: String,
+    nickname: Option<String>,
 }
 
 #[derive(serde::Deserialize)]
