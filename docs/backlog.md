@@ -367,6 +367,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| TUI in-app help matches the real bindings | 2026-11-28 | [`archive/2026-11-28_tui_help_accuracy.md`](archive/2026-11-28_tui_help_accuracy.md) |
 | Flutter message-body taps open Peer Info | 2026-11-28 | [`archive/2026-11-28_flutter_message_body_taps.md`](archive/2026-11-28_flutter_message_body_taps.md) |
 | Owner-side contact nicknames | 2026-11-28 | [`archive/2026-11-28_owner_side_contact_nicknames.md`](archive/2026-11-28_owner_side_contact_nicknames.md) |
 | Flutter/web share deletion | 2026-11-27 | [`archive/2026-11-27_flutter_web_share_deletion.md`](archive/2026-11-27_flutter_web_share_deletion.md) |

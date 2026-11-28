@@ -202,8 +202,9 @@ pub fn render_input_section(
 /// newest if none selected), Ctrl+P on every tab with a peer target (Contacts,
 /// Direct, Chat, Group, Settings), Ctrl+I (kitty) on a Direct/DM tab, `i` on
 /// Contacts, `Ctrl+N` (owner-side contact name) on Contacts, `n` (local
-/// nickname) on a Peer Info tab, `Ctrl+L` (GPX export) on a Direct tab, `Del`
-/// on the three chat tabs.
+/// nickname) on a Peer Info tab, `Ctrl+G` (canonical map link) on the three
+/// chat tabs, `Ctrl+L` (GPX export) on a Direct tab, `Del` on the three chat
+/// tabs.
 #[must_use]
 pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
     match tab_content {
@@ -220,13 +221,13 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | n: nickname | Ctrl+P: peer info | d: dial | b/r: add bootstrap/relay | x: remove | l: LAN | t: theme | c: accent | s: sound | o: desktop alert | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) if kitty => {
-            "Tab: next | Ctrl+Up/Down: select | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | Ctrl+L: export GPX | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+Up/Down: select | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | Ctrl+G: open map | Ctrl+L: export GPX | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) => {
-            "Tab: next | Ctrl+Up/Down: select | Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | Ctrl+L: export GPX | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+Up/Down: select | Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | Ctrl+G: open map | Ctrl+L: export GPX | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Chat | TabContent::GroupChat(_) => {
-            "Tab: next | Ctrl+Up/Down: select | Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+Up/Down: select | Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | Ctrl+G: open map | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Log => {
             "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Ctrl+C: copy all | c: clear logs | F12: mouse | ?: help | Ctrl+Q: quit"
@@ -256,7 +257,7 @@ Chat / DM / Group: verbs act on the selected row (newest if none selected)
 DM: cursor targets the bottom DM pane; bare arrows/wheel still scroll the hovered pane
 Chat / DM / Group: Ctrl+R -> reply | Ctrl+Y -> react | Ctrl+C -> copy (OSC 52)
 Reaction prompt: 1-6 quick emoji | Enter custom token | Esc cancel
-Chat / DM / Group: Ctrl+O -> open attachment | Del -> delete sent (local) | Ctrl+E -> edit sent (local)
+Chat / DM / Group: Ctrl+O -> open attachment | Ctrl+G -> open the selected row's canonical map | Del -> delete sent (local) | Ctrl+E -> edit sent (local)
 Chat / DM / Group: /file <path> -> attach and send a local file
 DM: Ctrl+I (kitty) / Ctrl+P -> partner's Peer Info
 DM: Ctrl+L -> export this device's location track to GPX
@@ -266,11 +267,11 @@ Settings: Ctrl+P -> connected peer / bound device | click a peer row for its Pee
 Contacts: i Info | e expand | c call | d link device | Ctrl+N edit contact name | / search | 1-5 sort | o reverse
 Groups: g create/join | d leave | y confirm leave
 Peer Info: n local nickname | c call | d link device | b block / unblock
-Shares: Up/Down share | Left/Right peer | Ctrl+Up/Down grant | Ctrl+Left/Right file | f discover | j/k offer | Enter accept | d mark delete | Ctrl+D publish | D delete share | a add | x revoke | m manifest | o re-advertise | r refresh
+Shares: Up/Down share | Left/Right peer | Ctrl+Up/Down grant | Ctrl+Left/Right file | c create | b bind/clear folder | s snapshot | u publish | p private/public | w anon writes | f discover | j/k offer | Enter accept | d mark delete | Ctrl+D publish deletions | D delete share | a add | x revoke | m manifest | o re-advertise | r refresh
 Log: Ctrl+C copy all logs | c clear logs
 Settings: n own nickname | d dial | b/r add peer | x remove | l LAN only | t dark/light | c accent | s sound | o desktop alert
 
-Prompts own the input; Esc unwinds one layer: prompt -> reply draft -> message selection -> Chat. Full reference: KEYBOARD_SHORTCUTS.md"
+Prompts own the input; Esc unwinds one layer: active prompt/editor -> reply draft -> message selection -> Chat. Full reference: KEYBOARD_SHORTCUTS.md"
 }
 
 /// Render the dedicated, larger popup used by [`shortcuts_help_text`].

@@ -745,6 +745,37 @@ mod render_tests {
     }
 
     #[test]
+    fn test_shortcuts_open_map_hint_only_on_chat_tabs() {
+        for tab in [
+            TabContent::Chat,
+            TabContent::Direct("peer-1".to_string()),
+            TabContent::GroupChat("group-1".to_string()),
+        ] {
+            assert!(
+                shortcuts_text(&tab, false).contains("Ctrl+G: open map"),
+                "missing open-map hint for {tab:?}"
+            );
+            assert!(
+                shortcuts_text(&tab, true).contains("Ctrl+G: open map"),
+                "missing open-map hint for {tab:?} on kitty"
+            );
+        }
+        for tab in [
+            TabContent::Contacts,
+            TabContent::Groups,
+            TabContent::Settings,
+            TabContent::Log,
+            TabContent::PeerInfo("peer-1".to_string()),
+            TabContent::Shares,
+        ] {
+            assert!(
+                !shortcuts_text(&tab, false).contains("Ctrl+G"),
+                "open-map hint must stay off {tab:?}"
+            );
+        }
+    }
+
+    #[test]
     fn test_shortcuts_copy_hint_only_on_chat_tabs() {
         for tab in [
             TabContent::Chat,
@@ -824,10 +855,11 @@ mod render_tests {
             "Enter  Send",
             "Del -> delete sent (local)",
             "Ctrl+O -> open attachment",
+            "Ctrl+G -> open the selected row's canonical map",
             "Ctrl+C -> copy (OSC 52)",
             "Ctrl+C copy all logs",
             "Ctrl+P -> newest/sender target (unchanged by selection)",
-            "Esc unwinds one layer: prompt -> reply draft -> message selection -> Chat",
+            "Esc unwinds one layer: active prompt/editor -> reply draft -> message selection -> Chat",
             "Ctrl+I (kitty) / Ctrl+P",
             "Settings: Ctrl+P -> connected peer / bound device",
             "click a peer row for its Peer Info",
@@ -836,6 +868,7 @@ mod render_tests {
             "b block / unblock",
             "s sound",
             "o desktop alert",
+            "c create | b bind/clear folder | s snapshot | u publish | p private/public | w anon writes",
             "/file <path>",
             "Ctrl+Q",
             "KEYBOARD_SHORTCUTS.md",

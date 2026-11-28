@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        75 |
-| Total Rust Lines      |    44,908 |
-| Total Rust Chars      | 1,715,237 |
-| Avg Lines/Rust File   |       598 |
-| Avg Chars/Rust File   |    22,869 |
+| Total Rust Lines      |    44,948 |
+| Total Rust Chars      | 1,717,626 |
+| Avg Lines/Rust File   |       599 |
+| Avg Chars/Rust File   |    22,901 |
 | Total Dart Files      |        62 |
 | Total Dart Lines      |    27,296 |
 | Total Dart Chars      |   881,294 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 142 files, 73,264 lines, 2,636,111 characters
+**Grand Total:** 142 files, 73,304 lines, 2,638,500 characters
 
 ## Rust Source Files
 
@@ -43,12 +43,12 @@
 | src                     | frb_generated.rs     |     6 | 284865 |  6851 |        - |       - | flutter_rust_bridge codegen                        |
 | src                     | groups.rs            |     3 | 24841 |   664 |        - |       - | Group management & persistence                     |
 | src                     | identity.rs          |     4 | 30488 |   797 |        - |       - | Users, account keys & device bindings              |
-| src                     | lib.rs               |     1 |  7584 |   204 |        - |       - | Module declarations & re-exports                   |
+| src                     | lib.rs               |     1 |  7613 |   205 |        - |       - | Module declarations & re-exports                   |
 | src                     | location.rs          |     5 | 29879 |   810 |        - |       - | Source file                                        |
-| src                     | logging.rs           |     5 | 13949 |   426 |        - |       - | Logging utilities & setup                          |
+| src                     | logging.rs           |     5 | 15092 |   448 |        - |       - | Logging utilities & setup                          |
 | src                     | messages.rs          |     5 | 25355 |   643 |        - |       - | Message persistence & retrieval                    |
 | src                     | mobile_api.rs        |     4 | 35164 |  1034 |        - |       - | Mobile FRB API surface                             |
-| src                     | mobile_node.rs       |     5 | 69263 |  1770 |        - |       - | Mobile node lifecycle & swarm                      |
+| src                     | mobile_node.rs       |     5 | 69489 |  1774 |        - |       - | Mobile node lifecycle & swarm                      |
 | src                     | mod.rs               |     5 | 51916 |  1452 |        - |       - | FRB API surface                                    |
 | src                     | net_diag.rs          |     4 | 21449 |   596 |        - |       - | Source file                                        |
 | src                     | network.rs           |     3 |  2655 |    84 |        - |       - | Network size classification                        |
@@ -71,7 +71,7 @@
 | src                     | types.rs             |     4 | 20528 |   530 |        - |       - | Event & command type defs                          |
 | src/bin                 | p2p_chat.rs          |     7 |  6917 |   192 |        - |       - | CLI chat application                               |
 | src/bin                 | p2p_chat_server.rs   |     4 |  4836 |   138 |        - |       - | Headless node + web server entry point             |
-| src/bin                 | p2p_chat_tui.rs      |     6 |  9927 |   279 |        - |       - | Main TUI application entry point                   |
+| src/bin                 | p2p_chat_tui.rs      |     6 | 10636 |   291 |        - |       - | Main TUI application entry point                   |
 | src/bin/tui             | call_audio.rs        |     6 | 19279 |   540 |        - |       - | Source file                                        |
 | src/bin/tui             | click_handlers.rs    |     7 | 26019 |   617 |        - |       - | Click handlers & index mapping                     |
 | src/bin/tui             | command_processor.rs |     6 | 32607 |   881 |        - |       - | Event routing & state updates                      |
@@ -94,7 +94,7 @@
 | src/tui_render          | chat.rs              |     4 |  7347 |   206 |        - |       - | TUI chat & DM pane renderer                        |
 | src/tui_render          | groups.rs            |     5 |  5201 |   139 |        - |       - | TUI groups renderer                                |
 | src/tui_render          | log.rs               |     2 |   907 |    31 |        - |       - | TUI log renderer                                   |
-| src/tui_render          | mod.rs               |     4 | 14670 |   345 |        - |       - | TUI render chrome & dispatch                       |
+| src/tui_render          | mod.rs               |     4 | 14952 |   346 |        - |       - | TUI render chrome & dispatch                       |
 | src/tui_render          | peer_info.rs         |     3 |  3108 |    88 |        - |       - | TUI peer-info renderer                             |
 | src/tui_render          | peers.rs             |     5 |  5890 |   136 |        - |       - | TUI peers-table renderer                           |
 | src/tui_render          | settings.rs          |     5 | 16413 |   469 |        - |       - | TUI settings renderer                              |
@@ -102,7 +102,7 @@
 | src/web                 | methods.rs           |     5 | 44877 |  1379 |        - |       - | Web JSON method dispatch                           |
 | src/web                 | mod.rs               |     7 | 20622 |   520 |        - |       - | Web server (axum HTTP+WS)                          |
 
-**Total:** 75 files, 44,908 lines, 1,715,237 characters
+**Total:** 75 files, 44,948 lines, 1,717,626 characters
 
 ## Rust Test Files
 
@@ -128,7 +128,7 @@
 | tests  | tui_chat.rs                        |   741 | 23619 |     4 | TUI chat functionality tests          |
 | tests  | tui_helpers.rs                     |   437 | 13387 |     3 | TUI helpers tests                     |
 | tests  | tui_integration.rs                 |   520 | 16672 |     4 | TUI integration tests                 |
-| tests  | tui_render_integration.rs          |  2254 | 79974 |     5 | TUI render integration tests          |
+| tests  | tui_render_integration.rs          |  2287 | 81166 |     5 | TUI render integration tests          |
 | tests  | tui_state.rs                       |   269 |  8303 |     2 | TUI state tests                       |
 | tests  | tui_tasks.rs                       |   245 |  7811 |     7 | TUI task tests                        |
 | tests  | types.rs                           |   662 | 20583 |     3 | types module tests                    |
@@ -158,7 +158,7 @@
 | unit   | unit_identity.rs                   |   747 | 29217 |     4 | identity module tests                 |
 | unit   | unit_lib.rs                        |   298 |  8790 |     3 | Unit tests for library re-exports/api |
 | unit   | unit_location.rs                   |   317 | 11364 |     3 | Test file                             |
-| unit   | unit_logging.rs                    |   205 |  5217 |     4 | Unit tests for logging module         |
+| unit   | unit_logging.rs                    |   224 |  5685 |     4 | Unit tests for logging module         |
 | unit   | unit_messages.rs                   |   685 | 25897 |     4 | Unit tests for messages module        |
 | unit   | unit_mobile_node.rs                |   912 | 28356 |     4 | Test file                             |
 | unit   | unit_net_diag.rs                   |   483 | 15776 |     3 | Test file                             |
@@ -179,7 +179,7 @@
 | unit   | unit_types.rs                      |   427 | 12996 |     3 | Unit tests for types module           |
 | unit   | unit_web_mod.rs                    |  1304 | 45284 |     9 | Test file                             |
 
-**Total:** 70 test files, 39,121 lines, 1,331,340 characters
+**Total:** 70 test files, 39,173 lines, 1,333,000 characters
 
 ## Dart Source Files
 
