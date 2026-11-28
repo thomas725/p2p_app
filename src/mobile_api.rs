@@ -96,6 +96,7 @@ pub struct PeerSortInput {
     pub broadcast_count: u32,
 }
 
+#[flutter_rust_bridge::frb(ignore)]
 impl SortableRow for PeerSortInput {
     fn display_name(&self) -> &str {
         &self.display_name
@@ -302,6 +303,7 @@ pub struct ContactSortInput {
     pub broadcast_sent_to_peer: i64,
 }
 
+#[flutter_rust_bridge::frb(ignore)]
 impl SortableRow for ContactSortInput {
     fn display_name(&self) -> &str {
         &self.display_name

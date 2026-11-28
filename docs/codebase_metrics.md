@@ -5,22 +5,22 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        75 |
-| Total Rust Lines      |    45,111 |
-| Total Rust Chars      | 1,720,099 |
+| Total Rust Lines      |    45,113 |
+| Total Rust Chars      | 1,720,171 |
 | Avg Lines/Rust File   |       601 |
-| Avg Chars/Rust File   |    22,934 |
+| Avg Chars/Rust File   |    22,935 |
 | Total Dart Files      |        62 |
 | Total Dart Lines      |    27,483 |
-| Total Dart Chars      |   885,163 |
+| Total Dart Chars      |   885,359 |
 | Avg Lines/Dart File   |       443 |
-| Avg Chars/Dart File   |    14,276 |
+| Avg Chars/Dart File   |    14,279 |
 | Total Kotlin Files    |         5 |
 | Total Kotlin Lines    |     1,060 |
 | Total Kotlin Chars    |    39,580 |
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 142 files, 73,654 lines, 2,644,842 characters
+**Grand Total:** 142 files, 73,656 lines, 2,645,110 characters
 
 ## Rust Source Files
 
@@ -47,7 +47,7 @@
 | src                     | location.rs          |     5 | 29490 |   804 |        - |       - | Source file                                        |
 | src                     | logging.rs           |     5 | 13949 |   426 |        - |       - | Logging utilities & setup                          |
 | src                     | messages.rs          |     5 | 25355 |   643 |        - |       - | Message persistence & retrieval                    |
-| src                     | mobile_api.rs        |     4 | 39649 |  1164 |        - |       - | Mobile FRB API surface                             |
+| src                     | mobile_api.rs        |     4 | 39721 |  1166 |        - |       - | Mobile FRB API surface                             |
 | src                     | mobile_node.rs       |     5 | 69263 |  1770 |        - |       - | Mobile node lifecycle & swarm                      |
 | src                     | mod.rs               |     5 | 53493 |  1509 |        - |       - | FRB API surface                                    |
 | src                     | net_diag.rs          |     4 | 21449 |   596 |        - |       - | Source file                                        |
@@ -102,7 +102,7 @@
 | src/web                 | methods.rs           |     5 | 46468 |  1441 |        - |       - | Web JSON method dispatch                           |
 | src/web                 | mod.rs               |     7 | 20622 |   520 |        - |       - | Web server (axum HTTP+WS)                          |
 
-**Total:** 75 files, 45,111 lines, 1,720,099 characters
+**Total:** 75 files, 45,113 lines, 1,720,171 characters
 
 ## Rust Test Files
 
@@ -199,8 +199,8 @@
 | lib/src/rust | frb_generated.web.dart           |     2 | 30780 |  1281 |        - |       - | FRB web bindings (generated)     |
 | lib/src/rust | location.dart                    |     5 |  5400 |   173 |        - |       - | Dart source file                 |
 | lib/src/rust | messages.dart                    |     5 |  1067 |    32 |        - |       - | Rust bindings (hand-maintained)  |
-| lib/src/rust | mobile_api.dart                  |     5 | 17463 |   541 |        - |       - | Mobile API bindings (generated)  |
-| lib/src/rust | mobile_node.dart                 |     5 | 18128 |   536 |        - |       - | Mobile node bindings (generated) |
+| lib/src/rust | mobile_api.dart                  |     5 | 17637 |   541 |        - |       - | Mobile API bindings (generated)  |
+| lib/src/rust | mobile_node.dart                 |     5 | 18150 |   536 |        - |       - | Mobile node bindings (generated) |
 | lib/src/rust | net_diag.dart                    |     5 |  7968 |   256 |        - |       - | Dart source file                 |
 | lib/src/rust | network_config.dart              |     5 |  1182 |    43 |        - |       - | Dart source file                 |
 | lib/src/rust | notifications.dart               |     5 |  2232 |    76 |        - |       - | Dart source file                 |
@@ -248,7 +248,7 @@
 | lib          | theme.dart                       |     2 |  1821 |    49 |        - |       - | Dart source file                 |
 | lib          | ui_utils.dart                    |     2 |  1233 |    29 |        - |       - | Shared formatting & env helpers  |
 
-**Total:** 62 files, 27,483 lines, 885,163 characters
+**Total:** 62 files, 27,483 lines, 885,359 characters
 
 ## Dart Test Files
 
