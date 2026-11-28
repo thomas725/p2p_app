@@ -85,6 +85,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-27_flutter_web_share_deletion.md](2026-11-27_flutter_web_share_deletion.md) | Confirmed local share deletion in the shared Flutter/web detail route | 2026-11-27 |
 | [2026-11-27_tui_local_share_deletion.md](2026-11-27_tui_local_share_deletion.md) | TUI confirmed local share deletion with a captured-target prompt and canonical reload | 2026-11-27 |
 | [2026-11-28_native_share_folder_ui.md](2026-11-28_native_share_folder_ui.md) | Native Flutter share binding/clear/snapshot UI over the existing Rust facade | 2026-11-28 |
+| [2026-11-28_shared_message_timestamps.md](2026-11-28_shared_message_timestamps.md) | One Rust helper formats `sent_at`/`created_at` for both mobile chat DTOs | 2026-11-28 |
 | [2026-11-27_device_location_sharing.md](2026-11-27_device_location_sharing.md) | Device-centric location sharing: Rust-owned policy, sealed DMs, GPX tracks, TUI/Flutter/web/Android | 2026-11-27 |
 | [2026-11-27_frb_web_drift_guard.md](2026-11-27_frb_web_drift_guard.md) | Generated-source guard that every FRB wire has a web arm or a documented native-only reason | 2026-11-27 |
 | [2026-11-27_canonical_sort_comparator.md](2026-11-27_canonical_sort_comparator.md) | One canonical five-column comparator shared by the TUI and both Flutter transports | 2026-11-27 |

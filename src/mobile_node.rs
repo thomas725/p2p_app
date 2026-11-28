@@ -681,8 +681,34 @@ fn sender_nickname_label(
     }
 }
 
+/// Display timestamps shared by message-like rows: local `HH:MM` for the
+/// Unix-seconds send time and local `%Y-%m-%d %H:%M:%S` for the DB creation
+/// time. DMs/broadcasts and group chats must render both the same way.
+fn message_timestamps(
+    sent_at: Option<f64>,
+    created_at: &chrono::NaiveDateTime,
+) -> (Option<String>, String) {
+    let sent_at = sent_at.map(|t| {
+        // `sent_at` is a Unix timestamp in seconds (well within i64 range);
+        // `to_i64` truncates the fractional part exactly like `as i64` did.
+        let secs = t.to_i64().unwrap_or_default();
+        chrono::DateTime::from_timestamp(secs, 0)
+            .unwrap_or_default()
+            .with_timezone(&chrono::Local)
+            .format("%H:%M")
+            .to_string()
+    });
+    let created_at = chrono::Utc
+        .from_utc_datetime(created_at)
+        .with_timezone(&chrono::Local)
+        .format("%Y-%m-%d %H:%M:%S")
+        .to_string();
+    (sent_at, created_at)
+}
+
 fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMessage {
     let sender_nickname = sender_nickname_label(msg.sender_nickname.clone(), msg.peer_id.clone());
+    let (sent_at, created_at) = message_timestamps(msg.sent_at, &msg.created_at);
     ChatMessage {
         id: msg.id,
         content: msg.content,
@@ -694,20 +720,8 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
         target_peer: msg.target_peer,
         msg_id: msg.msg_id,
         reply_to: msg.reply_to_json.as_deref().and_then(crate::reply::decode),
-        sent_at: msg.sent_at.map(|t| {
-            // `sent_at` is a Unix timestamp in seconds (well within i64 range);
-            // `to_i64` truncates the fractional part exactly like `as i64` did.
-            let secs = t.to_i64().unwrap_or_default();
-            let dt = chrono::DateTime::from_timestamp(secs, 0)
-                .unwrap_or_default()
-                .with_timezone(&chrono::Local);
-            dt.format("%H:%M").to_string()
-        }),
-        created_at: chrono::Utc
-            .from_utc_datetime(&msg.created_at)
-            .with_timezone(&chrono::Local)
-            .format("%Y-%m-%d %H:%M:%S")
-            .to_string(),
+        sent_at,
+        created_at,
         sender_nickname,
         attachment: attachment_from_row(msg.attachment_json.as_deref()),
         encrypted: msg.encrypted != 0,
@@ -1236,6 +1250,7 @@ fn group_message_to_mobile(
     msg: crate::generated::models_queryable::GroupMessage,
 ) -> MobileGroupMessage {
     let sender_nickname = sender_nickname_label(msg.sender_nickname.clone(), msg.peer_id.clone());
+    let (sent_at, created_at) = message_timestamps(msg.sent_at, &msg.created_at);
     MobileGroupMessage {
         id: msg.id,
         content: msg.content,
@@ -1244,20 +1259,8 @@ fn group_message_to_mobile(
         edited: msg.edited_at.is_some(),
         msg_id: msg.msg_id,
         reply_to: msg.reply_to_json.as_deref().and_then(crate::reply::decode),
-        sent_at: msg.sent_at.map(|t| {
-            // `sent_at` is a Unix timestamp in seconds (well within i64 range);
-            // `to_i64` truncates the fractional part exactly like `as i64` did.
-            let secs = t.to_i64().unwrap_or_default();
-            let dt = chrono::DateTime::from_timestamp(secs, 0)
-                .unwrap_or_default()
-                .with_timezone(&chrono::Local);
-            dt.format("%H:%M").to_string()
-        }),
-        created_at: chrono::Utc
-            .from_utc_datetime(&msg.created_at)
-            .with_timezone(&chrono::Local)
-            .format("%Y-%m-%d %H:%M:%S")
-            .to_string(),
+        sent_at,
+        created_at,
         sender_nickname,
         attachment: attachment_from_row(msg.attachment_json.as_deref()),
         reactions: Vec::new(),
@@ -1765,7 +1768,7 @@ fn group_invite_event_json(group_id: String, inviter_peer: String) -> SwarmEvent
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::generated::models_queryable::Message;
+    use crate::generated::models_queryable::{GroupMessage, Message};
     use crate::types::MessageEvent;
     use chrono::NaiveDateTime;
     use serial_test::serial;
@@ -2193,6 +2196,52 @@ mod tests {
         };
         let chat = message_to_chat(msg);
         assert!(chat.sent_at.is_none());
+    }
+
+    #[test]
+    fn test_group_message_to_mobile_uses_message_timestamps() {
+        // Both chat DTOs must print the same local HH:MM and full creation
+        // timestamp for an identical DB row, whichever mapper built them.
+        let sent_at = Some(1_718_455_800.0);
+        let message = Message {
+            id: 7,
+            created_at: dt("2024-06-15 10:30:00"),
+            content: "hello".into(),
+            peer_id: None,
+            topic: "chat".into(),
+            sent: 1,
+            is_direct: 0,
+            target_peer: None,
+            msg_id: None,
+            sent_at,
+            sender_nickname: None,
+            attachment_json: None,
+            reply_to_json: None,
+            encrypted: 0,
+            deleted_at: None,
+            edited_at: None,
+        };
+        let group_message = GroupMessage {
+            id: 8,
+            created_at: dt("2024-06-15 10:30:00"),
+            group_id: "group-a".into(),
+            content: "hello".into(),
+            peer_id: None,
+            sent: 1,
+            msg_id: None,
+            reply_to_json: None,
+            sent_at,
+            sender_nickname: None,
+            attachment_json: None,
+            deleted_at: None,
+            edited_at: None,
+        };
+
+        let chat = message_to_chat(message);
+        let group = group_message_to_mobile(group_message);
+        assert!(chat.sent_at.is_some());
+        assert_eq!(group.sent_at, chat.sent_at);
+        assert_eq!(group.created_at, chat.created_at);
     }
 
     // ── process_event_for_mobile ───────────────────────────────────────

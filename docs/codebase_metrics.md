@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        74 |
-| Total Rust Lines      |    47,258 |
-| Total Rust Chars      | 1,798,948 |
-| Avg Lines/Rust File   |       638 |
-| Avg Chars/Rust File   |    24,310 |
+| Total Rust Lines      |    47,307 |
+| Total Rust Chars      | 1,800,388 |
+| Avg Lines/Rust File   |       639 |
+| Avg Chars/Rust File   |    24,329 |
 | Total Dart Files      |        62 |
 | Total Dart Lines      |    27,483 |
 | Total Dart Chars      |   885,163 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 141 files, 75,801 lines, 2,723,691 characters
+**Grand Total:** 141 files, 75,850 lines, 2,725,131 characters
 
 ## Rust Source Files
 
@@ -48,7 +48,7 @@
 | src                     | logging.rs           |     5 | 13949 |   426 |        - |       - | Logging utilities & setup                          |
 | src                     | messages.rs          |     5 | 25355 |   643 |        - |       - | Message persistence & retrieval                    |
 | src                     | mobile_api.rs        |     4 | 39649 |  1164 |        - |       - | Mobile FRB API surface                             |
-| src                     | mobile_node.rs       |     5 | 99311 |  2629 |        - |       - | Mobile node lifecycle & swarm                      |
+| src                     | mobile_node.rs       |     5 | 100751 |  2678 |        - |       - | Mobile node lifecycle & swarm                      |
 | src                     | mod.rs               |     5 | 53493 |  1509 |        - |       - | FRB API surface                                    |
 | src                     | net_diag.rs          |     4 | 21449 |   596 |        - |       - | Source file                                        |
 | src                     | network.rs           |     3 |  2655 |    84 |        - |       - | Network size classification                        |
@@ -101,7 +101,7 @@
 | src/web                 | methods.rs           |     5 | 46468 |  1441 |        - |       - | Web JSON method dispatch                           |
 | src/web                 | mod.rs               |     9 | 70240 |  1824 |        - |       - | Web server (axum HTTP+WS)                          |
 
-**Total:** 74 files, 47,258 lines, 1,798,948 characters
+**Total:** 74 files, 47,307 lines, 1,800,388 characters
 
 ## Rust Test Files
 
