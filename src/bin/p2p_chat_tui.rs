@@ -76,6 +76,7 @@ mod tui {
     pub mod message_handlers;
     pub mod render_loop;
     pub mod scroll_handlers;
+    pub mod share_actions;
     pub mod state;
     #[cfg(test)]
     #[path = "../../../tests/unit/unit_bin_tui_test_helpers.rs"]

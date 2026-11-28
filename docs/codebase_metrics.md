@@ -4,11 +4,11 @@
 
 | Metric                |     Value |
 |:----------------------|:----------|
-| Total Rust Files      |        74 |
-| Total Rust Lines      |    47,307 |
-| Total Rust Chars      | 1,800,388 |
-| Avg Lines/Rust File   |       639 |
-| Avg Chars/Rust File   |    24,329 |
+| Total Rust Files      |        75 |
+| Total Rust Lines      |    47,323 |
+| Total Rust Chars      | 1,801,205 |
+| Avg Lines/Rust File   |       630 |
+| Avg Chars/Rust File   |    24,016 |
 | Total Dart Files      |        62 |
 | Total Dart Lines      |    27,483 |
 | Total Dart Chars      |   885,163 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 141 files, 75,850 lines, 2,725,131 characters
+**Grand Total:** 142 files, 75,866 lines, 2,725,948 characters
 
 ## Rust Source Files
 
@@ -71,17 +71,18 @@
 | src                     | types.rs             |     4 | 20251 |   525 |        - |       - | Event & command type defs                          |
 | src/bin                 | p2p_chat.rs          |     7 |  6917 |   192 |        - |       - | CLI chat application                               |
 | src/bin                 | p2p_chat_server.rs   |     4 |  4836 |   138 |        - |       - | Headless node + web server entry point             |
-| src/bin                 | p2p_chat_tui.rs      |     6 |  9900 |   278 |        - |       - | Main TUI application entry point                   |
+| src/bin                 | p2p_chat_tui.rs      |     6 |  9927 |   279 |        - |       - | Main TUI application entry point                   |
 | src/bin/tui             | call_audio.rs        |     6 | 19279 |   540 |        - |       - | Source file                                        |
 | src/bin/tui             | click_handlers.rs    |     7 | 26019 |   617 |        - |       - | Click handlers & index mapping                     |
 | src/bin/tui             | command_processor.rs |     6 | 32607 |   881 |        - |       - | Event routing & state updates                      |
 | src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)                    |
-| src/bin/tui             | input_processor.rs   |     7 | 110228 |  2872 |        - |       - | Input event routing & processing                   |
+| src/bin/tui             | input_processor.rs   |     7 | 81730 |  2088 |        - |       - | Input event routing & processing                   |
 | src/bin/tui             | key_probe.rs         |     6 |  6272 |   172 |        - |       - | Keyboard enhancement probe                         |
 | src/bin/tui             | location_export.rs   |     5 | 16342 |   429 |        - |       - | Source file                                        |
 | src/bin/tui             | main_loop.rs         |     6 | 15979 |   400 |        - |       - | Task orchestration & async                         |
 | src/bin/tui             | message_handlers.rs  |     4 | 17819 |   536 |        - |       - | Message sending logic                              |
 | src/bin/tui             | scroll_handlers.rs   |     4 | 22994 |   621 |        - |       - | Scroll & hover-aware navigation                    |
+| src/bin/tui             | share_actions.rs     |     5 | 29288 |   799 |        - |       - | Source file                                        |
 | src/bin/tui             | state.rs             |     8 | 102408 |  2423 |        - |       - | Shared application state                           |
 | src/bin/tui/render_loop | layout.rs            |     5 |  4411 |   114 |        - |       - | UI layout component rendering                      |
 | src/bin/tui/render_loop | mod.rs               |     6 | 17491 |   438 |        - |       - | Render loop orchestration (60 FPS)                 |
@@ -101,7 +102,7 @@
 | src/web                 | methods.rs           |     5 | 46468 |  1441 |        - |       - | Web JSON method dispatch                           |
 | src/web                 | mod.rs               |     9 | 70240 |  1824 |        - |       - | Web server (axum HTTP+WS)                          |
 
-**Total:** 74 files, 47,307 lines, 1,800,388 characters
+**Total:** 75 files, 47,323 lines, 1,801,205 characters
 
 ## Rust Test Files
 
