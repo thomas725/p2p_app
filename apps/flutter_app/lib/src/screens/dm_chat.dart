@@ -733,6 +733,7 @@ class _DmChatScreenState extends State<DmChatScreen>
             unreadLabel: '$unreadCount new',
             onJumpToBottom: () => forceJumpToBottom(_scrollController),
             onOpenPeerInfo: _openPeerInfo,
+            onBubbleBodyTap: (_) => _openPeerInfo(_peerId),
             onOpenAttachment: _openAttachment,
             onReact: _onReact,
             onLocationLinkError: _onLocationLinkError,

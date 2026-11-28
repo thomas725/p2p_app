@@ -399,6 +399,7 @@ class MessageChatBody extends StatelessWidget {
     required this.unreadLabel,
     required this.onJumpToBottom,
     this.onOpenPeerInfo,
+    this.onBubbleBodyTap,
     this.onOpenAttachment,
     this.onReact,
     this.onLocationLinkError,
@@ -427,6 +428,11 @@ class MessageChatBody extends StatelessWidget {
   final String unreadLabel;
   final VoidCallback onJumpToBottom;
   final void Function(String)? onOpenPeerInfo;
+
+  /// Single-tap body action. The owning screen resolves the peer (message
+  /// sender in broadcast/group, conversation partner in DM), so the shared
+  /// bubble never guesses which id a row means. Null while selecting.
+  final void Function(ChatMessage)? onBubbleBodyTap;
   final void Function(ChatMessage)? onOpenAttachment;
 
   /// Called with `(message index, emoji)` when a reaction chip is tapped. The
@@ -483,6 +489,9 @@ class MessageChatBody extends StatelessWidget {
                         selectionMode: selectionMode,
                         onDoubleTap: () => onBubbleDoubleTap(i),
                         onTap: () => onBubbleTap(i),
+                        onBodyTap: !selectionMode && onBubbleBodyTap != null
+                            ? () => onBubbleBodyTap!(messages[i])
+                            : null,
                         onOpenPeerInfo: onOpenPeerInfo,
                         onOpenAttachment: onOpenAttachment == null
                             ? null
@@ -745,6 +754,7 @@ class BroadcastChat extends StatefulWidget {
     required this.onCopySelected,
     required this.onDeleteSelected,
     required this.onOpenPeerInfo,
+    this.onBubbleBodyTap,
     this.onReply,
     this.onEdit,
     this.replyTo,
@@ -775,6 +785,10 @@ class BroadcastChat extends StatefulWidget {
   final VoidCallback? onCancelReply;
   final VoidCallback? onPickFile;
   final void Function(ChatMessage)? onOpenAttachment;
+
+  /// Opens the sender's Peer Info on a single bubble-body tap. The host owns
+  /// peer resolution; the shared body supplies only the message row.
+  final void Function(ChatMessage)? onBubbleBodyTap;
   final void Function(int, String)? onReact;
   final void Function(String)? onLocationLinkError;
 
@@ -845,6 +859,7 @@ class _BroadcastChatState extends State<BroadcastChat> {
               '${widget.unreadCount} new message${widget.unreadCount > 1 ? 's' : ''}',
           onJumpToBottom: widget.onJumpToBottom,
           onOpenPeerInfo: widget.onOpenPeerInfo,
+          onBubbleBodyTap: widget.onBubbleBodyTap,
           onOpenAttachment: widget.onOpenAttachment,
           onReact: widget.onReact,
           onLocationLinkError: widget.onLocationLinkError,
@@ -865,7 +880,8 @@ class _BroadcastChatState extends State<BroadcastChat> {
 
 /// A single message bubble: peer name (tappable to open peer info), content,
 /// a live round-trip latency (incoming messages only), and a timestamp.
-/// Double-tap enters selection mode; tapping toggles the bubble's selection.
+/// Double-tap enters selection mode; tapping toggles the bubble's selection,
+/// or opens the conversation's peer when the host supplies a body action.
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
     super.key,
@@ -875,6 +891,7 @@ class MessageBubble extends StatelessWidget {
     this.selectionMode = false,
     this.onDoubleTap,
     this.onTap,
+    this.onBodyTap,
     this.onOpenPeerInfo,
     this.onOpenAttachment,
     this.onReact,
@@ -886,6 +903,10 @@ class MessageBubble extends StatelessWidget {
   final bool selectionMode;
   final VoidCallback? onDoubleTap;
   final VoidCallback? onTap;
+
+  /// Single-tap body action. Nested sender/link/chip controls win their own
+  /// taps, and selection mode supplies [onTap] instead.
+  final VoidCallback? onBodyTap;
   final void Function(String)? onOpenPeerInfo;
   final VoidCallback? onOpenAttachment;
   final void Function(String)? onReact;
@@ -995,7 +1016,7 @@ class MessageBubble extends StatelessWidget {
       alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
       child: GestureDetector(
         onDoubleTap: onDoubleTap,
-        onTap: onTap,
+        onTap: onBodyTap ?? onTap,
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 3),
           constraints: BoxConstraints(

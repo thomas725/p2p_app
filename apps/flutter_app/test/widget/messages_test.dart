@@ -15,6 +15,9 @@ import 'package:p2p_app_flutter/src/screens/dm_chat.dart';
 import 'package:p2p_app_flutter/src/screens/group_chat.dart';
 import 'package:p2p_app_flutter/src/screens/home.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
+import 'package:p2p_app_flutter/src/screens/peer_info.dart';
+import 'package:p2p_app_flutter/src/util/attachments.dart'
+    show openRemoteUrlOverride;
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
 import 'package:p2p_app_flutter/src/util/reply.dart';
 
@@ -115,9 +118,13 @@ void _selectMessage(WidgetTester tester, Type screenType, int index) {
 }
 
 void main() {
-  // The event bus is a global; leaving a sink installed would leak into the
-  // next test (and into the pump of the next screen).
-  tearDown(() => setEventSink(null));
+  // Both the event bus and the URL opener are globals; leaving either patched
+  // would leak into the next test (and into the pump of the next screen).
+  final previousOpenRemoteUrl = openRemoteUrlOverride;
+  tearDown(() {
+    setEventSink(null);
+    openRemoteUrlOverride = previousOpenRemoteUrl;
+  });
 
   testWidgets('own confirmed bubbles show a delivery tick', (tester) async {
     await tester.pumpWidget(
@@ -1579,6 +1586,334 @@ void main() {
         .widget<MessageBubble>(find.byType(MessageBubble).first)
         .onOpenPeerInfo!('group-sender');
 
+    expect(opened, ['group-sender']);
+  });
+
+  /// A minimal [MessageChatBody] harness: real bubbles plus explicit actions,
+  /// so tests can inspect which callback a bubble received without pumping a
+  /// whole screen (whose SelectionArea swallows synthetic taps in widget tests).
+  Widget chatBody({
+    required bool selectionMode,
+    required void Function(ChatMessage) onBody,
+    required VoidCallback onSelect,
+  }) => MaterialApp(
+    home: Scaffold(
+      body: Column(
+        children: [
+          MessageChatBody(
+            messages: [
+              chatMessage(
+                id: 16,
+                peerId: 'peer-abc',
+                content: 'from peer',
+                sent: false,
+              ),
+            ],
+            scrollController: ScrollController(),
+            loading: false,
+            emptyText: '',
+            selectionMode: selectionMode,
+            selectedIndices: const <int>{},
+            onBubbleDoubleTap: (_) {},
+            onBubbleTap: (_) => onSelect(),
+            onCancelSelection: () {},
+            onCopySelected: () {},
+            onDeleteSelected: () {},
+            unreadCount: 0,
+            unreadLabel: '',
+            onJumpToBottom: () {},
+            onBubbleBodyTap: onBody,
+          ),
+        ],
+      ),
+    ),
+  );
+
+  testWidgets('MessageChatBody hands the tapped row to the host', (
+    tester,
+  ) async {
+    final bodies = <String>[];
+    await tester.pumpWidget(
+      chatBody(
+        selectionMode: false,
+        onBody: (message) => bodies.add(message.content),
+        onSelect: () {},
+      ),
+    );
+    final bubble = tester.widget<MessageBubble>(find.byType(MessageBubble));
+    expect(bubble.onBodyTap, isNotNull);
+    bubble.onBodyTap!();
+    expect(bodies, ['from peer']);
+  });
+
+  testWidgets('selection mode keeps the body tap as a selection', (
+    tester,
+  ) async {
+    var bodies = 0;
+    var selected = 0;
+    await tester.pumpWidget(
+      chatBody(
+        selectionMode: true,
+        onBody: (_) => bodies++,
+        onSelect: () => selected++,
+      ),
+    );
+    final bubble = tester.widget<MessageBubble>(find.byType(MessageBubble));
+    expect(bubble.onBodyTap, isNull);
+    bubble.onTap!();
+    expect(selected, 1);
+    expect(bodies, 0);
+  });
+
+  testWidgets('a lone body tap opens the peer after the double-tap window', (
+    tester,
+  ) async {
+    var bodies = 0;
+    var selected = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MessageBubble(
+            message: chatMessage(id: 11, peerId: 'peer-abc', sent: false),
+            isOwn: false,
+            onTap: () => selected++,
+            onBodyTap: () => bodies++,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('hello'));
+    // A GestureDetector with onDoubleTap holds the first tap until the
+    // double-tap window closes before it commits to the single-tap action.
+    await tester.pump(const Duration(seconds: 2));
+    expect(bodies, 1);
+    expect(selected, 0);
+  });
+
+  testWidgets('a completed double tap selects instead of opening the peer', (
+    tester,
+  ) async {
+    var bodies = 0;
+    var doubles = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MessageBubble(
+            message: chatMessage(id: 12, peerId: 'peer-abc', sent: false),
+            isOwn: false,
+            onDoubleTap: () => doubles++,
+            onBodyTap: () => bodies++,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('hello'));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.text('hello'));
+    await tester.pumpAndSettle();
+    expect(doubles, 1);
+    expect(bodies, 0);
+  });
+
+  testWidgets('nested sender and attachment controls keep their own taps', (
+    tester,
+  ) async {
+    var bodies = 0;
+    var attachments = 0;
+    final opened = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              MessageBubble(
+                message: chatMessage(
+                  id: 13,
+                  peerId: 'peer-abc',
+                  sent: false,
+                  senderNickname: 'Alice',
+                ),
+                isOwn: false,
+                onBodyTap: () => bodies++,
+                onOpenPeerInfo: opened.add,
+              ),
+              MessageBubble(
+                message: chatMessage(
+                  id: 14,
+                  peerId: 'peer-abc',
+                  content: '',
+                  attachment: liveAttachment,
+                  sent: false,
+                ),
+                isOwn: false,
+                onBodyTap: () => bodies++,
+                onOpenAttachment: () => attachments++,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Alice'));
+    await tester.pump(const Duration(seconds: 2));
+    await tester.tap(find.text(liveAttachment.chip));
+    await tester.pump(const Duration(seconds: 2));
+    expect(opened, ['peer-abc']);
+    expect(attachments, 1);
+    expect(bodies, 0);
+  });
+
+  testWidgets('the map chip opens Rust\'s URL without opening the peer', (
+    tester,
+  ) async {
+    final fake = FakeNodeApi()
+      ..locationMessageUrlOverride = (_) => 'https://maps.example/route';
+    nodeApi = fake;
+    var bodies = 0;
+    String? openedUrl;
+    openRemoteUrlOverride = (url) async {
+      openedUrl = url;
+      return null;
+    };
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MessageBubble(
+            message: chatMessage(
+              id: 15,
+              peerId: 'peer-abc',
+              content: '[Location] 1.0,2.0 @1 https://maps.example/route',
+              sent: false,
+            ),
+            isOwn: false,
+            onBodyTap: () => bodies++,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('location-map-link')));
+    await tester.pumpAndSettle();
+    expect(openedUrl, 'https://maps.example/route');
+    expect(bodies, 0);
+  });
+
+  testWidgets('a broadcast body tap opens the signed sender', (tester) async {
+    final fake = FakeNodeApi(isRemoteTransport: true)
+      ..mobilePeerStatus = const MobilePeerStatus(
+        databaseUrl: ':memory:',
+        localPeerId: 'me',
+      )
+      ..loadBroadcastMessagesOverride = (_) => [
+        broadcastMessage(
+          id: 17,
+          content: 'from sender',
+          peerId: 'sender-1',
+          msgId: 'bc-body',
+          senderNickname: 'Sender',
+        ),
+      ];
+    nodeApi = fake;
+    await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+    await tester.pump();
+    await tester.pump();
+    tester
+        .widget<MessageBubble>(find.byType(MessageBubble).first)
+        .onBodyTap!
+        .call();
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(PeerInfoScreen), findsOneWidget);
+    expect(
+      tester.widget<PeerInfoScreen>(find.byType(PeerInfoScreen)).peer.peerId,
+      'sender-1',
+    );
+  });
+
+  testWidgets('an own broadcast body has no peer to open', (tester) async {
+    final fake = FakeNodeApi(isRemoteTransport: true)
+      ..mobilePeerStatus = const MobilePeerStatus(
+        databaseUrl: ':memory:',
+        localPeerId: 'me',
+      )
+      ..loadBroadcastMessagesOverride = (_) => [
+        chatMessage(id: 18, msgId: 'bc-own', content: 'mine'),
+      ];
+    nodeApi = fake;
+    await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+    await tester.pump();
+    await tester.pump();
+    tester
+        .widget<MessageBubble>(find.byType(MessageBubble).first)
+        .onBodyTap!
+        .call();
+    await tester.pump();
+    expect(find.byType(PeerInfoScreen), findsNothing);
+  });
+
+  testWidgets('a DM body tap opens the partner, not a stale row sender', (
+    tester,
+  ) async {
+    final opened = <String>[];
+    final fake = FakeNodeApi()
+      ..loadDmMessagesOverride = (_, _) => [
+        chatMessage(
+          id: 19,
+          content: 'from a stale row',
+          peerId: 'row-other',
+          sent: false,
+          senderNickname: 'Other',
+        ),
+      ];
+    nodeApi = fake;
+    startEventPolling();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DmChatScreen(
+          peer: peerRecord(),
+          serviceRunning: true,
+          onOpenPeerInfo: opened.add,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    tester
+        .widget<MessageBubble>(find.byType(MessageBubble).first)
+        .onBodyTap!
+        .call();
+    expect(opened, ['peer-abc']);
+  });
+
+  testWidgets('a group body tap opens that message sender', (tester) async {
+    final opened = <String>[];
+    final fake = FakeNodeApi()
+      ..loadGroupMessagesOverride = (_, _) => [
+        MobileGroupMessage(
+          id: 20,
+          content: 'from group peer',
+          peerId: 'group-sender',
+          sent: false,
+          edited: false,
+          senderNickname: 'Group Sender',
+          createdAt: '2026-01-01 10:00:00',
+          reactions: const [],
+        ),
+      ];
+    nodeApi = fake;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GroupChatScreen(
+          group: groupRecord(),
+          serviceRunning: true,
+          onOpenPeerInfo: opened.add,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    tester
+        .widget<MessageBubble>(find.byType(MessageBubble).first)
+        .onBodyTap!
+        .call();
     expect(opened, ['group-sender']);
   });
 }

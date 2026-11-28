@@ -1346,6 +1346,13 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // A broadcast bubble's body opens the signed sender, never the relay. Own
+  // rows carry no peer id and have no peer-info target.
+  void _openBroadcastMessagePeerInfo(ChatMessage message) {
+    final peerId = message.peerId;
+    if (peerId != null) _openPeerInfoForPeerId(peerId);
+  }
+
   // Open the info page for the sender of a broadcast message. If the peer
   // isn't in the discovered list yet, synthesize a record from what we know.
   void _openPeerInfoForPeerId(String peerId) {
@@ -1421,6 +1428,7 @@ class _HomeScreenState extends State<HomeScreen> {
         replyTo: _replyTo,
         onCancelReply: _cancelReply,
         onOpenPeerInfo: _openPeerInfoForPeerId,
+        onBubbleBodyTap: _openBroadcastMessagePeerInfo,
         onPickFile: _pickAndSendBroadcast,
         onOpenAttachment: _openBroadcastAttachment,
         onReact: _onReact,

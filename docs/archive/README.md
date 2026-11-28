@@ -91,6 +91,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-28_frb_codegen_reproducible.md](2026-11-28_frb_codegen_reproducible.md) | `SortableRow` impls hidden from FRB so regeneration stops emitting unused getters | 2026-11-28 |
 | [2026-11-28_dead_frb_bindings_removed.md](2026-11-28_dead_frb_bindings_removed.md) | Six unused identity/contact FRB+web bindings removed after codegen became reproducible | 2026-11-28 |
 | [2026-11-28_owner_side_contact_nicknames.md](2026-11-28_owner_side_contact_nicknames.md) | Rust-owned `contacts.nickname_override` writer shared by the TUI, Flutter and web | 2026-11-28 |
+| [2026-11-28_flutter_message_body_taps.md](2026-11-28_flutter_message_body_taps.md) | Flutter bubble bodies open Peer Info with the TUI's peer resolution | 2026-11-28 |
 | [2026-11-27_device_location_sharing.md](2026-11-27_device_location_sharing.md) | Device-centric location sharing: Rust-owned policy, sealed DMs, GPX tracks, TUI/Flutter/web/Android | 2026-11-27 |
 | [2026-11-27_frb_web_drift_guard.md](2026-11-27_frb_web_drift_guard.md) | Generated-source guard that every FRB wire has a web arm or a documented native-only reason | 2026-11-27 |
 | [2026-11-27_canonical_sort_comparator.md](2026-11-27_canonical_sort_comparator.md) | One canonical five-column comparator shared by the TUI and both Flutter transports | 2026-11-27 |

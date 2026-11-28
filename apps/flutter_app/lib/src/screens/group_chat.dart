@@ -31,10 +31,10 @@ class GroupChatScreen extends StatefulWidget {
   final void Function(int)? onNavigate;
   final int currentTab;
 
-  /// Opens a message sender's Peer Info when their name is tapped — the Flutter
-  /// mirror of the TUI's "message click opens the sender's Peer Info" rule.
-  /// Optional so widget tests can pump without a host callback; when absent,
-  /// sender names are plain (non-interactive) labels.
+  /// Opens a message sender's Peer Info when their name or bubble body is
+  /// tapped — the Flutter mirror of the TUI's "message click opens the
+  /// sender's Peer Info" rule. Optional so widget tests can pump without a host
+  /// callback; when absent, senders are plain (non-interactive) controls.
   final void Function(String)? onOpenPeerInfo;
 
   @override
@@ -118,6 +118,13 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     reactions: m.reactions,
   );
 
+  /// A bubble body opens the signed sender of that row (never the group itself).
+  /// Own rows carry no sender id, so their bodies have no peer-info target.
+  void _openMessageSenderPeerInfo(ChatMessage message) {
+    final peerId = message.peerId;
+    if (peerId != null) widget.onOpenPeerInfo?.call(peerId);
+  }
+
   Future<void> _loadHistory() async {
     final generation = ++_historyGeneration;
     try {
@@ -129,7 +136,9 @@ class _GroupChatScreenState extends State<GroupChatScreen>
       setState(() {
         // Preserve rows appended live while the fetch was in flight.
         final historyIds = msgs.map((m) => m.id).toSet();
-        final live = _messages.where((m) => !historyIds.contains(m.id)).toList();
+        final live = _messages
+            .where((m) => !historyIds.contains(m.id))
+            .toList();
         _messages
           ..clear()
           ..addAll(msgs.map(_toChatMessage))
@@ -345,6 +354,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
             unreadLabel: '$unreadCount new',
             onJumpToBottom: () => forceJumpToBottom(_scrollController),
             onOpenPeerInfo: widget.onOpenPeerInfo,
+            onBubbleBodyTap: _openMessageSenderPeerInfo,
             onOpenAttachment: _openAttachment,
             onReact: _onReact,
           ),
