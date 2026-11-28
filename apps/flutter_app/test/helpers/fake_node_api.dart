@@ -1017,6 +1017,12 @@ class FakeNodeApi implements NodeApi {
   /// tests can drive the UI without a real share store.
   Future<void> Function(String shareId)? deleteShareOverride;
 
+  /// Native folder actions record their arguments and delegate here when set.
+  Future<MobileShare?> Function(String shareId)? getShareOverride;
+  Future<void> Function(String shareId, String? root)? bindShareOverride;
+  Future<ShareManifest> Function(String shareId, String root)?
+  snapshotShareOverride;
+
   @override
   Future<List<MobileShare>> listShares() async {
     _record('listShares');
@@ -1024,15 +1030,21 @@ class FakeNodeApi implements NodeApi {
   }
 
   @override
-  Future<MobileShare?> getShare(String shareId) => throw UnimplementedError();
+  Future<MobileShare?> getShare(String shareId) async {
+    _record('getShare', shareId);
+    return getShareOverride?.call(shareId);
+  }
 
   @override
   Future<MobileShare> createShare({required CreateShareParams params}) =>
       throw UnimplementedError();
 
   @override
-  Future<void> bindShare({required BindShareParams params}) =>
-      throw UnimplementedError();
+  Future<void> bindShare({required BindShareParams params}) async {
+    _record('bindShare', params);
+    final override = bindShareOverride;
+    if (override != null) await override(params.shareId, params.localRoot);
+  }
 
   @override
   Future<void> deleteShare(String shareId) async {
@@ -1096,7 +1108,12 @@ class FakeNodeApi implements NodeApi {
   Future<ShareManifest> snapshotShare({
     required String shareId,
     required String root,
-  }) => throw UnimplementedError();
+  }) async {
+    _record('snapshotShare', (shareId: shareId, root: root));
+    final override = snapshotShareOverride;
+    if (override != null) return override(shareId, root);
+    throw UnimplementedError();
+  }
 
   @override
   Future<void> requestPeerShares(String peerId) => throw UnimplementedError();

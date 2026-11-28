@@ -98,8 +98,8 @@ const Map<String, List<String>> _helpSections = {
     'Settings → File shares lists local shares; tap one for its grants and manifest files.',
     'Create an empty private share here, or discover peer offers and accept one.',
     'Refresh or re-advertise a manifest, and publish deletions here.',
-    'Binding a local folder and taking a native folder snapshot stay '
-        'native-only actions.',
+    'On native installs, a share detail page can bind or clear its local '
+        'folder and snapshot it into a new revision.',
   ],
   'Keyboard': [
     'No custom letter or Ctrl shortcuts are installed here.',

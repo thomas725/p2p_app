@@ -222,7 +222,10 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   detail page confirms `deleteShare` on both transports and the TUI's `D` arms a
   matching single-slot confirmation that captures the selected share id and
   reloads the list on success. Rust keeps the bound folder and blobs in both
-  frontends. Adding files from an explicit picker remains the open TUI gap.
+  frontends. Native Flutter detail routes now also bind/clear the local folder
+  and snapshot it into the next revision through the same Rust facade; the
+  browser hides those actions because it cannot supply a server-local path.
+  Adding files from an explicit picker remains the open TUI gap.
 
 ## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
 

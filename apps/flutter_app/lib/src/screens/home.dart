@@ -9,6 +9,7 @@ import 'package:p2p_app_flutter/src/data/shares_json.dart'
     show shareRevisionToPlatformInt64;
 import 'package:p2p_app_flutter/src/rust/api.dart'
     show
+        BindShareParams,
         CreateShareParams,
         MobileShare,
         ReviseShareManifestForDeletionParams;
@@ -36,6 +37,8 @@ import 'package:p2p_app_flutter/src/util/notifications.dart'
     show setFocusedConversation;
 import 'package:p2p_app_flutter/src/util/attachments.dart';
 import 'package:p2p_app_flutter/src/util/reply.dart';
+import 'package:p2p_app_flutter/src/util/share_folders.dart'
+    show pickDirectoryOverride;
 
 /// Prompt whether to bind an incoming device into this account. Shown when a
 /// peer's `device_binding_intro` arrives; accepting mints a signed claim that
@@ -1210,6 +1213,30 @@ class _HomeScreenState extends State<HomeScreen> {
   /// the list route's notifier.
   Future<void> _deleteShare(String shareId) => nodeApi.deleteShare(shareId);
 
+  /// Bind or clear a share's local folder. Rust canonicalises the path; Home
+  /// only refreshes the canonical list so both the list and detail routes show
+  /// the row returned by the store.
+  Future<MobileShare> _bindShare(String shareId, String? root) async {
+    await nodeApi.bindShare(
+      params: BindShareParams(shareId: shareId, localRoot: root),
+    );
+    return _reloadedShare(shareId);
+  }
+
+  /// Walk the already-bound folder in Rust, storing blobs and bumping the
+  /// manifest revision. Snapshotting never happens in Dart.
+  Future<MobileShare> _snapshotShare(String shareId, String root) async {
+    await nodeApi.snapshotShare(shareId: shareId, root: root);
+    return _reloadedShare(shareId);
+  }
+
+  Future<MobileShare> _reloadedShare(String shareId) async {
+    await _refreshShares();
+    final share = await nodeApi.getShare(shareId);
+    if (share == null) throw StateError('share $shareId disappeared');
+    return share;
+  }
+
   /// Open peer-share discovery. Clearing here (rather than after the request)
   /// avoids wiping offers that arrive while the queue call is still in flight.
   void _openShareDiscovery() {
@@ -1248,6 +1275,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openShareDetail(MobileShare share) {
+    final nativeFolders = !nodeApi.isRemoteTransport;
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1270,6 +1298,9 @@ class _HomeScreenState extends State<HomeScreen> {
           onRemoveGrant: (shareId, userId) =>
               nodeApi.removeShareGrant(shareId: shareId, userId: userId),
           onDeleteShare: _deleteShare,
+          onBindShare: nativeFolders ? _bindShare : null,
+          onSnapshotShare: nativeFolders ? _snapshotShare : null,
+          pickDirectory: nativeFolders ? pickDirectoryOverride : null,
           peerIds: connectedShareActionPeerIds(_connectedPeerIds),
           onRequestManifest: (shareId, peerId) =>
               nodeApi.requestShareManifest(peerId: peerId, shareId: shareId),

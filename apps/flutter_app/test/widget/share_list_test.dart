@@ -48,17 +48,32 @@ Widget listApp({
 
 Widget detailApp({
   required Future<List<MobileShareGrant>> Function(String) loadGrants,
+  Future<ShareManifest?> Function(String)? loadManifest,
   Future<void> Function(String, String, String)? onSetGrant,
   Future<void> Function(String, String)? onRemoveGrant,
   Future<void> Function(String)? onDeleteShare,
+  Future<MobileShare> Function(String, String?)? onBindShare,
+  Future<MobileShare> Function(String, String)? onSnapshotShare,
+  Future<String?> Function()? pickDirectory,
+  String? localRoot,
+  int revision = 1,
 }) => MaterialApp(
   home: ShareDetailScreen(
-    share: makeShare('share-a', name: 'Docs', kind: 'private'),
-    loadManifest: (_) async => null,
+    share: makeShare(
+      'share-a',
+      name: 'Docs',
+      kind: 'private',
+      revision: revision,
+      localRoot: localRoot,
+    ),
+    loadManifest: loadManifest ?? ((_) async => null),
     loadGrants: loadGrants,
     onSetGrant: onSetGrant,
     onRemoveGrant: onRemoveGrant,
     onDeleteShare: onDeleteShare,
+    onBindShare: onBindShare,
+    onSnapshotShare: onSnapshotShare,
+    pickDirectory: pickDirectory,
   ),
 );
 
@@ -136,29 +151,30 @@ void main() {
     expect(taps, 1);
   });
 
-  testWidgets('list screen exposes creation only when Home supplies a callback', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: ShareListScreen(shares: const [], onOpenShare: (_) {}),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('shares-create')), findsNothing);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: ShareListScreen(
-          shares: const [],
-          onOpenShare: (_) {},
-          onCreateShare: (_) async {},
+  testWidgets(
+    'list screen exposes creation only when Home supplies a callback',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ShareListScreen(shares: const [], onOpenShare: (_) {}),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('shares-create')), findsOneWidget);
-  });
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('shares-create')), findsNothing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ShareListScreen(
+            shares: const [],
+            onOpenShare: (_) {},
+            onCreateShare: (_) async {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('shares-create')), findsOneWidget);
+    },
+  );
 
   testWidgets('list screen follows the share notifier while open', (
     tester,
@@ -313,6 +329,187 @@ void main() {
     expect(find.text('12 B · abcdef01…'), findsOneWidget);
   });
 
+  testWidgets('bind uses the picked directory and shows Rust-returned root', (
+    tester,
+  ) async {
+    final calls = <List<String?>>[];
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => const [],
+        pickDirectory: () async => '/tmp/docs',
+        onBindShare: (shareId, root) async {
+          calls.add([shareId, root]);
+          return makeShare(
+            shareId,
+            name: 'Docs',
+            kind: 'private',
+            localRoot: root,
+          );
+        },
+        onSnapshotShare: (_, _) async => throw StateError('not used'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Local folder'), findsOneWidget);
+    expect(find.byKey(const Key('share-folder-bind')), findsOneWidget);
+    expect(find.byKey(const Key('share-folder-clear')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('share-folder-bind')));
+    await tester.pumpAndSettle();
+
+    expect(calls, [
+      ['share-a', '/tmp/docs'],
+    ]);
+    expect(find.text('/tmp/docs'), findsOneWidget);
+    expect(find.byKey(const Key('share-folder-clear')), findsOneWidget);
+  });
+
+  testWidgets('cancelling the directory picker never calls bind', (
+    tester,
+  ) async {
+    var picks = 0;
+    var binds = 0;
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => const [],
+        pickDirectory: () async {
+          picks++;
+          return null;
+        },
+        onBindShare: (_, _) async {
+          binds++;
+          return makeShare('share-a', name: 'Docs', kind: 'private');
+        },
+        onSnapshotShare: (_, _) async => throw StateError('not used'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('share-folder-bind')));
+    await tester.pumpAndSettle();
+
+    expect(picks, 1);
+    expect(binds, 0);
+    expect(find.byKey(const Key('share-folder-error')), findsNothing);
+  });
+
+  testWidgets('clearing a bound folder sends a null root', (tester) async {
+    final calls = <List<String?>>[];
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => const [],
+        localRoot: '/tmp/docs',
+        onBindShare: (shareId, root) async {
+          calls.add([shareId, root]);
+          return makeShare(
+            shareId,
+            name: 'Docs',
+            kind: 'private',
+            localRoot: root,
+          );
+        },
+        onSnapshotShare: (_, _) async => throw StateError('not used'),
+        pickDirectory: () async => '/tmp/never-picked',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('share-folder-clear')));
+    await tester.pumpAndSettle();
+
+    expect(calls, [
+      ['share-a', null],
+    ]);
+    expect(find.text('Not bound on this device'), findsOneWidget);
+    expect(find.byKey(const Key('share-folder-clear')), findsNothing);
+  });
+
+  testWidgets('snapshot uses the bound root and refreshes the detail', (
+    tester,
+  ) async {
+    final calls = <List<String>>[];
+    var manifestLoads = 0;
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => const [],
+        loadManifest: (_) async {
+          manifestLoads++;
+          return null;
+        },
+        localRoot: '/tmp/docs',
+        revision: 2,
+        onBindShare: (_, _) async => throw StateError('not used'),
+        onSnapshotShare: (shareId, root) async {
+          calls.add([shareId, root]);
+          return makeShare(
+            shareId,
+            name: 'Docs',
+            kind: 'private',
+            revision: 3,
+            localRoot: root,
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(manifestLoads, 1);
+
+    await tester.tap(find.byKey(const Key('share-folder-snapshot')));
+    await tester.pumpAndSettle();
+
+    expect(calls, [
+      ['share-a', '/tmp/docs'],
+    ]);
+    expect(find.text('Revision'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
+    expect(manifestLoads, 2);
+  });
+
+  testWidgets('snapshot without a bound root stays local and explains why', (
+    tester,
+  ) async {
+    var snapshots = 0;
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => const [],
+        onBindShare: (_, _) async => throw StateError('not used'),
+        onSnapshotShare: (_, _) async {
+          snapshots++;
+          return makeShare('share-a', name: 'Docs', kind: 'private');
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('share-folder-snapshot')));
+    await tester.pumpAndSettle();
+
+    expect(snapshots, 0);
+    expect(
+      find.text('Bind a local folder before taking a snapshot.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('folder action failure stays inline', (tester) async {
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => const [],
+        pickDirectory: () async => '/tmp/docs',
+        onBindShare: (_, _) async => throw Exception('not a directory'),
+        onSnapshotShare: (_, _) async => throw StateError('not used'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('share-folder-bind')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('share-folder-error')), findsOneWidget);
+    expect(find.textContaining('Failed to bind folder'), findsOneWidget);
+  });
+
   testWidgets('public shares do not render a grants section', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -444,6 +641,7 @@ void main() {
     );
     expect(find.text('Network'), findsNothing);
     expect(find.text('Publish revision'), findsNothing);
+    expect(find.text('Local folder'), findsNothing);
   });
 
   testWidgets('network actions reload the detail after success', (

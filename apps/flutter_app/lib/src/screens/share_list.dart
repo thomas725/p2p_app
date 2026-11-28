@@ -9,6 +9,8 @@ import 'package:p2p_app_flutter/src/rust/shares.dart' show ShareManifest;
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/share_network.dart';
 import 'package:p2p_app_flutter/src/screens/share_publish.dart';
+import 'package:p2p_app_flutter/src/util/share_folders.dart'
+    show PickDirectoryOverride;
 
 /// Peer IDs offered by share network/publish pickers.
 ///
@@ -209,7 +211,8 @@ class ShareListScreen extends StatelessWidget {
 /// Rust library in widget tests; Home supplies the `NodeApi` calls in the app.
 /// The grant editor, network actions and publish editor are optional: with no
 /// callbacks the page stays read-only, and with them it uses the same facade
-/// over both FRB and web transports.
+/// over both FRB and web transports. Folder binding/snapshot callbacks are
+/// native-only — a browser cannot supply a path on the node's filesystem.
 class ShareDetailScreen extends StatefulWidget {
   const ShareDetailScreen({
     super.key,
@@ -221,6 +224,9 @@ class ShareDetailScreen extends StatefulWidget {
     this.onSetGrant,
     this.onRemoveGrant,
     this.onDeleteShare,
+    this.onBindShare,
+    this.onSnapshotShare,
+    this.pickDirectory,
     this.peerIds = const [],
     this.onRequestManifest,
     this.onReadvertise,
@@ -258,6 +264,19 @@ class ShareDetailScreen extends StatefulWidget {
   /// confirmation text says so. Hidden when absent (read-only embeds/tests).
   final Future<void> Function(String shareId)? onDeleteShare;
 
+  /// Native folder seams. Home supplies both only on in-process transports:
+  /// Rust canonicalises the chosen root and snapshots its files into the next
+  /// manifest revision, while a browser cannot pass a server-local path. Each
+  /// callback returns the refreshed share so the detail view shows the new root
+  /// or revision immediately.
+  final Future<MobileShare> Function(String shareId, String? root)? onBindShare;
+  final Future<MobileShare> Function(String shareId, String root)?
+  onSnapshotShare;
+
+  /// Directory picker used by [onBindShare]. Kept separate from the bind
+  /// callback so widget tests can drive the flow without a platform channel.
+  final PickDirectoryOverride? pickDirectory;
+
   /// Optional network seams. Both are needed for [ShareNetworkSection] to
   /// appear; Home supplies the currently connected peer IDs alongside them.
   final List<String> peerIds;
@@ -292,6 +311,7 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
   String? _error;
   String? _actionError;
   String? _visibilityError;
+  String? _folderError;
 
   @override
   void initState() {
@@ -338,6 +358,62 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
     );
     if (confirmed != true || !mounted) return;
     Navigator.of(context).pop(true);
+  }
+
+  /// Apply a native folder action and keep the visible share in step with the
+  /// canonical store. Rust owns path validation, blob storage and versioning;
+  /// this only reports the returned row or the failure inline.
+  Future<void> _applyFolderAction(
+    Future<MobileShare> Function() action, {
+    required String failureLabel,
+  }) async {
+    setState(() => _folderError = null);
+    try {
+      final updated = await action();
+      if (!mounted) return;
+      setState(() => _share = updated);
+      await _reload();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _folderError = 'Failed to $failureLabel: $e');
+    }
+  }
+
+  Future<void> _bindFolder() async {
+    final pick = widget.pickDirectory;
+    final bind = widget.onBindShare;
+    if (pick == null || bind == null) return;
+    final root = await pick();
+    if (root == null || !mounted) return;
+    await _applyFolderAction(
+      () => bind(_share.shareId, root),
+      failureLabel: 'bind folder',
+    );
+  }
+
+  Future<void> _clearBinding() async {
+    final bind = widget.onBindShare;
+    if (bind == null) return;
+    await _applyFolderAction(
+      () => bind(_share.shareId, null),
+      failureLabel: 'clear folder binding',
+    );
+  }
+
+  Future<void> _snapshotFolder() async {
+    final snapshot = widget.onSnapshotShare;
+    if (snapshot == null) return;
+    final root = _share.localRoot;
+    if (root == null) {
+      setState(
+        () => _folderError = 'Bind a local folder before taking a snapshot.',
+      );
+      return;
+    }
+    await _applyFolderAction(
+      () => snapshot(_share.shareId, root),
+      failureLabel: 'snapshot folder',
+    );
   }
 
   @override
@@ -404,6 +480,9 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
                     _share.localRoot ?? 'Not bound on this device',
                   ),
                 ]),
+                if (widget.onBindShare != null &&
+                    widget.onSnapshotShare != null)
+                  _folderSection(),
                 if (_canEditVisibility) _visibilitySection(),
                 if (_share.kind == 'private') _grantsSection(),
                 if (widget.onRequestManifest != null &&
@@ -446,6 +525,47 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
               ],
             ),
     );
+  }
+
+  /// Native-only folder controls. The picker is injected so the widget never
+  /// talks to a platform channel; clearing and snapshotting use the root Rust
+  /// already canonicalised, never a Dart-derived path.
+  Widget _folderSection() {
+    return _section('Local folder', [
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          FilledButton.tonalIcon(
+            key: const Key('share-folder-bind'),
+            icon: const Icon(Icons.folder_open),
+            label: const Text('Bind folder'),
+            onPressed: widget.pickDirectory == null ? null : _bindFolder,
+          ),
+          if (_share.localRoot != null)
+            OutlinedButton(
+              key: const Key('share-folder-clear'),
+              onPressed: _clearBinding,
+              child: const Text('Clear binding'),
+            ),
+          FilledButton.tonalIcon(
+            key: const Key('share-folder-snapshot'),
+            icon: const Icon(Icons.photo_library_outlined),
+            label: const Text('Snapshot folder'),
+            onPressed: _snapshotFolder,
+          ),
+        ],
+      ),
+      if (_folderError != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            _folderError!,
+            key: const Key('share-folder-error'),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ),
+    ]);
   }
 
   /// Visibility controls are owner-only; Rust repeats the same check so a
@@ -782,7 +902,9 @@ class _DeleteShareDialogState extends State<_DeleteShareDialog> {
       actions: [
         TextButton(
           key: const Key('share-delete-cancel'),
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+          onPressed: _submitting
+              ? null
+              : () => Navigator.of(context).pop(false),
           child: const Text('Cancel'),
         ),
         FilledButton(

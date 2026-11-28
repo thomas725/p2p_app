@@ -130,7 +130,7 @@ Still open (device adapters, not protocol work):
   both un-gated. Do **not** gate either behind it; that happened once and was
   corrected.
 
-### File shares / folder sync UI — **Rust core, both frontends' list/detail/grant editor, creation, discovery, network actions and deletion publishing shipped; TUI folder binding, snapshotting and snapshot publishing shipped; adding files deferred**
+### File shares / folder sync UI — **Rust core, both frontends' list/detail/grant editor, creation, discovery, network actions, deletion publishing and native folder binding/snapshot shipped; adding files deferred**
 
 The Rust core landed in `7dfaefe` (domain, DB, ACLs) and the share-lane
 follow-up (`/p2p-chat/shares/1.0.0` wire protocol, swarm handlers, events, GC
@@ -282,17 +282,22 @@ Shipped after the core:
   visible notice, and no swarm command is queued (peers keep their copies).
   Record:
   [`archive/2026-11-27_tui_local_share_deletion.md`](archive/2026-11-27_tui_local_share_deletion.md).
+- Native Flutter folder workflow: the share detail route exposes Bind folder,
+  Clear binding and Snapshot folder on in-process transports. The OS directory
+  picker is an injected seam; Rust canonicalises the root, stores blobs and
+  bumps the manifest revision through the existing `bindShare`/`snapshotShare`
+  facade, and the browser hides the actions because it cannot supply a
+  server-local path. Record:
+  [`archive/2026-11-28_native_share_folder_ui.md`](archive/2026-11-28_native_share_folder_ui.md).
 
 Still open (UI/integration, not protocol work):
 
 - TUI Shares tab action for adding files (the list, detail, event notice,
   creation, local deletion, folder binding/snapshot/publish, grant/visibility
   editors, network refresh/re-advertise, deletion publishing and discovery
-  already ship);
-- Native share binding and folder snapshot UI. Creation, local share deletion,
-  deletion publishing, discovery, manifest refresh and re-advertise already ship
-  on both transports; the browser remains a display client — adding new files
-  needs a real local folder snapshot, which only a native install can produce.
+  already ship). Native installs can now bind a folder and snapshot it from
+  Flutter too; the browser remains a display client, so adding new files from an
+  explicit picker still needs a native snapshot.
 
 The two-node blob-pull → apply test shipped with separate per-thread databases
 and blob stores; see
@@ -364,6 +369,7 @@ here so they are not mistaken for unfinished work.
 |---|---|---|
 | Flutter/web share deletion | 2026-11-27 | [`archive/2026-11-27_flutter_web_share_deletion.md`](archive/2026-11-27_flutter_web_share_deletion.md) |
 | TUI local share deletion | 2026-11-27 | [`archive/2026-11-27_tui_local_share_deletion.md`](archive/2026-11-27_tui_local_share_deletion.md) |
+| Native Flutter share folder UI | 2026-11-28 | [`archive/2026-11-28_native_share_folder_ui.md`](archive/2026-11-28_native_share_folder_ui.md) |
 | Canonical five-column sort comparator | 2026-11-27 | [`archive/2026-11-27_canonical_sort_comparator.md`](archive/2026-11-27_canonical_sort_comparator.md) |
 | Exhaustive FRB↔web dispatch drift guard | 2026-11-27 | [`archive/2026-11-27_frb_web_drift_guard.md`](archive/2026-11-27_frb_web_drift_guard.md) |
 | Untrusted share-owner claim hardening | 2026-11-27 | [`archive/2026-11-27_share_owner_claim_hardening.md`](archive/2026-11-27_share_owner_claim_hardening.md) |
