@@ -888,17 +888,6 @@ class HttpNodeApi implements NodeApi {
       await _call('networkSizeLabel', {'peerCount': peerCount}) as String;
 
   @override
-  Future<String> locationMapUrl({
-    required double latitude,
-    required double longitude,
-  }) async =>
-      await _call('locationMapUrl', {
-            'latitude': latitude,
-            'longitude': longitude,
-          })
-          as String;
-
-  @override
   Future<String> buildLocationMessage({
     required LocationShareInput input,
   }) async =>
@@ -916,10 +905,6 @@ class HttpNodeApi implements NodeApi {
             'isFinal': input.isFinal,
           })
           as String;
-
-  @override
-  Future<bool> isLocationMessage({required String content}) async =>
-      await _call('isLocationMessage', {'content': content}) as bool;
 
   @override
   Future<bool> locationSessionActive({
@@ -976,15 +961,6 @@ class HttpNodeApi implements NodeApi {
   Future<void> setLocationDefaults({required LocationDefaults input}) async {
     await _call('setLocationDefaults', locationDefaultsToJson(input));
   }
-
-  @override
-  Future<double> parseLocationTimeFilter({
-    required String text,
-    required double now,
-  }) async =>
-      (await _call('parseLocationTimeFilter', {'text': text, 'now': now})
-              as num)
-          .toDouble();
 
   @override
   Future<List<LocationTrackPoint>> loadLocationTrack({

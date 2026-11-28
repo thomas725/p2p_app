@@ -5,22 +5,22 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        76 |
-| Total Rust Lines      |    44,464 |
-| Total Rust Chars      | 1,702,307 |
-| Avg Lines/Rust File   |       585 |
-| Avg Chars/Rust File   |    22,398 |
+| Total Rust Lines      |    44,283 |
+| Total Rust Chars      | 1,695,309 |
+| Avg Lines/Rust File   |       582 |
+| Avg Chars/Rust File   |    22,306 |
 | Total Dart Files      |        63 |
-| Total Dart Lines      |    26,889 |
-| Total Dart Chars      |   868,695 |
-| Avg Lines/Dart File   |       426 |
-| Avg Chars/Dart File   |    13,788 |
+| Total Dart Lines      |    26,695 |
+| Total Dart Chars      |   863,053 |
+| Avg Lines/Dart File   |       423 |
+| Avg Chars/Dart File   |    13,699 |
 | Total Kotlin Files    |         5 |
 | Total Kotlin Lines    |     1,060 |
 | Total Kotlin Chars    |    39,580 |
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 144 files, 72,413 lines, 2,610,582 characters
+**Grand Total:** 144 files, 72,038 lines, 2,597,942 characters
 
 ## Rust Source Files
 
@@ -40,7 +40,7 @@
 | src                     | file_transfer.rs     |     5 | 20140 |   507 |        - |       - | Source file                                        |
 | src                     | files.rs             |     6 | 30295 |   791 |        - |       - | Content-addressed attachment store                 |
 | src                     | fmt.rs               |     4 |  6204 |   192 |        - |       - | Formatting & display utilities                     |
-| src                     | frb_generated.rs     |     6 | 274400 |  6603 |        - |       - | flutter_rust_bridge codegen                        |
+| src                     | frb_generated.rs     |     6 | 269955 |  6498 |        - |       - | flutter_rust_bridge codegen                        |
 | src                     | groups.rs            |     3 | 24841 |   664 |        - |       - | Group management & persistence                     |
 | src                     | identity.rs          |     4 | 30488 |   797 |        - |       - | Users, account keys & device bindings              |
 | src                     | lib.rs               |     1 |  7613 |   205 |        - |       - | Module declarations & re-exports                   |
@@ -49,7 +49,7 @@
 | src                     | messages.rs          |     5 | 25355 |   643 |        - |       - | Message persistence & retrieval                    |
 | src                     | mobile_api.rs        |     4 | 28641 |   802 |        - |       - | Mobile FRB API surface                             |
 | src                     | mobile_node.rs       |     5 | 69366 |  1768 |        - |       - | Mobile node lifecycle & swarm                      |
-| src                     | mod.rs               |     5 | 51916 |  1452 |        - |       - | FRB API surface                                    |
+| src                     | mod.rs               |     5 | 51000 |  1427 |        - |       - | FRB API surface                                    |
 | src                     | net_diag.rs          |     4 | 21449 |   596 |        - |       - | Source file                                        |
 | src                     | network.rs           |     3 |  2655 |    84 |        - |       - | Network size classification                        |
 | src                     | network_config.rs    |     3 |  7751 |   216 |        - |       - | Source file                                        |
@@ -99,11 +99,11 @@
 | src/tui_render          | peers.rs             |     5 |  5890 |   136 |        - |       - | TUI peers-table renderer                           |
 | src/tui_render          | settings.rs          |     5 | 16413 |   469 |        - |       - | TUI settings renderer                              |
 | src/tui_render          | shares.rs            |     4 |  8575 |   230 |        - |       - | TUI shares renderer                                |
-| src/web                 | methods.rs           |     5 | 33708 |   886 |        - |       - | Web JSON method dispatch                           |
+| src/web                 | methods.rs           |     5 | 32366 |   849 |        - |       - | Web JSON method dispatch                           |
 | src/web                 | mod.rs               |     7 | 20645 |   521 |        - |       - | Web server (axum HTTP+WS)                          |
-| src/web                 | params.rs            |     3 | 12938 |   494 |        - |       - | Source file                                        |
+| src/web                 | params.rs            |     3 | 12643 |   480 |        - |       - | Source file                                        |
 
-**Total:** 76 files, 44,464 lines, 1,702,307 characters
+**Total:** 76 files, 44,283 lines, 1,695,309 characters
 
 ## Rust Test Files
 
@@ -188,14 +188,14 @@
 |:-------------|:---------------------------------|------:|------:|------:|---------:|--------:|---------------------------------:|
 | lib          | main.dart                        |     5 |  3163 |   108 |        - |       - | Flutter app entry point          |
 | lib          | chat_message_ext.dart            |     3 |  2342 |    60 |        - |       - | Hand-written message helpers     |
-| lib          | frb_node_api.dart                |     5 | 19803 |   681 |        - |       - | In-process FRB transport         |
-| lib          | http_node_api.dart               |     8 | 43117 |  1349 |        - |       - | WebSocket/HTTP transport         |
+| lib          | frb_node_api.dart                |     5 | 19327 |   665 |        - |       - | In-process FRB transport         |
+| lib          | http_node_api.dart               |     8 | 42461 |  1325 |        - |       - | WebSocket/HTTP transport         |
 | lib          | location_json.dart               |     5 |  2051 |    53 |        - |       - | Dart source file                 |
-| lib          | node_api.dart                    |     4 | 18674 |   531 |        - |       - | Transport-agnostic node API      |
+| lib          | node_api.dart                    |     4 | 18218 |   516 |        - |       - | Transport-agnostic node API      |
 | lib          | node_transport.dart              |     4 |  3390 |   105 |        - |       - | Duplex transport abstraction     |
 | lib          | shares_json.dart                 |     5 |  3389 |    93 |        - |       - | Dart source file                 |
-| lib/src/rust | api.dart                         |     5 | 41655 |  1175 |        - |       - | FRB API bindings (generated)     |
-| lib/src/rust | frb_generated.dart               |     6 | 216387 |  6920 |        - |       - | flutter_rust_bridge codegen      |
+| lib/src/rust | api.dart                         |     5 | 40643 |  1147 |        - |       - | FRB API bindings (generated)     |
+| lib/src/rust | frb_generated.dart               |     6 | 213345 |  6809 |        - |       - | flutter_rust_bridge codegen      |
 | lib/src/rust | frb_generated.io.dart            |     3 | 29425 |  1221 |        - |       - | FRB IO bindings (generated)      |
 | lib/src/rust | frb_generated.web.dart           |     2 | 29345 |  1221 |        - |       - | FRB web bindings (generated)     |
 | lib/src/rust | location.dart                    |     5 |  5400 |   173 |        - |       - | Dart source file                 |
@@ -250,13 +250,13 @@
 | lib          | ui_utils.dart                    |     2 |  1233 |    29 |        - |       - | Shared formatting & env helpers  |
 | lib          | web_audio.dart                   |     4 |  1794 |    53 |        - |       - | Dart source file                 |
 
-**Total:** 63 files, 26,889 lines, 868,695 characters
+**Total:** 63 files, 26,695 lines, 863,053 characters
 
 ## Dart Test Files
 
 | Folder  | File                             | Lines | Chars | Depth | Description                           |
 |:--------|:---------------------------------|------:|------:|------:|--------------------------------------:|
-| helpers | fake_node_api.dart               |  1175 | 36782 |     4 | In-memory node fake                   |
+| helpers | fake_node_api.dart               |  1141 | 35489 |     4 | In-memory node fake                   |
 | unit    | api_test.dart                    |    61 |  2389 |     4 | Dart API layer unit tests             |
 | unit    | attachments_test.dart            |   132 |  4053 |     5 | Attachment helper tests               |
 | unit    | blocklist_test.dart              |    47 |  1429 |     4 | Dart test file                        |
@@ -287,7 +287,7 @@
 | widget  | share_publish_test.dart          |   321 |  9700 |     6 | Dart test file                        |
 | test    | widget_test.dart                 |    21 |   624 |     2 | Widget smoke tests                    |
 
-**Total:** 30 test files, 10,555 lines, 331,039 characters
+**Total:** 30 test files, 10,521 lines, 329,746 characters
 
 ## Kotlin Source Files
 

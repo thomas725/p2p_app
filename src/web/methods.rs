@@ -20,15 +20,15 @@ use super::params::{
     ContactNicknameParams, DeleteMessageParams, DeviceBindingParams, DialParams, EditMessageParams,
     EmojiParams, FormatTimeParams, GroupIdParams, GroupLimitParams, IdParams, IsAtBottomParams,
     IsLocationMessageParams, LanOnlyParams, LimitParams, LoadLocationTrackParams,
-    LocationGpxParams, LocationMapUrlParams, LocationQueryDueParams, LocationSendDueParams,
-    LocationSessionParams, LocationTimeFilterParams, LocationTrackUrlParams, MsgIdParams,
-    NameParams, NetworkPeerParams, NotificationSettingsParams, PeerCountParams, PeerIdParams,
-    PeerLimitParams, PeerNickParams, PublishShareSnapshotParams, ReactionParams, ReplyDraftParams,
-    RequestShareManifestParams, SaveIncomingParams, SaveShareManifestParams, SendCallMediaParams,
-    SendDmParams, SendGroupParams, SendLocationParams, SendParams, ShareGrantParams, ShareIdParams,
-    ShareVisibilityParams, SnapshotShareParams, SortContactsParams, StartCallMediaParams,
-    StartNodeParams, ThemeParams, TypingParams, UserIdParams, WebCreateShareParams,
-    WebReviseShareManifestForDeletionParams, parse,
+    LocationGpxParams, LocationQueryDueParams, LocationSendDueParams, LocationSessionParams,
+    LocationTrackUrlParams, MsgIdParams, NameParams, NetworkPeerParams, NotificationSettingsParams,
+    PeerCountParams, PeerIdParams, PeerLimitParams, PeerNickParams, PublishShareSnapshotParams,
+    ReactionParams, ReplyDraftParams, RequestShareManifestParams, SaveIncomingParams,
+    SaveShareManifestParams, SendCallMediaParams, SendDmParams, SendGroupParams,
+    SendLocationParams, SendParams, ShareGrantParams, ShareIdParams, ShareVisibilityParams,
+    SnapshotShareParams, SortContactsParams, StartCallMediaParams, StartNodeParams, ThemeParams,
+    TypingParams, UserIdParams, WebCreateShareParams, WebReviseShareManifestForDeletionParams,
+    parse,
 };
 
 /// Run one method. `params` is the frame's `params` payload (`Null` when
@@ -107,14 +107,11 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "requestShareManifest"
         | "readvertiseShare"
         | "publishShareSnapshot") => shares(m, params),
-        m @ ("locationMapUrl"
-        | "buildLocationMessage"
-        | "isLocationMessage"
+        m @ ("buildLocationMessage"
         | "locationMessageUrl"
         | "locationSessionActive"
         | "locationSendDue"
         | "locationQueryDue"
-        | "parseLocationTimeFilter"
         | "loadLocationTrack"
         | "locationGpx"
         | "locationTrackUrl"
@@ -567,17 +564,9 @@ fn ui_helpers(method: &str, params: Value) -> Result<Value, String> {
 /// arm only decodes camelCase JSON and re-encodes the result.
 fn location(method: &str, params: Value) -> Result<Value, String> {
     match method {
-        "locationMapUrl" => {
-            let p: LocationMapUrlParams = parse(params)?;
-            ok(api::location_map_url(p.latitude, p.longitude))
-        }
         "buildLocationMessage" => {
             let p: BuildLocationMessageParams = parse(params)?;
             json(api::build_location_message(p.into()))
-        }
-        "isLocationMessage" => {
-            let p: IsLocationMessageParams = parse(params)?;
-            ok(api::is_location_message(&p.content))
         }
         "locationMessageUrl" => {
             let p: IsLocationMessageParams = parse(params)?;
@@ -607,10 +596,6 @@ fn location(method: &str, params: Value) -> Result<Value, String> {
                 p.now,
                 p.interval_secs,
             ))
-        }
-        "parseLocationTimeFilter" => {
-            let p: LocationTimeFilterParams = parse(params)?;
-            json(api::parse_location_time_filter(&p.text, p.now))
         }
         "loadLocationTrack" => {
             let p: LoadLocationTrackParams = parse(params)?;
@@ -677,14 +662,11 @@ mod tests {
         // is reachable through the shared dispatcher (the no-arg methods are
         // covered by the drift list in `web::mod`).
         for method in [
-            "locationMapUrl",
             "buildLocationMessage",
-            "isLocationMessage",
             "locationMessageUrl",
             "locationSessionActive",
             "locationSendDue",
             "locationQueryDue",
-            "parseLocationTimeFilter",
             "loadLocationTrack",
             "locationGpx",
             "locationTrackUrl",
@@ -697,16 +679,6 @@ mod tests {
                 "{method}: unexpected error: {err}"
             );
         }
-        let url = dispatch(
-            "locationMapUrl",
-            json!({"latitude": 52.52, "longitude": 13.405}),
-        )
-        .expect("url");
-        assert!(
-            url.as_str()
-                .is_some_and(|u| u.contains("openstreetmap.org")),
-            "{url}"
-        );
         let body = dispatch(
             "buildLocationMessage",
             json!({
@@ -721,12 +693,6 @@ mod tests {
             body.as_str().is_some_and(|b| b.starts_with("[Location]")),
             "{body}"
         );
-        let detected = dispatch(
-            "isLocationMessage",
-            json!({"content": body.as_str().unwrap_or("")}),
-        )
-        .expect("detected");
-        assert_eq!(detected, json!(true));
     }
 
     #[test]
@@ -735,14 +701,11 @@ mod tests {
         // `ui_helpers` would give one method two owners and let a future edit
         // silently change which policy path a web client reaches.
         for method in [
-            "locationMapUrl",
             "buildLocationMessage",
-            "isLocationMessage",
             "locationMessageUrl",
             "locationSessionActive",
             "locationSendDue",
             "locationQueryDue",
-            "parseLocationTimeFilter",
             "loadLocationTrack",
             "locationGpx",
             "locationTrackUrl",

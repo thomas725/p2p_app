@@ -461,19 +461,6 @@ Future<List<String>> quickReactions() =>
 Future<String> networkSizeLabel({required PlatformInt64 peerCount}) =>
     RustLib.instance.api.crateApiNetworkSizeLabel(peerCount: peerCount);
 
-/// Canonical, free OpenStreetMap URL for a coordinate pair.
-///
-/// Both frontends render the URL Rust builds; neither formats coordinates or
-/// constructs map links itself. Invalid coordinates fall back to `(0, 0)`
-/// rather than producing a malformed URL.
-Future<String> locationMapUrl({
-  required double latitude,
-  required double longitude,
-}) => RustLib.instance.api.crateApiLocationMapUrl(
-  latitude: latitude,
-  longitude: longitude,
-);
-
 /// Validate a location share and render the canonical DM body.
 ///
 /// Rust owns coordinate, accuracy, frequency, duration and session validation;
@@ -483,10 +470,6 @@ Future<String> locationMapUrl({
 /// Returns a human-readable validation error for invalid input.
 Future<String> buildLocationMessage({required LocationShareInput input}) =>
     RustLib.instance.api.crateApiBuildLocationMessage(input: input);
-
-/// Whether a message body is a canonical location share.
-Future<bool> isLocationMessage({required String content}) =>
-    RustLib.instance.api.crateApiIsLocationMessage(content: content);
 
 /// Extract the canonical map URL from a location message body.
 ///
@@ -547,17 +530,6 @@ Future<LocationDefaults> getLocationDefaults() =>
 /// Returns a human-readable validation or database error.
 Future<void> setLocationDefaults({required LocationDefaults input}) =>
     RustLib.instance.api.crateApiSetLocationDefaults(input: input);
-
-/// Resolve a user-facing filter (`"24 hours ago"`, `"now"`, ISO date/time) into
-/// Unix seconds using Rust's canonical grammar.
-///
-/// # Errors
-/// Returns an error for an unrecognised filter.
-Future<double> parseLocationTimeFilter({
-  required String text,
-  required double now,
-}) =>
-    RustLib.instance.api.crateApiParseLocationTimeFilter(text: text, now: now);
 
 /// Load one sending device's received location track.
 ///

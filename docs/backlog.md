@@ -367,6 +367,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Unused location facade methods removed | 2026-11-28 | [`archive/2026-11-28_dead_location_facade_methods.md`](archive/2026-11-28_dead_location_facade_methods.md) |
 | Uncalled FRB surfaces removed | 2026-11-28 | [`archive/2026-11-28_dead_frb_surfaces.md`](archive/2026-11-28_dead_frb_surfaces.md) |
 | Web parameter DTOs extracted from the dispatcher | 2026-11-28 | [`archive/2026-11-28_web_param_dtos.md`](archive/2026-11-28_web_param_dtos.md) |
 | Shared Web Audio binding for the beep and call adapters | 2026-11-28 | [`archive/2026-11-28_shared_web_audio_bindings.md`](archive/2026-11-28_shared_web_audio_bindings.md) |

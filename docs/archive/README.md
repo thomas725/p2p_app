@@ -96,6 +96,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-28_shared_web_audio_bindings.md](2026-11-28_shared_web_audio_bindings.md) | One `AudioContext` binding shared by the beep and call-media web adapters | 2026-11-28 |
 | [2026-11-28_web_param_dtos.md](2026-11-28_web_param_dtos.md) | Web method parameter DTOs moved out of the dispatcher | 2026-11-28 |
 | [2026-11-28_dead_frb_surfaces.md](2026-11-28_dead_frb_surfaces.md) | Uncalled FRB bindings removed in one coordinated regeneration | 2026-11-28 |
+| [2026-11-28_dead_location_facade_methods.md](2026-11-28_dead_location_facade_methods.md) | Unused low-level location facade methods removed | 2026-11-28 |
 | [2026-11-27_device_location_sharing.md](2026-11-27_device_location_sharing.md) | Device-centric location sharing: Rust-owned policy, sealed DMs, GPX tracks, TUI/Flutter/web/Android | 2026-11-27 |
 | [2026-11-27_frb_web_drift_guard.md](2026-11-27_frb_web_drift_guard.md) | Generated-source guard that every FRB wire has a web arm or a documented native-only reason | 2026-11-27 |
 | [2026-11-27_canonical_sort_comparator.md](2026-11-27_canonical_sort_comparator.md) | One canonical five-column comparator shared by the TUI and both Flutter transports | 2026-11-27 |

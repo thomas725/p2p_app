@@ -285,19 +285,10 @@ abstract class NodeApi {
 
   // --- Location sharing ---
 
-  /// Canonical free map URL Rust builds for a coordinate pair.
-  Future<String> locationMapUrl({
-    required double latitude,
-    required double longitude,
-  });
-
   /// Validate a location share and build the canonical DM body. Rust owns all
   /// coordinate/frequency/duration validation; never send a location that this
   /// call rejected.
   Future<String> buildLocationMessage({required LocationShareInput input});
-
-  /// Whether a message body is a canonical location share.
-  Future<bool> isLocationMessage({required String content});
 
   /// Whether a continued sharing session is still active at `now` (epoch
   /// seconds). Rust owns the mode/expiry rule; Dart only supplies the clock.
@@ -331,12 +322,6 @@ abstract class NodeApi {
 
   /// Persist validated location-sharing defaults.
   Future<void> setLocationDefaults({required LocationDefaults input});
-
-  /// Resolve a user-facing time filter into Unix seconds in Rust.
-  Future<double> parseLocationTimeFilter({
-    required String text,
-    required double now,
-  });
 
   /// Load one sending device's received location track, optionally filtered by
   /// Rust-parsed `fromText`/`toText`.

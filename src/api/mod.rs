@@ -562,16 +562,6 @@ pub fn network_size_label(peer_count: i64) -> String {
 
 // --- Location sharing ---
 
-/// Canonical, free OpenStreetMap URL for a coordinate pair.
-///
-/// Both frontends render the URL Rust builds; neither formats coordinates or
-/// constructs map links itself. Invalid coordinates fall back to `(0, 0)`
-/// rather than producing a malformed URL.
-#[must_use]
-pub fn location_map_url(latitude: f64, longitude: f64) -> String {
-    crate::location::location_map_url(latitude, longitude)
-}
-
 /// Validate a location share and render the canonical DM body.
 ///
 /// Rust owns coordinate, accuracy, frequency, duration and session validation;
@@ -583,12 +573,6 @@ pub fn build_location_message(
     input: crate::location::LocationShareInput,
 ) -> Result<String, String> {
     crate::location::build_location_message(input)
-}
-
-/// Whether a message body is a canonical location share.
-#[must_use]
-pub fn is_location_message(content: &str) -> bool {
-    crate::location::is_location_message(content)
 }
 
 /// Extract the canonical map URL from a location message body.
@@ -641,15 +625,6 @@ pub fn get_location_defaults() -> crate::settings::LocationDefaults {
 /// Returns a human-readable validation or database error.
 pub fn set_location_defaults(input: crate::settings::LocationDefaults) -> Result<(), String> {
     crate::settings::set_location_defaults(input)
-}
-
-/// Resolve a user-facing filter (`"24 hours ago"`, `"now"`, ISO date/time) into
-/// Unix seconds using Rust's canonical grammar.
-///
-/// # Errors
-/// Returns an error for an unrecognised filter.
-pub fn parse_location_time_filter(text: &str, now: f64) -> Result<f64, String> {
-    crate::location::parse_location_time_filter(text, now)
 }
 
 /// Load one sending device's received location track.

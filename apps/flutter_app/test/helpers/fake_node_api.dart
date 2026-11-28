@@ -712,11 +712,8 @@ class FakeNodeApi implements NodeApi {
 
   /// Rust-owned location helpers. Tests override these rather than formatting
   /// coordinates or URLs in Dart.
-  Future<String> Function(double latitude, double longitude)?
-  locationMapUrlOverride;
   Future<String> Function(LocationShareInput input)?
   buildLocationMessageOverride;
-  Future<bool> Function(String content)? isLocationMessageOverride;
   Future<bool> Function(
     double startedAt,
     String mode,
@@ -728,30 +725,11 @@ class FakeNodeApi implements NodeApi {
   locationSendDueOverride;
 
   @override
-  Future<String> locationMapUrl({
-    required double latitude,
-    required double longitude,
-  }) {
-    _record('locationMapUrl', {'latitude': latitude, 'longitude': longitude});
-    final override = locationMapUrlOverride;
-    if (override != null) return override(latitude, longitude);
-    throw UnimplementedError('set locationMapUrlOverride in this test');
-  }
-
-  @override
   Future<String> buildLocationMessage({required LocationShareInput input}) {
     _record('buildLocationMessage', input);
     final override = buildLocationMessageOverride;
     if (override != null) return override(input);
     throw UnimplementedError('set buildLocationMessageOverride in this test');
-  }
-
-  @override
-  Future<bool> isLocationMessage({required String content}) {
-    _record('isLocationMessage', content);
-    final override = isLocationMessageOverride;
-    if (override != null) return override(content);
-    throw UnimplementedError('set isLocationMessageOverride in this test');
   }
 
   @override
@@ -795,7 +773,6 @@ class FakeNodeApi implements NodeApi {
   locationQueryDueOverride;
   LocationDefaults Function()? getLocationDefaultsOverride;
   Future<void> Function(LocationDefaults input)? setLocationDefaultsOverride;
-  double Function(String text, double now)? parseLocationTimeFilterOverride;
   List<LocationTrackPoint> Function(
     String peerId,
     String? fromText,
@@ -855,17 +832,6 @@ class FakeNodeApi implements NodeApi {
       throw StateError('set setLocationDefaultsOverride in this test');
     }
     await override(input);
-  }
-
-  @override
-  Future<double> parseLocationTimeFilter({
-    required String text,
-    required double now,
-  }) {
-    _record('parseLocationTimeFilter', {'text': text, 'now': now});
-    final override = parseLocationTimeFilterOverride;
-    if (override != null) return Future.value(override(text, now));
-    throw StateError('set parseLocationTimeFilterOverride in this test');
   }
 
   @override

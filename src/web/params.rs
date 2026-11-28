@@ -238,13 +238,6 @@ pub struct NotificationSettingsParams {
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LocationMapUrlParams {
-    pub latitude: f64,
-    pub longitude: f64,
-}
-
-#[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct IsLocationMessageParams {
     pub content: String,
 }
@@ -272,13 +265,6 @@ pub struct LocationQueryDueParams {
     pub last_query_at: Option<f64>,
     pub now: f64,
     pub interval_secs: u32,
-}
-
-#[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LocationTimeFilterParams {
-    pub text: String,
-    pub now: f64,
 }
 
 #[derive(serde::Deserialize)]

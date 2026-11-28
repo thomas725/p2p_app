@@ -347,19 +347,9 @@ class FrbNodeApi implements NodeApi {
       bridge.networkSizeLabel(peerCount: PlatformInt64Util.from(peerCount));
 
   @override
-  Future<String> locationMapUrl({
-    required double latitude,
-    required double longitude,
-  }) => bridge.locationMapUrl(latitude: latitude, longitude: longitude);
-
-  @override
   Future<String> buildLocationMessage({
     required location.LocationShareInput input,
   }) => bridge.buildLocationMessage(input: input);
-
-  @override
-  Future<bool> isLocationMessage({required String content}) =>
-      bridge.isLocationMessage(content: content);
 
   @override
   Future<bool> locationSessionActive({
@@ -407,12 +397,6 @@ class FrbNodeApi implements NodeApi {
   @override
   Future<void> setLocationDefaults({required LocationDefaults input}) =>
       bridge.setLocationDefaults(input: input);
-
-  @override
-  Future<double> parseLocationTimeFilter({
-    required String text,
-    required double now,
-  }) => bridge.parseLocationTimeFilter(text: text, now: now);
 
   @override
   Future<List<LocationTrackPoint>> loadLocationTrack({
