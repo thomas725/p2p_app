@@ -2,9 +2,7 @@
 //!
 //! This module defines the functions and types exposed to Dart via FRB.
 
-use crate::mobile_api::{
-    MobileContactInfo, MobileContactRow, MobileDeviceInfo, MobileInitStatus, MobilePeerStatus,
-};
+use crate::mobile_api::{MobileContactRow, MobileDeviceInfo, MobileInitStatus, MobilePeerStatus};
 use crate::mobile_node::{
     ChatMessage, MobileGroup, MobileGroupMessage, MobilePeerRecord, SwarmEventJson,
 };
@@ -720,18 +718,6 @@ pub fn get_my_user_id() -> Result<Option<String>, String> {
     crate::mobile_api::get_my_user_id()
 }
 
-/// Provision this install as a user (account keypair + self-binding claim).
-/// The returned string is the new root `user_id`.
-///
-/// # Errors
-/// Returns an error if provisioning fails.
-pub fn provision_my_user(
-    self_username: Option<String>,
-    self_nickname: Option<String>,
-) -> Result<String, String> {
-    crate::mobile_api::provision_my_user(self_username, self_nickname)
-}
-
 /// Send a device-binding `intro` request to a peer over the swarm.
 ///
 /// # Errors
@@ -838,71 +824,12 @@ pub fn get_reactions(msg_id: &str) -> Vec<crate::reactions::ReactionSummary> {
     crate::mobile_node::get_reactions(msg_id)
 }
 
-/// Verify a raw device-binding claim against the user's stored account key.
-///
-/// The claim is the raw signature over `user_id ‖ device_pubkey ‖ claim_id`;
-/// all three message parts are required to recompute and verify it.
-///
-/// # Errors
-/// Returns an error if the DB lookup fails.
-pub fn verify_device_binding_claim(
-    user_id: String,
-    device_pubkey: Vec<u8>,
-    claim_id: String,
-    claim: Vec<u8>,
-) -> Result<bool, String> {
-    crate::mobile_api::verify_device_binding_claim(user_id, device_pubkey, claim_id, claim)
-}
-
-/// Verify a claim against the user's account key, then bind the device.
-///
-/// # Errors
-/// Returns an error if the claim fails verification or the insert fails.
-pub fn add_device(
-    user_id: String,
-    peer_id: String,
-    device_pubkey: Vec<u8>,
-    claim_id: String,
-    claim: Vec<u8>,
-) -> Result<MobileDeviceInfo, String> {
-    crate::mobile_api::add_device(user_id, peer_id, device_pubkey, claim_id, claim)
-}
-
 /// List the live devices bound to a user, most recent first.
 ///
 /// # Errors
 /// Returns an error if the DB query fails.
 pub fn get_user_devices(user_id: String) -> Result<Vec<MobileDeviceInfo>, String> {
     crate::mobile_api::get_user_devices(user_id)
-}
-
-/// List this install's user's contacts.
-///
-/// Returns an empty list before the install is bound to a user.
-///
-/// # Errors
-/// Returns an error if the DB query fails.
-pub fn get_contacts() -> Result<Vec<MobileContactInfo>, String> {
-    crate::mobile_api::get_contacts()
-}
-
-/// Add a contact for this install's user.
-///
-/// # Errors
-/// Returns an error if the install has no bound user or the insert fails.
-pub fn add_contact(
-    contact_user_id: String,
-    nickname_override: Option<String>,
-) -> Result<(), String> {
-    crate::mobile_api::add_contact(contact_user_id, nickname_override)
-}
-
-/// Remove a contact for this install's user.
-///
-/// # Errors
-/// Returns an error if the install has no bound user or the delete fails.
-pub fn remove_contact(contact_user_id: String) -> Result<(), String> {
-    crate::mobile_api::remove_contact(contact_user_id)
 }
 
 /// Load the canonical Contacts-tab roster in a single round trip.
@@ -1390,7 +1317,7 @@ mod tests {
             dir.path().join("api.sqlite").to_string_lossy().into_owned(),
         )
         .expect("mobile init");
-        let owner = provision_my_user(None, None).expect("provision");
+        let owner = crate::identity::provision_my_user(None, None).expect("provision");
 
         let created = create_share(CreateShareParams {
             name: "Photos".to_string(),

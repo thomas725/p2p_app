@@ -374,6 +374,7 @@ here so they are not mistaken for unfinished work.
 | TUI share-action module extraction | 2026-11-28 | [`archive/2026-11-28_tui_share_action_extraction.md`](archive/2026-11-28_tui_share_action_extraction.md) |
 | Inline `mobile_node`/web test extraction | 2026-11-28 | [`archive/2026-11-28_inline_test_extraction.md`](archive/2026-11-28_inline_test_extraction.md) |
 | FRB codegen reproducibility | 2026-11-28 | [`archive/2026-11-28_frb_codegen_reproducible.md`](archive/2026-11-28_frb_codegen_reproducible.md) |
+| Dead FRB/web binding removal | 2026-11-28 | [`archive/2026-11-28_dead_frb_bindings_removed.md`](archive/2026-11-28_dead_frb_bindings_removed.md) |
 | Canonical five-column sort comparator | 2026-11-27 | [`archive/2026-11-27_canonical_sort_comparator.md`](archive/2026-11-27_canonical_sort_comparator.md) |
 | Exhaustive FRB↔web dispatch drift guard | 2026-11-27 | [`archive/2026-11-27_frb_web_drift_guard.md`](archive/2026-11-27_frb_web_drift_guard.md) |
 | Untrusted share-owner claim hardening | 2026-11-27 | [`archive/2026-11-27_share_owner_claim_hardening.md`](archive/2026-11-27_share_owner_claim_hardening.md) |

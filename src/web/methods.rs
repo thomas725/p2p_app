@@ -57,16 +57,10 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "validateNickname"
         | "networkSizeLabel"
         | "getMyUserId"
-        | "provisionMyUser"
         | "sendDeviceBindingIntro"
         | "acceptDeviceBinding"
-        | "verifyDeviceBindingClaim"
-        | "addDevice"
         | "getUserDevices") => identity(m, params),
-        m @ ("getContacts"
-        | "addContact"
-        | "removeContact"
-        | "getContactsWithStats"
+        m @ ("getContactsWithStats"
         | "sortContacts"
         | "startCall"
         | "sendCallSignal"
@@ -463,10 +457,6 @@ fn identity(method: &str, params: Value) -> Result<Value, String> {
             ok(api::network_size_label(p.peer_count))
         }
         "getMyUserId" => json(api::get_my_user_id()),
-        "provisionMyUser" => {
-            let p: ProvisionParams = parse(params)?;
-            json(api::provision_my_user(p.self_username, p.self_nickname))
-        }
         "sendDeviceBindingIntro" => {
             let p: PeerIdParams = parse(params)?;
             json(api::send_device_binding_intro(p.peer_id))
@@ -474,25 +464,6 @@ fn identity(method: &str, params: Value) -> Result<Value, String> {
         "acceptDeviceBinding" => {
             let p: DeviceBindingParams = parse(params)?;
             json(api::accept_device_binding(p.peer_id, p.device_pubkey))
-        }
-        "verifyDeviceBindingClaim" => {
-            let p: VerifyClaimParams = parse(params)?;
-            json(api::verify_device_binding_claim(
-                p.user_id,
-                p.device_pubkey,
-                p.claim_id,
-                p.claim,
-            ))
-        }
-        "addDevice" => {
-            let p: AddDeviceParams = parse(params)?;
-            json(api::add_device(
-                p.user_id,
-                p.peer_id,
-                p.device_pubkey,
-                p.claim_id,
-                p.claim,
-            ))
         }
         "getUserDevices" => {
             let p: UserIdParams = parse(params)?;
@@ -505,15 +476,6 @@ fn identity(method: &str, params: Value) -> Result<Value, String> {
 /// Contacts roster, contacts sorting, and call signaling.
 fn contacts_calls(method: &str, params: Value) -> Result<Value, String> {
     match method {
-        "getContacts" => json(api::get_contacts()),
-        "addContact" => {
-            let p: AddContactParams = parse(params)?;
-            json(api::add_contact(p.contact_user_id, p.nickname_override))
-        }
-        "removeContact" => {
-            let p: ContactIdParams = parse(params)?;
-            json(api::remove_contact(p.contact_user_id))
-        }
         "getContactsWithStats" => json(api::get_contacts_with_stats()),
         "sortContacts" => {
             let p: SortContactsParams = parse(params)?;
@@ -787,12 +749,6 @@ struct UserIdParams {
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ContactIdParams {
-    contact_user_id: String,
-}
-
-#[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct NameParams {
     name: String,
 }
@@ -1016,41 +972,9 @@ impl From<BuildLocationMessageParams> for crate::location::LocationShareInput {
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ProvisionParams {
-    self_username: Option<String>,
-    self_nickname: Option<String>,
-}
-#[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct DeviceBindingParams {
     peer_id: String,
     device_pubkey: Vec<u8>,
-}
-
-#[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct VerifyClaimParams {
-    user_id: String,
-    device_pubkey: Vec<u8>,
-    claim_id: String,
-    claim: Vec<u8>,
-}
-
-#[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AddDeviceParams {
-    user_id: String,
-    peer_id: String,
-    device_pubkey: Vec<u8>,
-    claim_id: String,
-    claim: Vec<u8>,
-}
-
-#[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AddContactParams {
-    contact_user_id: String,
-    nickname_override: Option<String>,
 }
 
 #[derive(serde::Deserialize)]

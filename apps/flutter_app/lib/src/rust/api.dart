@@ -614,17 +614,6 @@ Future<List<String>> sendLocationToDevices({
 /// fails.
 Future<String?> getMyUserId() => RustLib.instance.api.crateApiGetMyUserId();
 
-/// Provision this install as a user (account keypair + self-binding claim).
-/// The returned string is the new root `user_id`.
-///
-/// # Errors
-/// Returns an error if provisioning fails.
-Future<String> provisionMyUser({String? selfUsername, String? selfNickname}) =>
-    RustLib.instance.api.crateApiProvisionMyUser(
-      selfUsername: selfUsername,
-      selfNickname: selfNickname,
-    );
-
 /// Send a device-binding `intro` request to a peer over the swarm.
 ///
 /// # Errors
@@ -726,77 +715,12 @@ Future<List<ReactionSummary>> toggleReaction({
 Future<List<ReactionSummary>> getReactions({required String msgId}) =>
     RustLib.instance.api.crateApiGetReactions(msgId: msgId);
 
-/// Verify a raw device-binding claim against the user's stored account key.
-///
-/// The claim is the raw signature over `user_id ‖ device_pubkey ‖ claim_id`;
-/// all three message parts are required to recompute and verify it.
-///
-/// # Errors
-/// Returns an error if the DB lookup fails.
-Future<bool> verifyDeviceBindingClaim({
-  required String userId,
-  required List<int> devicePubkey,
-  required String claimId,
-  required List<int> claim,
-}) => RustLib.instance.api.crateApiVerifyDeviceBindingClaim(
-  userId: userId,
-  devicePubkey: devicePubkey,
-  claimId: claimId,
-  claim: claim,
-);
-
-/// Verify a claim against the user's account key, then bind the device.
-///
-/// # Errors
-/// Returns an error if the claim fails verification or the insert fails.
-Future<MobileDeviceInfo> addDevice({
-  required String userId,
-  required String peerId,
-  required List<int> devicePubkey,
-  required String claimId,
-  required List<int> claim,
-}) => RustLib.instance.api.crateApiAddDevice(
-  userId: userId,
-  peerId: peerId,
-  devicePubkey: devicePubkey,
-  claimId: claimId,
-  claim: claim,
-);
-
 /// List the live devices bound to a user, most recent first.
 ///
 /// # Errors
 /// Returns an error if the DB query fails.
 Future<List<MobileDeviceInfo>> getUserDevices({required String userId}) =>
     RustLib.instance.api.crateApiGetUserDevices(userId: userId);
-
-/// List this install's user's contacts.
-///
-/// Returns an empty list before the install is bound to a user.
-///
-/// # Errors
-/// Returns an error if the DB query fails.
-Future<List<MobileContactInfo>> getContacts() =>
-    RustLib.instance.api.crateApiGetContacts();
-
-/// Add a contact for this install's user.
-///
-/// # Errors
-/// Returns an error if the install has no bound user or the insert fails.
-Future<void> addContact({
-  required String contactUserId,
-  String? nicknameOverride,
-}) => RustLib.instance.api.crateApiAddContact(
-  contactUserId: contactUserId,
-  nicknameOverride: nicknameOverride,
-);
-
-/// Remove a contact for this install's user.
-///
-/// # Errors
-/// Returns an error if the install has no bound user or the delete fails.
-Future<void> removeContact({required String contactUserId}) =>
-    RustLib.instance.api.crateApiRemoveContact(contactUserId: contactUserId);
 
 /// Load the canonical Contacts-tab roster in a single round trip.
 ///

@@ -8,9 +8,9 @@ import 'mobile_node.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'reply.dart';
 
-// These functions are ignored because they are not marked as `pub`: `contact_device_from`, `contact_info_from`, `contact_row_from`, `device_info_from`, `reply_sender_label`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `add_contact`, `add_device`, `broadcasts_sent`, `broadcasts_sent`, `display_name`, `display_name`, `dm_count`, `dm_count`, `first_seen`, `first_seen`, `get_contacts_with_stats`, `get_contacts`, `get_mobile_peer_status`, `get_my_user_id`, `get_network_details`, `get_peer_quality`, `get_user_devices`, `init_mobile_database`, `last_seen`, `last_seen`, `provision_my_user`, `remove_contact`, `stable_id`, `stable_id`, `verify_device_binding_claim`
+// These functions are ignored because they are not marked as `pub`: `contact_device_from`, `contact_row_from`, `device_info_from`, `reply_sender_label`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `broadcasts_sent`, `broadcasts_sent`, `display_name`, `display_name`, `dm_count`, `dm_count`, `first_seen`, `first_seen`, `get_contacts_with_stats`, `get_mobile_peer_status`, `get_my_user_id`, `get_network_details`, `get_peer_quality`, `get_user_devices`, `init_mobile_database`, `last_seen`, `last_seen`, `stable_id`, `stable_id`
 
 /// Format an ISO timestamp string ("YYYY-MM-DD HH:MM:SS") to "HH:MM".
 ///
@@ -207,45 +207,6 @@ class MobileContactDevice {
           lastSeen == other.lastSeen &&
           receivedNickname == other.receivedNickname &&
           localNickname == other.localNickname;
-}
-
-/// A user-arranged contact pair, as exposed to Flutter.
-class MobileContactInfo {
-  /// User ID of the owner of this contact row
-  final String ownerUserId;
-
-  /// User ID of the contact (foreign user)
-  final String contactUserId;
-
-  /// Nickname override this owner has assigned to the contact
-  final String? nicknameOverride;
-
-  /// Timestamp when the contact was first added, formatted for display
-  final String addedAt;
-
-  const MobileContactInfo({
-    required this.ownerUserId,
-    required this.contactUserId,
-    this.nicknameOverride,
-    required this.addedAt,
-  });
-
-  @override
-  int get hashCode =>
-      ownerUserId.hashCode ^
-      contactUserId.hashCode ^
-      nicknameOverride.hashCode ^
-      addedAt.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is MobileContactInfo &&
-          runtimeType == other.runtimeType &&
-          ownerUserId == other.ownerUserId &&
-          contactUserId == other.contactUserId &&
-          nicknameOverride == other.nicknameOverride &&
-          addedAt == other.addedAt;
 }
 
 /// One row of the Contacts tab, as exposed to Flutter.

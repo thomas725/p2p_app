@@ -144,9 +144,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<MobileContactDevice> dco_decode_list_mobile_contact_device(dynamic raw);
 
   @protected
-  List<MobileContactInfo> dco_decode_list_mobile_contact_info(dynamic raw);
-
-  @protected
   List<MobileContactRow> dco_decode_list_mobile_contact_row(dynamic raw);
 
   @protected
@@ -216,9 +213,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MobileContactDevice dco_decode_mobile_contact_device(dynamic raw);
-
-  @protected
-  MobileContactInfo dco_decode_mobile_contact_info(dynamic raw);
 
   @protected
   MobileContactRow dco_decode_mobile_contact_row(dynamic raw);
@@ -496,11 +490,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  List<MobileContactInfo> sse_decode_list_mobile_contact_info(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   List<MobileContactRow> sse_decode_list_mobile_contact_row(
     SseDeserializer deserializer,
   );
@@ -590,11 +579,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MobileContactDevice sse_decode_mobile_contact_device(
-    SseDeserializer deserializer,
-  );
-
-  @protected
-  MobileContactInfo sse_decode_mobile_contact_info(
     SseDeserializer deserializer,
   );
 
@@ -926,12 +910,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_list_mobile_contact_info(
-    List<MobileContactInfo> self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_list_mobile_contact_row(
     List<MobileContactRow> self,
     SseSerializer serializer,
@@ -1063,12 +1041,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_mobile_contact_device(
     MobileContactDevice self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_mobile_contact_info(
-    MobileContactInfo self,
     SseSerializer serializer,
   );
 

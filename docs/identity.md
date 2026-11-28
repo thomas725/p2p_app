@@ -89,11 +89,16 @@ New canonical fn per concept (following the item-9/10 single-binding rule — on
 binding, Dart calls it, no Dart reimplementation, no `hide` clauses):
 
 - `api::get_my_user_id` — this install's user (resolves `identities` + its binding).
-- `api::add_device(user_id, claim)` — verify claim against user's account pubkey, then store.
 - `api::get_user_devices(user_id)` — bounded (recent-N) device-set.
-- `api::verify_device_binding_claim(claim)` — the pure verify (also serves `add_device`).
-- `api::get_contacts` / `api::add_contact(user_id, nickname_override)` / `api::remove_contact`.
+- `api::send_device_binding_intro(peer_id)` / `api::accept_device_binding(peer_id, device_pubkey)` —
+  the two frontends' device-binding actions; verification and minting stay inside Rust.
+- `api::get_contacts_with_stats` — the contact roster with per-device stats (single round trip).
 - `validate_nickname` / `network_size_label` stay as the existing single bindings (not re-touched).
+
+Provisioning, claim verification, and direct contact-row edits are **Rust-internal**
+(`identity::{provision_my_user, verify_device_binding_claim, add_contact, remove_contact}`):
+startup auto-provisions, the swarm verifies claims at the receive choke point, and the current
+frontends only read the roster. They are deliberately not FRB/web bindings.
 
 Requires the FRB regeneration protocol from AGENTS.md (codegen `=2.13.0` → re-append clippy
 allows → `cargo fmt --all` → delete untracked `.h` → `cargo ct` + `cargo test --all-features` +
@@ -124,7 +129,8 @@ Design-time ordering, kept for the record; all three steps have since landed
 
 1. **Identity layer**: `users` + `device_bindings` + signed-claim verification (the root-of-trust
    prerequisite). New bindings listed above (minus contacts).
-2. **Contacts**: `contacts` table + `get_contacts`/`add_contact`/`remove_contact` + Dart surface.
+2. **Contacts**: `contacts` table + `get_contacts_with_stats` + Dart surface (direct row edits
+   stayed Rust-internal).
 3. **Calls/videocalls** (later): signaling and μ-law transport both ship **un-gated**,
    with the empty `calls` feature kept for future device/audio deps. Uses the call vs.
    user identity; multi-device lanes follow §11.
@@ -200,7 +206,7 @@ proposal above are bolded):
   cannot be reconstructed from the account pubkey, the install that provisions must persist it. The
   swap of the per-install keypair to the account key stays **rejected** (that would collapse
   multi-device identity); account_key is a *retained* addition, seeded by
-  `api::provision_my_user` (idempotent) — re-provisioning never changes the account root.
+  the Rust-internal `identity::provision_my_user` (idempotent) — re-provisioning never changes the account root.
 - **Mobile auto-provisions at node start** (`mobile_node::start_node_impl`): every install
   provisions a fresh user identity on first start (idempotent; later starts reuse the account).
   No "create account" UI is needed — the Contacts tab grouping just always applies. The Flutter
