@@ -151,7 +151,7 @@
 | unit   | unit_contacts.rs                   |   435 | 14754 |     4 | contacts module tests                 |
 | unit   | unit_db.rs                         |   312 | 10040 |     3 | Unit tests for database module        |
 | unit   | unit_dm_outbox.rs                  |   169 |  5739 |     4 | Test file                             |
-| unit   | unit_e2e.rs                        |   341 | 12479 |     3 | Test file                             |
+| unit   | unit_e2e.rs                        |   361 | 13264 |     3 | Test file                             |
 | unit   | unit_file_transfer.rs              |   276 |  9628 |     4 | Test file                             |
 | unit   | unit_files.rs                      |   538 | 20323 |     4 | files module tests                    |
 | unit   | unit_groups.rs                     |   649 | 23459 |     5 | Unit tests for groups module          |
@@ -179,7 +179,7 @@
 | unit   | unit_types.rs                      |   427 | 12996 |     3 | Unit tests for types module           |
 | unit   | unit_web_mod.rs                    |  1304 | 45284 |     9 | Test file                             |
 
-**Total:** 70 test files, 38,968 lines, 1,326,125 characters
+**Total:** 70 test files, 38,988 lines, 1,326,910 characters
 
 ## Dart Source Files
 

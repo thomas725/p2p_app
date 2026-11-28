@@ -184,6 +184,26 @@ fn seal_for_peer_needs_an_ed25519_peer_id() {
 }
 
 #[test]
+fn seal_for_peer_falls_back_for_a_valid_non_ed25519_peer_id() {
+    // A SHA-256 multihash peer ID parses fine but embeds no Ed25519 key, so the
+    // public writer must signal the plaintext fallback (`Ok(None)`) instead of
+    // erroring. The existing "not-a-peer-id" test only covers the parse branch.
+    let mut raw = vec![0x12u8, 0x20];
+    raw.extend_from_slice(&[3u8; 32]);
+    let peer_id = libp2p::PeerId::from_bytes(&raw).expect("sha256 peer id");
+    assert_eq!(
+        peer_messaging_key(&peer_id),
+        None,
+        "precondition: no recoverable messaging key"
+    );
+    assert!(
+        seal_for_peer(&peer_id.to_string(), Some("m1"), &body("hi"))
+            .expect("a non-encryptable peer is a fallback, not an error")
+            .is_none()
+    );
+}
+
+#[test]
 fn deterministic_seal_with_pinned_randomness() {
     let recipient = keypair();
     let recipient_public = peer_messaging_key(&recipient.public().to_peer_id()).expect("public");
