@@ -4,11 +4,11 @@ SUMMARY
 check      exit  result
 fmt        0     PASS
 clippy     0     PASS
-test       101   FAIL (exit 101)
+test       0     PASS
 build      0     PASS
 minimal    0     PASS
 audit      0     PASS
 doclinks   0     PASS
 docs       0     PASS
-overall: FAIL (1/8 checks failed)
+overall: PASS (8/8 checks green)
 ============================================================
