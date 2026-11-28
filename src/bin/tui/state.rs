@@ -298,6 +298,10 @@ pub struct AppState {
     /// [`p2p_app::InputMode::EditingNickname`]); `None` in the nickname mode
     /// means this install's own nickname.
     pub editing_nickname_peer: Option<String>,
+    /// User contact whose owner-side nickname the shared editor changes. The
+    /// user id and display label are captured when `Ctrl+N` opens the prompt,
+    /// so a later selection change or roster reload cannot retarget the write.
+    pub contact_nickname_prompt: Option<ContactNicknamePrompt>,
 
     // Ad-hoc UI popup (used for receipt timing details, etc.)
     pub popup: Option<String>,
@@ -455,6 +459,19 @@ pub struct ShareBindingPrompt {
     pub share_id: String,
 }
 
+/// The user contact whose owner-side nickname the shared editor changes.
+///
+/// Both the stable user id and the current display label are captured when the
+/// prompt opens. The id is the write target; the label is only rendered in the
+/// input title, so a selection change cannot silently retarget the write.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ContactNicknamePrompt {
+    /// Stable `user_id` of the contact (`ContactRow::contact_id` for user rows).
+    pub contact_user_id: String,
+    /// Current Rust-resolved display name shown in the editor title.
+    pub display_name: String,
+}
+
 /// What the share-grant editor is doing. The mode belongs to the add action
 /// only; a revoke prompt carries the user id it will remove so the typed text
 /// is only a confirmation, never the authority for the target.
@@ -540,6 +557,30 @@ impl AppState {
         matches!(self.input_mode, p2p_app::InputMode::EditingLocalNickname)
     }
 
+    /// True while the shared input captures a user contact's owner-side name.
+    #[must_use]
+    pub const fn is_editing_contact_nickname(&self) -> bool {
+        matches!(self.input_mode, p2p_app::InputMode::EditingContactNickname)
+    }
+
+    /// Open the contact-nickname editor for one bound user contact. The target
+    /// is captured here so a selection change cannot retarget the write.
+    pub fn begin_contact_nickname_edit(&mut self, prompt: ContactNicknamePrompt) {
+        self.input_mode = p2p_app::InputMode::EditingContactNickname;
+        self.contact_nickname_prompt = Some(prompt);
+        self.chat_input = TextArea::default();
+    }
+
+    /// Close the contact-nickname editor without writing anything.
+    pub fn cancel_contact_nickname_edit(&mut self) {
+        if !self.is_editing_contact_nickname() {
+            return;
+        }
+        self.input_mode = p2p_app::InputMode::Chat;
+        self.contact_nickname_prompt = None;
+        self.chat_input = TextArea::default();
+    }
+
     /// True while the shared text input is capturing a group name.
     pub const fn is_creating_group(&self) -> bool {
         matches!(self.input_mode, p2p_app::InputMode::CreatingGroup)
@@ -589,6 +630,7 @@ impl AppState {
     /// text follow the user to the destination tab.
     pub fn finalize_tab_input(&mut self) {
         self.cancel_nickname_edit();
+        self.cancel_contact_nickname_edit();
         self.cancel_share_grant();
         self.cancel_share_binding();
         self.cancel_create_share();
@@ -2025,6 +2067,28 @@ impl AppState {
             .and_then(|row| row.contact_id(&self.contacts).map(str::to_owned))
     }
 
+    /// Target for the owner-side contact-nickname editor.
+    ///
+    /// Only another user's contact row qualifies: unbound devices keep their
+    /// device-level `peer_local_nickname` editor on Peer Info, a device row
+    /// inside a user contact must not silently retarget the aggregate write,
+    /// and this install's own user cannot be nicknamed as a contact (the
+    /// canonical writer refuses it).
+    pub fn selected_contact_nickname_target(&self) -> Option<ContactNicknamePrompt> {
+        let p2p_app::tui_helpers::ContactTableRowRef::Contact(idx) = self.selected_contact_ref()?
+        else {
+            return None;
+        };
+        let contact = self.contacts.get(idx)?;
+        if !contact.is_user || self.own_user_id.as_deref() == Some(contact.contact_id.as_str()) {
+            return None;
+        }
+        Some(ContactNicknamePrompt {
+            contact_user_id: contact.contact_id.clone(),
+            display_name: contact.display_name.clone(),
+        })
+    }
+
     /// Expand/collapse the selected contact's device rows. No-op on a
     /// single-device contact or a device row.
     pub fn toggle_expand_selected_contact(&mut self) {
@@ -2214,6 +2278,7 @@ impl AppState {
             self_nicknames_for_peers,
             topic_str,
             editing_nickname_peer: None,
+            contact_nickname_prompt: None,
             popup: None,
             pending_notifications: Vec::new(),
             pending_clipboard: Vec::new(),

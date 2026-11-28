@@ -63,6 +63,12 @@ pub fn render_input_section(
         "Create or Join Group - Enter to confirm, Esc to cancel".to_string()
     } else if state.is_searching_contacts() {
         "Search Contacts - Enter to keep, Esc to clear".to_string()
+    } else if state.is_editing_contact_nickname() {
+        let label = state
+            .contact_nickname_prompt
+            .as_ref()
+            .map_or("contact", |prompt| prompt.display_name.as_str());
+        format!("Contact Nickname ({label}) - Enter to save (empty clears), Esc to cancel")
     } else if state.is_editing_nickname() {
         let (label, target) = if state.is_editing_local_nickname() {
             (

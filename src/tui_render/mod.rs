@@ -164,6 +164,12 @@ pub fn render_input_section(
         "Create or Join Group".to_string()
     } else if state.is_searching_contacts() {
         "Search Contacts".to_string()
+    } else if state.is_editing_contact_nickname() {
+        let label = state
+            .contact_nickname_target
+            .as_deref()
+            .unwrap_or("contact");
+        format!("Contact Nickname ({label})")
     } else if state.is_editing_nickname() {
         let label = if state.is_editing_local_nickname() {
             "Local Nickname"
@@ -195,13 +201,14 @@ pub fn render_input_section(
 /// message cursor on the three chat tabs (verbs then act on the selected row,
 /// newest if none selected), Ctrl+P on every tab with a peer target (Contacts,
 /// Direct, Chat, Group, Settings), Ctrl+I (kitty) on a Direct/DM tab, `i` on
-/// Contacts, `n` (local nickname) on a Peer Info tab, `Ctrl+L` (GPX export) on
-/// a Direct tab, `Del` on the three chat tabs.
+/// Contacts, `Ctrl+N` (owner-side contact name) on Contacts, `n` (local
+/// nickname) on a Peer Info tab, `Ctrl+L` (GPX export) on a Direct tab, `Del`
+/// on the three chat tabs.
 #[must_use]
 pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
     match tab_content {
         TabContent::Contacts => {
-            "Tab: next | Up/Down: select | Enter: open DM | i/Ctrl+P: Peer Info | c: call | d: link device | /: search | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Up/Down: select | Enter: open DM | i/Ctrl+P: Peer Info | c: call | d: link device | Ctrl+N: contact name | /: search | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::PeerInfo(_) => {
             "Tab: next | Enter: open DM | c: call | d: link device | b: block/unblock | n: set local nickname | F12: mouse | ?: help | Ctrl+Q: quit"
@@ -256,7 +263,7 @@ DM: Ctrl+L -> export this device's location track to GPX
 Chat / Group: Ctrl+P -> newest/sender target (unchanged by selection) | Contacts: Ctrl+P -> selected peer
 Settings: Ctrl+P -> connected peer / bound device | click a peer row for its Peer Info
 
-Contacts: i Info | e expand | c call | d link device | / search | 1-5 sort | o reverse
+Contacts: i Info | e expand | c call | d link device | Ctrl+N edit contact name | / search | 1-5 sort | o reverse
 Groups: g create/join | d leave | y confirm leave
 Peer Info: n local nickname | c call | d link device | b block / unblock
 Shares: Up/Down share | Left/Right peer | Ctrl+Up/Down grant | Ctrl+Left/Right file | f discover | j/k offer | Enter accept | d mark delete | Ctrl+D publish | D delete share | a add | x revoke | m manifest | o re-advertise | r refresh

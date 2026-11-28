@@ -6960,3 +6960,431 @@ fn test_share_bind_snapshot_and_publish_keys_are_inert_while_a_prompt_is_open() 
     });
     close_share_grant_db();
 }
+
+// ── owner-side contact nickname editor ───────────────────────────────────
+
+fn contacts_tab_index(state: &AppState) -> usize {
+    (0..state.dynamic_tabs.total_tab_count())
+        .find(|&idx| {
+            matches!(
+                state.dynamic_tabs.tab_index_to_content(idx),
+                TabContent::Contacts
+            )
+        })
+        .unwrap_or(0)
+}
+
+fn user_contact_row(
+    contact_id: &str,
+    display_name: &str,
+    peer_id: &str,
+) -> p2p_app::contacts::ContactRow {
+    p2p_app::contacts::ContactRow {
+        contact_id: contact_id.to_string(),
+        is_user: true,
+        display_name: display_name.to_string(),
+        device_count: 1,
+        device_rows: vec![p2p_app::contacts::ContactDevice {
+            peer_id: peer_id.to_string(),
+            display_name: display_name.to_string(),
+            received_nickname: None,
+            local_nickname: None,
+            first_seen: "2024-01-01 12:00:00".to_string(),
+            last_seen: "2024-01-02 12:00:00".to_string(),
+        }],
+        dm_count: 0,
+        broadcast_sent_to_peer: 0,
+        first_seen: "2024-01-01 12:00:00".to_string(),
+        last_seen: "2024-01-02 12:00:00".to_string(),
+    }
+}
+
+/// Isolated DB with this install provisioned and one foreign user bound to a
+/// device, so `resort_peers` sees the same rows the running app would.
+fn with_contact_nickname_db(f: impl FnOnce()) {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+    p2p_app::identity::provision_my_user(None, None).expect("provision");
+
+    let account = libp2p_identity::Keypair::generate_ed25519();
+    p2p_app::identity::save_user(
+        "alice",
+        &account.public().encode_protobuf(),
+        Some("alice"),
+        Some("alice"),
+    )
+    .expect("save alice");
+    let device_pubkey = [0xAB; 32];
+    let mut claim = b"alice".to_vec();
+    claim.extend_from_slice(&device_pubkey);
+    claim.extend_from_slice(b"contact-nickname-claim");
+    let signature = account.sign(&claim).expect("sign claim");
+    p2p_app::peers::save_peer("alice-device", &[]).expect("save peer");
+    p2p_app::identity::save_device_binding(
+        "alice",
+        "alice-device",
+        &device_pubkey,
+        "contact-nickname-claim",
+        &signature,
+        None,
+    )
+    .expect("bind alice device");
+
+    f();
+    p2p_app::db::reset_db_url();
+}
+
+fn alice_contacts_state() -> AppState {
+    let mut state = test_app_state();
+    state.active_tab = contacts_tab_index(&state);
+    state.peers.push_back(p2p_app::PeerRecord {
+        peer_id: "alice-device".to_string(),
+        first_seen: "2024-01-01 12:00:00".to_string(),
+        last_seen: "2024-01-02 12:00:00".to_string(),
+    });
+    state.resort_peers();
+    assert_eq!(state.contacts.len(), 1, "alice is the only contact");
+    assert!(state.contacts[0].is_user, "alice is bound to a user");
+    assert_eq!(state.contacts[0].contact_id, "alice");
+    state
+}
+
+#[tokio::test]
+async fn test_ctrl_n_opens_contact_nickname_editor_only_on_a_user_row() {
+    let mut state = test_app_state();
+    state.active_tab = contacts_tab_index(&state);
+    state.contacts = vec![user_contact_row("alice", "Alice", "alice-device")];
+    let mut session = KeySession::new(state);
+
+    assert!(!session.press_ctrl_char('n').await);
+    {
+        let s = session.state.lock().await;
+        assert!(s.is_editing_contact_nickname());
+        assert_eq!(
+            s.contact_nickname_prompt,
+            Some(crate::tui::state::ContactNicknamePrompt {
+                contact_user_id: "alice".to_string(),
+                display_name: "Alice".to_string(),
+            })
+        );
+        assert_eq!(s.chat_input.lines().join(""), "");
+    }
+    let frame = session.frame_text().await;
+    assert!(
+        frame.contains("Contact Nickname (Alice) - Enter to save (empty clears), Esc to cancel"),
+        "missing live contact-nickname title in frame: {frame}"
+    );
+}
+
+#[tokio::test]
+async fn test_ctrl_n_does_not_target_device_or_unbound_rows() {
+    let mut state = test_app_state();
+    state.active_tab = contacts_tab_index(&state);
+    state.contacts = vec![user_contact_row("alice", "Alice", "alice-device")];
+    state.expanded_contact_ids.insert("alice".to_string());
+    state.peer_selection = 1; // the expanded device row, not the contact row
+    let mut session = KeySession::new(state);
+
+    assert!(!session.press_ctrl_char('n').await);
+    {
+        let s = session.state.lock().await;
+        assert!(!s.is_editing_contact_nickname());
+        assert_eq!(
+            s.popup.as_deref(),
+            Some("Nickname: select a user contact first")
+        );
+    }
+
+    {
+        let mut s = session.state.lock().await;
+        s.popup = None;
+        s.expanded_contact_ids.clear();
+        s.peer_selection = 0;
+        let mut row = user_contact_row("device-peer", "Device", "device-peer");
+        row.is_user = false;
+        s.contacts = vec![row];
+    }
+    assert!(!session.press_ctrl_char('n').await);
+    let s = session.state.lock().await;
+    assert!(!s.is_editing_contact_nickname());
+    assert_eq!(
+        s.popup.as_deref(),
+        Some("Nickname: select a user contact first")
+    );
+}
+
+#[test]
+#[serial]
+fn test_contact_nickname_editor_saves_and_clears_through_canonical_writer() {
+    with_contact_nickname_db(|| {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        rt.block_on(async {
+            let mut session = KeySession::new(alice_contacts_state());
+            assert!(!session.press_ctrl_char('n').await);
+            assert!(!session.type_text("Alice-Custom").await);
+            assert!(!session.press_code(KeyCode::Enter).await);
+            {
+                let s = session.state.lock().await;
+                assert!(!s.is_editing_contact_nickname());
+                assert_eq!(s.popup, None);
+                assert!(
+                    s.contacts[0].display_name.contains("Alice-Custom"),
+                    "roster was not rebuilt from SQLite: {}",
+                    s.contacts[0].display_name
+                );
+            }
+            let owner = p2p_app::identity::my_user_id()
+                .expect("my user id")
+                .expect("provisioned user");
+            let stored = p2p_app::identity::list_contacts(&owner).expect("list contacts");
+            let alice = stored
+                .iter()
+                .find(|contact| contact.contact_user_id == "alice")
+                .expect("alice contact");
+            assert_eq!(alice.nickname_override.as_deref(), Some("Alice-Custom"));
+
+            // Empty submission is a clear, not a no-op.
+            assert!(!session.press_ctrl_char('n').await);
+            assert!(!session.press_code(KeyCode::Enter).await);
+            {
+                let s = session.state.lock().await;
+                assert!(!s.is_editing_contact_nickname());
+                assert!(
+                    !s.contacts[0].display_name.contains("Alice-Custom"),
+                    "cleared override still rendered: {}",
+                    s.contacts[0].display_name
+                );
+            }
+            let stored = p2p_app::identity::list_contacts(&owner).expect("list contacts");
+            let alice = stored
+                .iter()
+                .find(|contact| contact.contact_user_id == "alice")
+                .expect("alice contact");
+            assert_eq!(alice.nickname_override, None);
+        });
+    });
+}
+
+#[test]
+#[serial]
+fn test_contact_nickname_editor_rejects_invalid_name_and_esc_cancels() {
+    with_contact_nickname_db(|| {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        rt.block_on(async {
+            let mut session = KeySession::new(alice_contacts_state());
+            assert!(!session.press_ctrl_char('n').await);
+            assert!(!session.type_text("bad name").await);
+            assert!(!session.press_code(KeyCode::Enter).await);
+            {
+                let s = session.state.lock().await;
+                assert!(
+                    s.is_editing_contact_nickname(),
+                    "invalid input keeps editor"
+                );
+                assert!(
+                    s.popup
+                        .as_deref()
+                        .is_some_and(|p| p.contains("invalid contact nickname")),
+                    "missing validation hint: {:?}",
+                    s.popup
+                );
+            }
+            let owner = p2p_app::identity::my_user_id()
+                .expect("my user id")
+                .expect("provisioned user");
+            let stored = p2p_app::identity::list_contacts(&owner).expect("list contacts");
+            assert!(
+                stored
+                    .iter()
+                    .find(|contact| contact.contact_user_id == "alice")
+                    .and_then(|contact| contact.nickname_override.as_deref())
+                    .is_none(),
+                "invalid nickname must never be persisted"
+            );
+
+            // Esc unwinds one layer at a time: first the hint, then the editor.
+            assert!(!session.press_code(KeyCode::Esc).await);
+            assert!(session.state.lock().await.is_editing_contact_nickname());
+            assert!(!session.press_code(KeyCode::Esc).await);
+            let s = session.state.lock().await;
+            assert!(!s.is_editing_contact_nickname());
+            assert_eq!(s.contact_nickname_prompt, None);
+            assert_eq!(s.popup, None);
+        });
+    });
+}
+
+/// Self-nicknaming is refused in the canonical writer, so the TUI must not even
+/// open the editor for this install's own user row: the sibling-device row is a
+/// user contact, but it is not a nickname target.
+#[tokio::test]
+async fn test_ctrl_n_skips_own_user_contact_row() {
+    let mut state = test_app_state();
+    state.active_tab = contacts_tab_index(&state);
+    state.own_user_id = Some("me".to_string());
+    state.contacts = vec![
+        user_contact_row("me", "My Other Device", "me-device"),
+        user_contact_row("alice", "Alice", "alice-device"),
+    ];
+    let mut session = KeySession::new(state);
+
+    assert!(!session.press_ctrl_char('n').await);
+    let s = session.state.lock().await;
+    assert!(!s.is_editing_contact_nickname());
+    assert_eq!(
+        s.popup.as_deref(),
+        Some("Nickname: select a user contact first")
+    );
+}
+
+/// Bare `n` is still the Contacts name-sort shortcut; only the Ctrl chord opens
+/// the owner-side nickname editor.
+#[tokio::test]
+async fn test_bare_n_still_sorts_contacts_by_name() {
+    let mut state = test_app_state();
+    state.active_tab = contacts_tab_index(&state);
+    state.contacts = vec![user_contact_row("alice", "Alice", "alice-device")];
+    state.peer_sort_column = 2;
+    let mut session = KeySession::new(state);
+
+    assert!(!session.press_char('n').await);
+    let s = session.state.lock().await;
+    assert_eq!(s.peer_sort_column, 0, "bare n must select the name column");
+    assert!(!s.is_editing_contact_nickname());
+    assert_eq!(s.contact_nickname_prompt, None);
+}
+
+/// The Ctrl chord never steals text from another modal editor or the inline
+/// Contacts search box (both of which own the keyboard independently).
+#[tokio::test]
+async fn test_ctrl_n_is_inert_while_another_editor_owns_input() {
+    // Another modal editor keeps its own draft; Ctrl+N is swallowed.
+    let mut state = test_app_state();
+    state.active_tab = contacts_tab_index(&state);
+    state.contacts = vec![user_contact_row("alice", "Alice", "alice-device")];
+    state.begin_self_nickname_edit();
+    state.chat_input.insert_str("my draft");
+    let mut session = KeySession::new(state);
+    assert!(!session.press_ctrl_char('n').await);
+    {
+        let s = session.state.lock().await;
+        assert!(s.is_editing_nickname());
+        assert!(!s.is_editing_contact_nickname());
+        assert_eq!(s.chat_input.lines().join(""), "my draft");
+    }
+
+    // The inline Contacts search keeps its query; Ctrl+N must not open a modal.
+    let mut state = test_app_state();
+    state.active_tab = contacts_tab_index(&state);
+    state.contacts = vec![user_contact_row("alice", "Alice", "alice-device")];
+    state.begin_contact_search();
+    state.set_contact_search("ali");
+    let mut session = KeySession::new(state);
+    assert!(!session.press_ctrl_char('n').await);
+    let s = session.state.lock().await;
+    assert!(s.is_searching_contacts());
+    assert!(!s.is_editing_contact_nickname());
+    assert_eq!(s.contact_search, "ali");
+}
+
+/// An open contact-nickname editor owns Tab and the pointer just like every
+/// other modal prompt: neither can switch tabs or move the selection behind it.
+#[tokio::test]
+async fn test_contact_nickname_editor_swallows_tab_and_mouse() {
+    fn nickname_editor_state() -> AppState {
+        let mut state = test_app_state();
+        state.active_tab = contacts_tab_index(&state);
+        state.contacts = vec![
+            user_contact_row("alice", "Alice", "alice-device"),
+            user_contact_row("bob", "Bob", "bob-device"),
+        ];
+        state.begin_contact_nickname_edit(crate::tui::state::ContactNicknamePrompt {
+            contact_user_id: "alice".to_string(),
+            display_name: "Alice".to_string(),
+        });
+        state.chat_input.insert_str("Alice-Custom");
+        state
+    }
+
+    // Tab cannot cycle away while the editor is armed.
+    let mut session = KeySession::new(nickname_editor_state());
+    assert!(!session.press_code(KeyCode::Tab).await);
+    let s = session.state.lock().await;
+    assert_eq!(s.active_tab, contacts_tab_index(&s));
+    assert!(s.is_editing_contact_nickname());
+    drop(s);
+
+    // Neither a wheel nor a tab-title click reaches the roster/tab bar.
+    assert_mouse_is_inert(
+        nickname_editor_state(),
+        "Contact Nickname (Alice)",
+        1,
+        |s| {
+            assert!(s.is_editing_contact_nickname());
+            assert_eq!(
+                s.contact_nickname_prompt
+                    .as_ref()
+                    .map(|p| p.contact_user_id.as_str()),
+                Some("alice")
+            );
+            assert_eq!(s.chat_input.lines().join(""), "Alice-Custom");
+            assert_eq!(s.active_tab, contacts_tab_index(s));
+        },
+    )
+    .await;
+}
+
+/// A rejected name keeps the prompt open with the writer's error; the first
+/// correction key dismisses the hint and still edits, and a corrected name
+/// commits through the canonical writer on the next Enter.
+#[test]
+#[serial]
+fn test_contact_nickname_editor_corrects_invalid_name_then_saves() {
+    with_contact_nickname_db(|| {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        rt.block_on(async {
+            let mut session = KeySession::new(alice_contacts_state());
+            assert!(!session.press_ctrl_char('n').await);
+            assert!(!session.type_text("bad name").await);
+            assert!(!session.press_code(KeyCode::Enter).await);
+            {
+                let s = session.state.lock().await;
+                assert!(s.is_editing_contact_nickname());
+                assert!(s.popup.is_some());
+            }
+
+            for _ in 0.."bad name".chars().count() {
+                assert!(!session.press_code(KeyCode::Backspace).await);
+            }
+            assert!(!session.type_text("Alice-2").await);
+            assert!(!session.press_code(KeyCode::Enter).await);
+
+            {
+                let s = session.state.lock().await;
+                assert!(!s.is_editing_contact_nickname());
+                assert_eq!(s.popup, None);
+                assert!(
+                    s.contacts[0].display_name.contains("Alice-2"),
+                    "corrected display name not rendered: {}",
+                    s.contacts[0].display_name
+                );
+            }
+            let owner = p2p_app::identity::my_user_id()
+                .expect("my user id")
+                .expect("provisioned user");
+            let stored = p2p_app::identity::list_contacts(&owner).expect("list contacts");
+            assert_eq!(
+                stored
+                    .iter()
+                    .find(|contact| contact.contact_user_id == "alice")
+                    .and_then(|contact| contact.nickname_override.as_deref()),
+                Some("Alice-2")
+            );
+        });
+    });
+}

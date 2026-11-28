@@ -163,6 +163,26 @@ fn share_grant_render_meta(
         })
 }
 
+/// Network settings and liveness fields, shared by the Settings renderer and
+/// the mouse hit-testing path. Kept separate so the full state projection stays
+/// under the project's function-size budget.
+fn network_and_runtime_render_state(state: &AppState) -> p2p_app::TuiRenderState {
+    let connected_peer_count = i64::try_from(state.connected.len()).unwrap_or(i64::MAX);
+    p2p_app::TuiRenderState {
+        network_size: p2p_app::network::network_size_label(connected_peer_count),
+        network: p2p_app::net_diag::snapshot(),
+        network_peers: state.network_peers.clone(),
+        palette: state.palette,
+        network_peer_selection: state.network_peer_selection,
+        network_peer_kind: state.network_peer_kind.map(|kind| kind.as_str().to_owned()),
+        runtime: p2p_app::tui_render_state::RuntimeStatus {
+            connected: true,
+            node_running: true,
+        },
+        ..p2p_app::TuiRenderState::default()
+    }
+}
+
 /// Convert `AppState` to `TuiRenderState` for library rendering.
 ///
 /// `pub(super)` so the Settings mouse handler can hit-test the exact same
@@ -176,10 +196,6 @@ pub(super) fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderS
     let (messages, message_peer_ids) = message_texts(&state.messages);
     let (last_connection_lost, last_connection_peer) = last_disconnection(state);
     let peers = render_peer_records(&state.peers);
-    let connected_peer_count = state.connected.len();
-    let network_size = p2p_app::network::network_size_label(
-        i64::try_from(connected_peer_count).unwrap_or(i64::MAX),
-    );
     let (share_grant_action, share_grant_mode) = share_grant_render_meta(state);
 
     p2p_app::TuiRenderState {
@@ -211,6 +227,10 @@ pub(super) fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderS
         log_messages: get_tui_logs().into_iter().collect(),
         input_mode: state.input_mode,
         nickname_peer_id: state.editing_nickname_peer.clone().unwrap_or_default(),
+        contact_nickname_target: state
+            .contact_nickname_prompt
+            .as_ref()
+            .map(|prompt| prompt.display_name.clone()),
         peer_count: state.connected.len(),
         mouse_capture: state.env.mouse_capture,
         kitty_keyboard_active: state.env.kitty_keyboard_active,
@@ -253,23 +273,14 @@ pub(super) fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderS
         local_peer_id: state.local_peer_id.clone(),
         db_url: state.db_url.clone(),
         platform: state.platform.clone(),
-        network_size,
-        network: p2p_app::net_diag::snapshot(),
-        network_peers: state.network_peers.clone(),
-        palette: state.palette,
-        network_peer_selection: state.network_peer_selection,
-        network_peer_kind: state.network_peer_kind.map(|kind| kind.as_str().to_owned()),
         last_connection_lost,
         last_connection_peer,
-        runtime: p2p_app::tui_render_state::RuntimeStatus {
-            connected: true,
-            node_running: true,
-        },
         own_user_id: state.own_user_id.clone(),
         own_user_devices: state.own_user_devices.clone(),
         local_nicknames: state.local_nicknames.clone(),
         received_nicknames: state.received_nicknames.clone(),
         peer_table_offset: state.peer_table_offset,
+        ..network_and_runtime_render_state(state)
     }
 }
 

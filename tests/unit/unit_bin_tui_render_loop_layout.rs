@@ -120,3 +120,35 @@ fn test_live_input_section_contacts_without_search_has_plain_title() {
         "search title leaked into plain Contacts render: {text}"
     );
 }
+
+/// The live editor must name the captured user contact and explain that an
+/// empty submission clears the override, rather than showing the generic title.
+#[test]
+fn test_live_input_section_shows_contact_nickname_editor_title() {
+    let mut state = test_app_state();
+    state.begin_contact_nickname_edit(crate::tui::state::ContactNicknamePrompt {
+        contact_user_id: "alice".to_string(),
+        display_name: "Alice".to_string(),
+    });
+    state.chat_input.insert_str("Alice-Custom");
+
+    let tab = TabContent::Contacts;
+    assert!(
+        !tab.is_input_enabled(),
+        "Contacts has no ordinary chat input"
+    );
+
+    let mut terminal = Terminal::new(TestBackend::new(100, 5)).unwrap();
+    terminal
+        .draw(|f| render_input_section(f, Rect::new(0, 0, 100, 5), &state, &tab))
+        .unwrap();
+    let text = buffer_text(&terminal);
+    assert!(
+        text.contains("Contact Nickname (Alice) - Enter to save (empty clears), Esc to cancel"),
+        "missing contact-nickname title in: {text}"
+    );
+    assert!(
+        text.contains("Alice-Custom"),
+        "missing typed value in: {text}"
+    );
+}

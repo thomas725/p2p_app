@@ -200,8 +200,9 @@ expandable device sub-rows.
 | `e` | Expand / collapse the selected contact's device rows |
 | `c` | Call the selected contact's best device |
 | `d` | Send this install's device-binding intro to the selected device (see [Sending a device intro](#sending-a-device-intro)) |
+| `Ctrl+N` | Edit the selected user contact's owner-side nickname (empty clears; unbound rows keep device nicknames on Peer Info) |
 | `/` | Open the search box |
-| `Esc` | Clear the search box (when open), otherwise return to the Chat tab |
+| `Esc` | Cancel the innermost active layer (search box or nickname editor), otherwise return to the Chat tab |
 | `Click` a row | Open a DM with that contact or device |
 | `Click` a column header | Sort by that column; click again to toggle the order |
 
@@ -486,10 +487,10 @@ decline a device-binding request, cancel a group leave, or cancel a local
 message deletion — followed by a live call overlay. Otherwise it cancels the
 innermost active layer: dismiss the popup → cancel a local message edit →
 cancel a reaction → cancel a share-grant edit → clear the Contacts search →
-cancel a nickname edit → cancel the group create/join prompt → cancel a peer
-dial → cancel network-peer entry → clear the active conversation's reply draft
-→ clear that conversation's message selection → return to the Chat tab. A second `Esc` is needed for the
-next layer; for example, dismissing a network-peer validation popup leaves the
+cancel a nickname edit (own install or selected user contact) → cancel the group create/join
+prompt → cancel a peer dial → cancel network-peer entry → clear the active conversation's reply
+draft → clear that conversation's message selection → return to the Chat tab. A second `Esc` is
+needed for the next layer; for example, dismissing a network-peer validation popup leaves the
 rejected address open for correction.
 
 ### Device-binding prompt

@@ -72,6 +72,9 @@ pub struct TuiRenderState {
     pub input_mode: crate::InputMode,
     /// Peer ID being edited (when `input_mode` is [`crate::InputMode::EditingNickname`])
     pub nickname_peer_id: String,
+    /// Display label of the user contact whose owner-side nickname is being
+    /// edited (`None` outside the Contacts-tab nickname prompt).
+    pub contact_nickname_target: Option<String>,
     /// App-liveness flags (connected + node running)
     pub runtime: RuntimeStatus,
     /// Number of connected peers
@@ -250,6 +253,7 @@ impl TuiRenderState {
             log_messages: VecDeque::new(),
             input_mode: crate::InputMode::Chat,
             nickname_peer_id: String::new(),
+            contact_nickname_target: None,
             runtime: RuntimeStatus {
                 connected: true,
                 node_running: true,
@@ -333,6 +337,12 @@ impl TuiRenderState {
     #[must_use]
     pub const fn is_editing_local_nickname(&self) -> bool {
         matches!(self.input_mode, crate::InputMode::EditingLocalNickname)
+    }
+
+    /// True while the editor sets a user contact's owner-side display name.
+    #[must_use]
+    pub const fn is_editing_contact_nickname(&self) -> bool {
+        matches!(self.input_mode, crate::InputMode::EditingContactNickname)
     }
 
     /// True while the shared text input captures a group name.

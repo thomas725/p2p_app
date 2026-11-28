@@ -134,6 +134,53 @@ fn handle_nickname_key(s: &mut super::state::AppState, tab: &p2p_app::tui_tabs::
     }
 }
 
+/// Open the owner-side nickname editor for the selected user contact. Unbound
+/// devices keep their device-level nickname editor on Peer Info, so a missing
+/// user-contact target produces an explanatory popup instead of an unusable
+/// prompt.
+fn arm_contact_nickname_edit(s: &mut super::state::AppState) {
+    let Some(target) = s.selected_contact_nickname_target() else {
+        s.popup = Some("Nickname: select a user contact first".to_string());
+        return;
+    };
+    let label = target.display_name.clone();
+    s.begin_contact_nickname_edit(target);
+    p2plog_debug(format!("Started contact nickname edit for {label}"));
+}
+
+/// Commit an owner-side contact nickname through the canonical Rust writer.
+/// Empty input clears the override; invalid input keeps the prompt open with
+/// the writer's error so the user can correct it. The roster is rebuilt from
+/// the DB after a successful write, never patched in Dart/TUI-local state.
+fn confirm_contact_nickname_edit(s: &mut super::state::AppState) {
+    let Some(prompt) = s.contact_nickname_prompt.clone() else {
+        s.cancel_contact_nickname_edit();
+        return;
+    };
+    let entered = s.chat_input.lines().join("\n");
+    let trimmed = entered.trim();
+    let nickname = if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    };
+    match p2p_app::identity::set_contact_nickname(prompt.contact_user_id, nickname) {
+        Ok(()) => {
+            s.popup = None;
+            s.resort_peers();
+            p2plog_debug(format!(
+                "Updated owner-side nickname for {}",
+                prompt.display_name
+            ));
+        }
+        Err(e) => {
+            s.popup = Some(format!("Contact nickname: {e}"));
+            return;
+        }
+    }
+    s.cancel_contact_nickname_edit();
+}
+
 /// Applies a per-peer *local* nickname edit (the name only this install shows
 /// for the peer). Invalid input keeps the editor open with a popup, mirroring
 /// the canonical Rust rule the other frontends use; a successful edit updates
@@ -782,6 +829,9 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
     } else if s.is_searching_contacts() {
         s.end_contact_search(false);
         p2plog_debug("Cleared Contacts search".to_string());
+    } else if s.is_editing_contact_nickname() {
+        s.cancel_contact_nickname_edit();
+        p2plog_debug("Cancelled contact nickname edit".to_string());
     } else if s.is_editing_nickname() {
         s.cancel_nickname_edit();
         p2plog_debug("Cancelled nickname edit".to_string());
@@ -1439,6 +1489,19 @@ async fn handle_key_dispatch(
     };
     let input_enabled = tab.is_input_enabled();
 
+    // `Ctrl+N` edits the owner-side name this install uses for a user contact.
+    // Bare `n` stays the Contacts name-sort shortcut; the modifier keeps the
+    // two policies distinct and never steals text from an open editor.
+    if is_ctrl
+        && !s.is_modal_editor()
+        && !s.is_searching_contacts()
+        && on_contacts
+        && matches!(key_event.code, crossterm::event::KeyCode::Char('n' | 'N'))
+    {
+        arm_contact_nickname_edit(s);
+        return;
+    }
+
     if handle_message_selection_key(&key_event, is_ctrl, &tab, s) {
         return;
     }
@@ -1735,6 +1798,8 @@ async fn handle_enter_dispatch(
     if s.is_searching_contacts() {
         s.end_contact_search(true);
         p2plog_debug("Applied Contacts search".to_string());
+    } else if s.is_editing_contact_nickname() {
+        confirm_contact_nickname_edit(s);
     } else if s.is_editing_nickname() {
         handle_nickname_submission(s, swarm_cmd_tx).await;
     } else if s.is_editing_message() {

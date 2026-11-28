@@ -531,3 +531,23 @@ fn test_app_state_to_render_state_projected_discovered_shares() {
     assert_eq!(rs.discovered_shares[1].offer.name, "Bravo");
     assert_eq!(rs.share_discovery_selection, 1);
 }
+
+#[test]
+fn test_app_state_to_render_state_contact_nickname_editor() {
+    let mut state = app_state();
+    assert_eq!(
+        app_state_to_render_state(&state).contact_nickname_target,
+        None
+    );
+
+    state.begin_contact_nickname_edit(crate::tui::state::ContactNicknamePrompt {
+        contact_user_id: "alice".to_string(),
+        display_name: "Alice".to_string(),
+    });
+    state.chat_input.insert_str("Alice-Custom");
+
+    let rs = app_state_to_render_state(&state);
+    assert!(rs.is_editing_contact_nickname());
+    assert_eq!(rs.contact_nickname_target.as_deref(), Some("Alice"));
+    assert_eq!(rs.input_text, "Alice-Custom");
+}

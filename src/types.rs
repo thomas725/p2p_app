@@ -36,6 +36,10 @@ pub enum InputMode {
     /// Capturing the local display name this install shows for a peer
     /// (`peers.peer_local_nickname`), edited from a Peer Info tab.
     EditingLocalNickname,
+    /// Capturing the owner-side display name this install uses for a user
+    /// contact (`contacts.nickname_override`), edited from the Contacts tab.
+    /// An empty submission clears the override.
+    EditingContactNickname,
     /// Capturing a replacement body for a sent message edited locally (US-005).
     EditingMessage,
     /// Capturing an emoji token to react with on the selected row (newest if
@@ -78,6 +82,7 @@ impl InputMode {
             self,
             Self::EditingNickname
                 | Self::EditingLocalNickname
+                | Self::EditingContactNickname
                 | Self::EditingMessage
                 | Self::AddingReaction
                 | Self::CreatingGroup
