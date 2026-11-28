@@ -186,8 +186,16 @@ pub async fn run_tui() -> color_eyre::Result<()> {
 
     // Start the shared mobile_node backend (single node) so the TUI and any
     // web frontend share one swarm. (Option A step 2.)
-    let peer_id =
-        p2p_app::mobile_node::start_node_auto().map_err(|e| color_eyre::eyre::eyre!(e))?;
+    //
+    // The node lifecycle creates and drives its own tokio runtime, which is
+    // not allowed from inside this `#[tokio::main]` runtime. Offload the sync
+    // startup to a blocking worker (which has no entered-runtime guard on its
+    // thread) and await the result, like the web server does on its plain
+    // startup thread.
+    let peer_id = tokio::task::spawn_blocking(p2p_app::mobile_node::start_node_auto)
+        .await
+        .map_err(|e| color_eyre::eyre::eyre!(e))?
+        .map_err(|e| color_eyre::eyre::eyre!(e))?;
     p2plog_info(format!("Node started: peer_id={peer_id}"));
 
     // Optional: also serve the web frontend on the same node. This is the

@@ -42,6 +42,14 @@ filters a Dart list), which is why the Contacts search rule is spelled out in
 `p2p_chat_tui` and `p2p_chat_server` declare `required-features`, so cargo
 skips them when the feature is off. `default-run` is `p2p_chat_tui`.
 
+The TUI and web server share one node through `mobile_node::start_node_auto`.
+That lifecycle owns its **own** tokio runtime (FRB callers arrive on a plain
+thread and mDNS needs a reactor), so it must never run inside an active
+runtime: the TUI calls it through `tokio::task::spawn_blocking(...).await`,
+while `p2p_chat_server` starts the node on its plain `main` thread before
+building the runtime that serves HTTP. Calling it directly from an async
+function panics with "Cannot start a runtime from within a runtime".
+
 ## Module layout
 
 ```

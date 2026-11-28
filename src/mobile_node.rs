@@ -51,6 +51,10 @@ pub fn start_node(db_path: String) -> Result<String, String> {
 /// Start the p2p node using automatic DB selection (lock-based, same as TUI).
 /// Scans CWD for unlocked .db files, picks the first one, or creates a new one.
 /// Returns the local peer ID.
+///
+/// This creates a dedicated tokio runtime, so callers already running inside
+/// a runtime must call it from a blocking thread (e.g. `spawn_blocking`) or
+/// before creating their own runtime (as `p2p_chat_server` does).
 #[flutter_rust_bridge::frb(ignore)]
 pub fn start_node_auto() -> Result<String, String> {
     start_node_impl(None)
