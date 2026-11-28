@@ -9,8 +9,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'reply.dart';
 
 // These functions are ignored because they are not marked as `pub`: `contact_device_from`, `contact_row_from`, `device_info_from`, `reply_sender_label`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `broadcasts_sent`, `broadcasts_sent`, `display_name`, `display_name`, `dm_count`, `dm_count`, `first_seen`, `first_seen`, `get_contacts_with_stats`, `get_mobile_peer_status`, `get_my_user_id`, `get_network_details`, `get_peer_quality`, `get_user_devices`, `init_mobile_database`, `last_seen`, `last_seen`, `stable_id`, `stable_id`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `broadcasts_sent`, `display_name`, `dm_count`, `first_seen`, `get_contacts_with_stats`, `get_mobile_peer_status`, `get_my_user_id`, `get_network_details`, `get_peer_quality`, `get_user_devices`, `init_mobile_database`, `last_seen`, `stable_id`
 
 /// Format an ISO timestamp string ("YYYY-MM-DD HH:MM:SS") to "HH:MM".
 ///
@@ -32,13 +32,6 @@ bool isAtBottom({
   total: total,
   visible: visible,
 );
-
-/// Parse a `YYYY-MM-DD HH:MM:SS` (or `...T...`) timestamp into milliseconds
-/// since epoch; 0 for any unparseable input.
-///
-/// Delegates to the canonical [`crate::fmt::parse_last_seen_ms`].
-int parseLastSeenMs({required String lastSeen}) =>
-    RustLib.instance.api.crateMobileApiParseLastSeenMs(lastSeen: lastSeen);
 
 /// Freeze a Flutter chat row into the immutable reply snapshot sent on the wire.
 ///
@@ -72,20 +65,6 @@ ReplyRef? replyDraft({
 Future<List<PeerWithStats>> getPeersWithStats() =>
     RustLib.instance.api.crateMobileApiGetPeersWithStats();
 
-/// Sort known peers by the given column and order, mirroring the TUI peers
-/// table: column `0` name, `1` DM count, `2` broadcast count, `3` last seen,
-/// `4` first seen (any other value falls back to name). Ordering always ties
-/// on `peer_id`, so the result is total and stable for a given dataset.
-List<PeerSortInput> sortPeers({
-  required List<PeerSortInput> peers,
-  required int sortColumn,
-  required bool ascending,
-}) => RustLib.instance.api.crateMobileApiSortPeers(
-  peers: peers,
-  sortColumn: sortColumn,
-  ascending: ascending,
-);
-
 /// Sort a Contacts-tab roster by the given column and order, mirroring the
 /// canonical `contacts::sort_canonical_rows` used by the TUI and the DB
 /// loader: column `0` name, `1` DM count, `2` broadcast count, `3` last seen,
@@ -107,7 +86,7 @@ List<ContactSortInput> sortContacts({
 /// One contact row of the Contacts tab, as fed to [`sort_contacts`].
 ///
 /// Flutter rebuilds this from `MobileContactRow`s; the sort only needs the
-/// columns it orders on, so the FFI round trip stays as light as `sort_peers`.
+/// columns it orders on, so the FFI round trip stays small.
 class ContactSortInput {
   /// Stable key: `user_id` when the contact is a bound user, else `peer_id`.
   final String contactId;
@@ -381,57 +360,6 @@ class MobilePeerStatus {
           databaseUrl == other.databaseUrl &&
           localPeerId == other.localPeerId &&
           selfNickname == other.selfNickname;
-}
-
-/// One row of the peers table, as fed to [`sort_peers`].
-class PeerSortInput {
-  /// Stable peer ID, also the sort tie-breaker.
-  final String peerId;
-
-  /// Cached display name used by the name column.
-  final String displayName;
-
-  /// Last activity, parsed by the canonical `parse_last_seen_ms`.
-  final String lastSeen;
-
-  /// First contact, parsed by the canonical `parse_last_seen_ms`.
-  final String firstSeen;
-
-  /// Number of direct messages exchanged with the peer.
-  final int dmCount;
-
-  /// Number of broadcasts sent to the peer.
-  final int broadcastCount;
-
-  const PeerSortInput({
-    required this.peerId,
-    required this.displayName,
-    required this.lastSeen,
-    required this.firstSeen,
-    required this.dmCount,
-    required this.broadcastCount,
-  });
-
-  @override
-  int get hashCode =>
-      peerId.hashCode ^
-      displayName.hashCode ^
-      lastSeen.hashCode ^
-      firstSeen.hashCode ^
-      dmCount.hashCode ^
-      broadcastCount.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is PeerSortInput &&
-          runtimeType == other.runtimeType &&
-          peerId == other.peerId &&
-          displayName == other.displayName &&
-          lastSeen == other.lastSeen &&
-          firstSeen == other.firstSeen &&
-          dmCount == other.dmCount &&
-          broadcastCount == other.broadcastCount;
 }
 
 /// A known peer joined with its message counts, fetched in a single call.

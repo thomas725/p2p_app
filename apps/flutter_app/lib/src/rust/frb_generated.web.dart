@@ -32,9 +32,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   });
 
   @protected
-  int dco_decode_CastedPrimitive_u_64(dynamic raw);
-
-  @protected
   int dco_decode_CastedPrimitive_usize(dynamic raw);
 
   @protected
@@ -175,9 +172,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<NetworkPeer> dco_decode_list_network_peer(dynamic raw);
 
   @protected
-  List<PeerSortInput> dco_decode_list_peer_sort_input(dynamic raw);
-
-  @protected
   List<PeerWithStats> dco_decode_list_peer_with_stats(dynamic raw);
 
   @protected
@@ -295,9 +289,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PeerQuality dco_decode_peer_quality(dynamic raw);
 
   @protected
-  PeerSortInput dco_decode_peer_sort_input(dynamic raw);
-
-  @protected
   PeerWithStats dco_decode_peer_with_stats(dynamic raw);
 
   @protected
@@ -344,9 +335,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt dco_decode_usize(dynamic raw);
-
-  @protected
-  int sse_decode_CastedPrimitive_u_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_CastedPrimitive_usize(SseDeserializer deserializer);
@@ -531,11 +519,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<NetworkPeer> sse_decode_list_network_peer(SseDeserializer deserializer);
 
   @protected
-  List<PeerSortInput> sse_decode_list_peer_sort_input(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   List<PeerWithStats> sse_decode_list_peer_with_stats(
     SseDeserializer deserializer,
   );
@@ -679,9 +662,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PeerQuality sse_decode_peer_quality(SseDeserializer deserializer);
 
   @protected
-  PeerSortInput sse_decode_peer_sort_input(SseDeserializer deserializer);
-
-  @protected
   PeerWithStats sse_decode_peer_with_stats(SseDeserializer deserializer);
 
   @protected
@@ -730,9 +710,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt sse_decode_usize(SseDeserializer deserializer);
-
-  @protected
-  void sse_encode_CastedPrimitive_u_64(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_CastedPrimitive_usize(int self, SseSerializer serializer);
@@ -966,12 +943,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_list_peer_sort_input(
-    List<PeerSortInput> self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_list_peer_with_stats(
     List<PeerWithStats> self,
     SseSerializer serializer,
@@ -1177,9 +1148,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_peer_quality(PeerQuality self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_peer_sort_input(PeerSortInput self, SseSerializer serializer);
 
   @protected
   void sse_encode_peer_with_stats(PeerWithStats self, SseSerializer serializer);

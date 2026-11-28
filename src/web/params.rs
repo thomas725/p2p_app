@@ -398,12 +398,6 @@ pub struct IsAtBottomParams {
     pub visible: usize,
 }
 
-#[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ParseLastSeenParams {
-    pub last_seen: String,
-}
-
 /// The Flutter chat-row fields the canonical reply-draft rule reads.
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -414,15 +408,6 @@ pub struct ReplyDraftParams {
     pub content: String,
     #[serde(default)]
     pub attachment: Option<crate::mobile_node::MobileAttachment>,
-}
-
-/// Sort request for the peers table.
-#[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SortPeersParams {
-    pub rows: Vec<mobile_api::PeerSortInput>,
-    pub sort_column: u32,
-    pub ascending: bool,
 }
 
 /// Sort request for the contacts table.

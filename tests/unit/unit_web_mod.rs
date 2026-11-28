@@ -175,17 +175,6 @@ async fn pure_helpers_answer_over_the_frame_protocol() {
         frame(r#"{"id": 2, "method": "formatTimeHhmm", "params": {"dt": "08:42"}}"#).await;
     assert_eq!(response, json!({"id": 2, "ok": "08:42"}));
 
-    // One canonical last-seen parser (seconds → millis, 0 on garbage).
-    let response = frame(
-        r#"{"id": 3, "method": "parseLastSeenMs", "params": {"lastSeen": "1970-01-01 00:00:10"}}"#,
-    )
-    .await;
-    assert_eq!(response, json!({"id": 3, "ok": 10_000}));
-    let response =
-        frame(r#"{"id": 4, "method": "parseLastSeenMs", "params": {"lastSeen": "not-a-date"}}"#)
-            .await;
-    assert_eq!(response, json!({"id": 4, "ok": 0}));
-
     // The quick palette is Rust-owned so the TUI and Flutter cannot drift.
     let response = frame(r#"{"id": 11, "method": "quickReactions", "params": null}"#).await;
     assert_eq!(
@@ -239,7 +228,6 @@ fn documented_params_methods_are_routed() {
     // before any node/DB work, so this needs no test DB.
     for method in [
         "startNode",
-        "sortPeers",
         "loadBroadcastMessages",
         "loadDmMessages",
         "deleteMessage",
@@ -296,7 +284,6 @@ fn documented_params_methods_are_routed() {
         "publishShareSnapshot",
         "formatTimeHhmm",
         "isAtBottom",
-        "parseLastSeenMs",
         "replyDraft",
     ] {
         let err =
@@ -553,15 +540,11 @@ fn delete_message_frame_reaches_the_local_delete_helper() {
 /// FRB wires that deliberately have no JSON arm.
 ///
 /// The web server owns node startup and event pushing, so Flutter's
-/// bootstrap/poll and peer-id probes have no browser equivalent. Browser
+/// bootstrap/poll have no browser equivalent. Browser
 /// attachment downloads go through `GET /api/files/{file_id}` instead of a
 /// local filesystem path.
-const NATIVE_ONLY_WEB_EXEMPTIONS: [&str; 4] = [
-    "initMobileDatabase",
-    "pollEvent",
-    "attachmentFilePath",
-    "getNodePeerId",
-];
+const NATIVE_ONLY_WEB_EXEMPTIONS: [&str; 3] =
+    ["initMobileDatabase", "pollEvent", "attachmentFilePath"];
 
 /// Convert an FRB wire function's `snake_case` name to its Dart method name.
 fn snake_case_to_camel_case(name: &str) -> String {
@@ -615,14 +598,14 @@ fn production_methods_source() -> String {
 fn frb_wire_method_parser_handles_modules_and_snake_case() {
     let generated = r"
 fn wire__crate__api__accept_device_binding_impl(
-fn wire__crate__mobile_node__get_node_peer_id_impl(
-fn wire__crate__mobile_api__parse_last_seen_ms_impl(
+fn wire__crate__api__get_peers_with_stats_impl(
+fn wire__crate__mobile_api__sort_contacts_impl(
 ";
     let parsed = frb_wire_methods(generated);
     assert_eq!(parsed.len(), 3, "unexpected parse: {parsed:?}");
     assert!(parsed.contains("acceptDeviceBinding"));
-    assert!(parsed.contains("getNodePeerId"));
-    assert!(parsed.contains("parseLastSeenMs"));
+    assert!(parsed.contains("getPeersWithStats"));
+    assert!(parsed.contains("sortContacts"));
 }
 
 #[test]

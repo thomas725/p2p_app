@@ -22,12 +22,11 @@ use super::params::{
     IsLocationMessageParams, LanOnlyParams, LimitParams, LoadLocationTrackParams,
     LocationGpxParams, LocationMapUrlParams, LocationQueryDueParams, LocationSendDueParams,
     LocationSessionParams, LocationTimeFilterParams, LocationTrackUrlParams, MsgIdParams,
-    NameParams, NetworkPeerParams, NotificationSettingsParams, ParseLastSeenParams,
-    PeerCountParams, PeerIdParams, PeerLimitParams, PeerNickParams, PublishShareSnapshotParams,
-    ReactionParams, ReplyDraftParams, RequestShareManifestParams, SaveIncomingParams,
-    SaveShareManifestParams, SendCallMediaParams, SendDmParams, SendGroupParams,
-    SendLocationParams, SendParams, ShareGrantParams, ShareIdParams, ShareVisibilityParams,
-    SnapshotShareParams, SortContactsParams, SortPeersParams, StartCallMediaParams,
+    NameParams, NetworkPeerParams, NotificationSettingsParams, PeerCountParams, PeerIdParams,
+    PeerLimitParams, PeerNickParams, PublishShareSnapshotParams, ReactionParams, ReplyDraftParams,
+    RequestShareManifestParams, SaveIncomingParams, SaveShareManifestParams, SendCallMediaParams,
+    SendDmParams, SendGroupParams, SendLocationParams, SendParams, ShareGrantParams, ShareIdParams,
+    ShareVisibilityParams, SnapshotShareParams, SortContactsParams, StartCallMediaParams,
     StartNodeParams, ThemeParams, TypingParams, UserIdParams, WebCreateShareParams,
     WebReviseShareManifestForDeletionParams, parse,
 };
@@ -53,7 +52,6 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "getPeersWithStats"
         | "getNetworkDetails"
         | "getPeerQuality"
-        | "sortPeers"
         | "dialPeer") => node_state(m, params),
         m @ ("loadBroadcastMessages"
         | "loadDmMessages"
@@ -124,7 +122,6 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "setLocationDefaults") => location(m, params),
         m @ ("formatTimeHhmm"
         | "isAtBottom"
-        | "parseLastSeenMs"
         | "replyDraft"
         | "setTheme"
         | "setNotificationSettings") => ui_helpers(m, params),
@@ -173,10 +170,6 @@ fn node_state(method: &str, params: Value) -> Result<Value, String> {
         "getPeerQuality" => {
             let p: PeerIdParams = parse(params)?;
             ok(api::get_peer_quality(&p.peer_id))
-        }
-        "sortPeers" => {
-            let p: SortPeersParams = parse(params)?;
-            ok(mobile_api::sort_peers(p.rows, p.sort_column, p.ascending))
         }
         "dialPeer" => {
             let p: DialParams = parse(params)?;
@@ -546,10 +539,6 @@ fn ui_helpers(method: &str, params: Value) -> Result<Value, String> {
                 p.total,
                 p.visible,
             ))
-        }
-        "parseLastSeenMs" => {
-            let p: ParseLastSeenParams = parse(params)?;
-            ok(mobile_api::parse_last_seen_ms(&p.last_seen))
         }
         "replyDraft" => {
             let p: ReplyDraftParams = parse(params)?;

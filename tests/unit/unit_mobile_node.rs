@@ -756,12 +756,6 @@ fn test_stop_node_without_start_is_noop() {
 }
 
 #[test]
-fn test_get_node_peer_id_without_start_fails() {
-    let result = get_node_peer_id();
-    assert!(result.is_err());
-}
-
-#[test]
 fn test_poll_event_without_start_fails() {
     let result = poll_event();
     assert!(result.is_err());

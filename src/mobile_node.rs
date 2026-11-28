@@ -464,16 +464,6 @@ fn process_event_for_mobile(ev: &SwarmEvent) -> Option<SwarmCommand> {
     }
 }
 
-/// Get the local peer ID.
-///
-/// # Errors
-/// Returns an error if the node has not been started yet.
-pub fn get_node_peer_id() -> Result<String, String> {
-    let m = NODE.get().ok_or("Node not started")?;
-    let node = lock_node_mutex(m);
-    Ok(node.peer_id.clone())
-}
-
 // --- Mobile peer record with nicknames ---
 
 /// A known peer with the nickname fields needed by the mobile Peer Info page.
@@ -1185,7 +1175,10 @@ pub fn toggle_reaction(
 }
 
 /// Load the aggregated reactions for one message (US-008).
+///
+/// FRB-exposed through `api::get_reactions`, the facade the frontends use.
 #[must_use]
+#[flutter_rust_bridge::frb(ignore)]
 pub fn get_reactions(msg_id: &str) -> Vec<crate::reactions::ReactionSummary> {
     crate::reactions::summaries_for(msg_id).unwrap_or_default()
 }
@@ -1330,6 +1323,7 @@ pub fn create_group(name: &str) -> Result<MobileGroup, String> {
 ///
 /// # Errors
 /// Returns an error if the group rows cannot be deleted.
+#[flutter_rust_bridge::frb(ignore)]
 pub fn delete_group(group_id: String) -> Result<(), String> {
     crate::groups::delete_group(&group_id).map_err(|e| e.to_string())?;
     let _ = blocking_send_cmd(SwarmCommand::UnsubscribeGroup { group_id });
