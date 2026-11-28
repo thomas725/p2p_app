@@ -4,11 +4,11 @@
 
 | Metric                |     Value |
 |:----------------------|:----------|
-| Total Rust Files      |        75 |
-| Total Rust Lines      |    44,948 |
-| Total Rust Chars      | 1,717,626 |
-| Avg Lines/Rust File   |       599 |
-| Avg Chars/Rust File   |    22,901 |
+| Total Rust Files      |        76 |
+| Total Rust Lines      |    44,976 |
+| Total Rust Chars      | 1,720,192 |
+| Avg Lines/Rust File   |       591 |
+| Avg Chars/Rust File   |    22,634 |
 | Total Dart Files      |        63 |
 | Total Dart Lines      |    27,307 |
 | Total Dart Chars      |   881,687 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 143 files, 73,315 lines, 2,638,893 characters
+**Grand Total:** 144 files, 73,343 lines, 2,641,459 characters
 
 ## Rust Source Files
 
@@ -99,10 +99,11 @@
 | src/tui_render          | peers.rs             |     5 |  5890 |   136 |        - |       - | TUI peers-table renderer                           |
 | src/tui_render          | settings.rs          |     5 | 16413 |   469 |        - |       - | TUI settings renderer                              |
 | src/tui_render          | shares.rs            |     4 |  8575 |   230 |        - |       - | TUI shares renderer                                |
-| src/web                 | methods.rs           |     5 | 44877 |  1379 |        - |       - | Web JSON method dispatch                           |
-| src/web                 | mod.rs               |     7 | 20622 |   520 |        - |       - | Web server (axum HTTP+WS)                          |
+| src/web                 | methods.rs           |     5 | 34122 |   897 |        - |       - | Web JSON method dispatch                           |
+| src/web                 | mod.rs               |     7 | 20645 |   521 |        - |       - | Web server (axum HTTP+WS)                          |
+| src/web                 | params.rs            |     3 | 13298 |   509 |        - |       - | Source file                                        |
 
-**Total:** 75 files, 44,948 lines, 1,717,626 characters
+**Total:** 76 files, 44,976 lines, 1,720,192 characters
 
 ## Rust Test Files
 

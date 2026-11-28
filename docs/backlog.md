@@ -367,6 +367,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Web parameter DTOs extracted from the dispatcher | 2026-11-28 | [`archive/2026-11-28_web_param_dtos.md`](archive/2026-11-28_web_param_dtos.md) |
 | Shared Web Audio binding for the beep and call adapters | 2026-11-28 | [`archive/2026-11-28_shared_web_audio_bindings.md`](archive/2026-11-28_shared_web_audio_bindings.md) |
 | TUI in-app help matches the real bindings | 2026-11-28 | [`archive/2026-11-28_tui_help_accuracy.md`](archive/2026-11-28_tui_help_accuracy.md) |
 | Flutter message-body taps open Peer Info | 2026-11-28 | [`archive/2026-11-28_flutter_message_body_taps.md`](archive/2026-11-28_flutter_message_body_taps.md) |

@@ -12,6 +12,7 @@
 //!   node's event queue and pushes, replacing the client-side poll loop)
 
 pub(crate) mod methods;
+pub(crate) mod params;
 
 use axum::body::Bytes;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
