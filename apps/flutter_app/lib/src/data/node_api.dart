@@ -271,6 +271,14 @@ abstract class NodeApi {
     required String nickname,
   });
 
+  /// Set (or clear with `null`) the owner-side display-name override for a
+  /// bound user contact. Rust derives the owner and validates the nickname, so
+  /// callers pass only the contact id and the desired override.
+  Future<void> setContactNickname({
+    required String contactUserId,
+    String? nickname,
+  });
+
   Future<bool> validateNickname({required String nickname});
 
   Future<String> networkSizeLabel({required int peerCount});

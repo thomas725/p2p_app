@@ -517,6 +517,22 @@ class _HomeScreenState extends State<HomeScreen> {
     return _peers.where((p) => p.peerId == peer.peerId).firstOrNull;
   }
 
+  /// Set or clear (`null`) the owner-side nickname for a bound user contact,
+  /// then refresh the roster so Rust's resolved display names update.
+  /// `ContactList` only exposes the callback on `isUser` rows; the Rust writer
+  /// independently refuses a non-user target, so there is no Dart-side guard
+  /// that could report success without writing.
+  Future<void> _setContactNickname(
+    MobileContactRow contact,
+    String? nickname,
+  ) async {
+    await nodeApi.setContactNickname(
+      contactUserId: contact.contactId,
+      nickname: nickname,
+    );
+    await _refreshRoster();
+  }
+
   /// Prompt to bind an incoming device into this account. Deduplicates by
   /// peer_id so retransmitted intros never stack dialogs.
   Future<void> _handleDeviceBindingIntro(
@@ -1416,6 +1432,8 @@ class _HomeScreenState extends State<HomeScreen> {
         onOpenDm: _openDmChat,
         onLinkDevice: _sendIntro,
         onCallDevice: _startCall,
+        onEditContactNickname: _setContactNickname,
+        ownUserId: _ownUserId,
         blockedPeerIds: _blockedPeerIds,
       ),
       GroupList(

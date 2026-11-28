@@ -330,6 +330,15 @@ class FrbNodeApi implements NodeApi {
   }) => bridge.setPeerLocalNickname(peerId: peerId, nickname: nickname);
 
   @override
+  Future<void> setContactNickname({
+    required String contactUserId,
+    String? nickname,
+  }) => bridge.setContactNickname(
+    contactUserId: contactUserId,
+    nickname: nickname,
+  );
+
+  @override
   Future<bool> validateNickname({required String nickname}) =>
       bridge.validateNickname(nickname: nickname);
 

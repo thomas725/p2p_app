@@ -23,9 +23,10 @@ MobileContactRow contact({
   String firstSeen = '',
   int deviceCount = 1,
   List<MobileContactDevice>? devices,
+  bool? isUser,
 }) => MobileContactRow(
   contactId: id,
-  isUser: (devices ?? const []).length > 1,
+  isUser: isUser ?? (devices ?? const []).length > 1,
   displayName: name.isEmpty ? id : name,
   deviceCount: BigInt.from(deviceCount),
   deviceRows:
@@ -96,6 +97,8 @@ Widget _app({
   void Function(MobileContactRow, MobileContactDevice)? onOpenDm,
   void Function(MobileContactDevice)? onLinkDevice,
   void Function(MobileContactDevice)? onCallDevice,
+  Future<void> Function(MobileContactRow, String?)? onEditContactNickname,
+  String? ownUserId,
   Set<String> blockedPeerIds = const <String>{},
 }) => MaterialApp(
   home: Scaffold(
@@ -105,6 +108,8 @@ Widget _app({
       onOpenDm: onOpenDm ?? (_, _) {},
       onLinkDevice: onLinkDevice,
       onCallDevice: onCallDevice,
+      onEditContactNickname: onEditContactNickname,
+      ownUserId: ownUserId,
       blockedPeerIds: blockedPeerIds,
       sortOverride: sortOverride,
     ),
@@ -472,6 +477,261 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key('call-solo')), findsNothing);
   });
+
+  // ── Owner-side contact nickname ──────────────────────────────────────────
+
+  List<MobileContactRow> nicknameRows() => [
+    contact(
+      id: 'user',
+      name: 'Alice',
+      isUser: true,
+      deviceCount: 2,
+      devices: [
+        MobileContactDevice(
+          peerId: 'user-laptop',
+          displayName: 'Laptop',
+          firstSeen: '',
+          lastSeen: '',
+        ),
+        MobileContactDevice(
+          peerId: 'user-phone',
+          displayName: 'Phone',
+          firstSeen: '',
+          lastSeen: '',
+        ),
+      ],
+    ),
+    contact(id: 'device', name: 'Solo', isUser: false),
+  ];
+
+  testWidgets(
+    'nickname button renders only for user contacts with a callback',
+    (tester) async {
+      Future<void> onEdit(MobileContactRow c, String? n) async {}
+      await tester.pumpWidget(
+        _app(
+          rows: nicknameRows(),
+          sortOverride: _sortLikeRust,
+          onEditContactNickname: onEdit,
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('edit-contact-nickname-user')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('edit-contact-nickname-device')),
+        findsNothing,
+      );
+
+      // Device sub-rows don't add more nickname buttons: the override is on the
+      // contact (user), not on any one device.
+      await tester.tap(find.byKey(const Key('expand-user')));
+      await tester.pump();
+      expect(
+        find.byKey(const Key('edit-contact-nickname-user')),
+        findsOneWidget,
+      );
+
+      // Without the injected callback, no nickname action is rendered at all.
+      await tester.pumpWidget(
+        _app(rows: nicknameRows(), sortOverride: _sortLikeRust),
+      );
+      await tester.pump();
+      expect(find.byKey(const Key('edit-contact-nickname-user')), findsNothing);
+    },
+  );
+
+  testWidgets('a single-device user contact still gets the nickname action', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        rows: [contact(id: 'solo-user', name: 'Solo User', isUser: true)],
+        sortOverride: _sortLikeRust,
+        onEditContactNickname: (c, n) async {},
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('edit-contact-nickname-solo-user')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('the nickname action skips this install\'s own user row', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        rows: [
+          contact(id: 'me', name: 'Own User', isUser: true),
+          contact(id: 'alice', name: 'Alice', isUser: true),
+        ],
+        sortOverride: _sortLikeRust,
+        onEditContactNickname: (c, n) async {},
+        ownUserId: 'me',
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('edit-contact-nickname-me')), findsNothing);
+    expect(
+      find.byKey(const Key('edit-contact-nickname-alice')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('tapping the nickname action opens the dialog', (tester) async {
+    final writes = <(String, String?)>[];
+    await tester.pumpWidget(
+      _app(
+        rows: nicknameRows(),
+        sortOverride: _sortLikeRust,
+        onEditContactNickname: (c, n) async => writes.add((c.contactId, n)),
+      ),
+    );
+    await tester.pump();
+    await tester.ensureVisible(
+      find.byKey(const Key('edit-contact-nickname-user')),
+    );
+    await tester.tap(find.byKey(const Key('edit-contact-nickname-user')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Set contact nickname'), findsOneWidget);
+    expect(find.byKey(const Key('contact-nickname-field')), findsOneWidget);
+    expect(find.byKey(const Key('contact-nickname-save')), findsOneWidget);
+    expect(find.byKey(const Key('contact-nickname-clear')), findsOneWidget);
+    expect(find.byKey(const Key('contact-nickname-cancel')), findsOneWidget);
+    expect(writes, isEmpty);
+  });
+
+  testWidgets('Save writes trimmed text and closes the dialog', (tester) async {
+    final writes = <(String, String?)>[];
+    await tester.pumpWidget(
+      _app(
+        rows: nicknameRows(),
+        sortOverride: _sortLikeRust,
+        onEditContactNickname: (c, n) async => writes.add((c.contactId, n)),
+      ),
+    );
+    await tester.pump();
+    await tester.ensureVisible(
+      find.byKey(const Key('edit-contact-nickname-user')),
+    );
+    await tester.tap(find.byKey(const Key('edit-contact-nickname-user')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('contact-nickname-field')),
+      '  Bob-1  ',
+    );
+    await tester.tap(find.byKey(const Key('contact-nickname-save')));
+    await tester.pumpAndSettle();
+
+    expect(writes, [('user', 'Bob-1')]);
+    expect(find.text('Set contact nickname'), findsNothing);
+  });
+
+  testWidgets('empty Save and Clear both write null', (tester) async {
+    for (final action in ['save', 'clear']) {
+      final writes = <(String, String?)>[];
+      await tester.pumpWidget(
+        _app(
+          rows: nicknameRows(),
+          sortOverride: _sortLikeRust,
+          onEditContactNickname: (c, n) async => writes.add((c.contactId, n)),
+        ),
+      );
+      await tester.pump();
+      await tester.ensureVisible(
+        find.byKey(const Key('edit-contact-nickname-user')),
+      );
+      await tester.tap(find.byKey(const Key('edit-contact-nickname-user')));
+      await tester.pumpAndSettle();
+
+      if (action == 'save') {
+        await tester.enterText(
+          find.byKey(const Key('contact-nickname-field')),
+          '   ',
+        );
+      } else {
+        // Clear ignores whatever was typed and asks Rust to remove the override.
+        await tester.enterText(
+          find.byKey(const Key('contact-nickname-field')),
+          'Bob',
+        );
+      }
+      await tester.tap(find.byKey(Key('contact-nickname-$action')));
+      await tester.pumpAndSettle();
+
+      expect(writes, [('user', null)]);
+      expect(find.text('Set contact nickname'), findsNothing);
+    }
+  });
+
+  testWidgets('Cancel closes the dialog without writing', (tester) async {
+    final writes = <(String, String?)>[];
+    await tester.pumpWidget(
+      _app(
+        rows: nicknameRows(),
+        sortOverride: _sortLikeRust,
+        onEditContactNickname: (c, n) async => writes.add((c.contactId, n)),
+      ),
+    );
+    await tester.pump();
+    await tester.ensureVisible(
+      find.byKey(const Key('edit-contact-nickname-user')),
+    );
+    await tester.tap(find.byKey(const Key('edit-contact-nickname-user')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('contact-nickname-field')),
+      'Bob',
+    );
+    await tester.tap(find.byKey(const Key('contact-nickname-cancel')));
+    await tester.pumpAndSettle();
+
+    expect(writes, isEmpty);
+    expect(find.text('Set contact nickname'), findsNothing);
+  });
+
+  testWidgets(
+    'a rejected nickname surfaces an error and keeps the dialog open',
+    (tester) async {
+      await tester.pumpWidget(
+        _app(
+          rows: nicknameRows(),
+          sortOverride: _sortLikeRust,
+          onEditContactNickname: (c, n) async =>
+              throw Exception('bad nickname'),
+        ),
+      );
+      await tester.pump();
+      await tester.ensureVisible(
+        find.byKey(const Key('edit-contact-nickname-user')),
+      );
+      await tester.tap(find.byKey(const Key('edit-contact-nickname-user')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('contact-nickname-field')),
+        'Bob',
+      );
+      await tester.tap(find.byKey(const Key('contact-nickname-save')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Set contact nickname'), findsOneWidget);
+      expect(
+        find.text('Invalid nickname: Exception: bad nickname'),
+        findsOneWidget,
+      );
+    },
+  );
 
   // ── Search affordance ───────────────────────────────────────────────────
 

@@ -346,6 +346,31 @@ void main() {
       },
     );
 
+    test(
+      'setContactNickname sends camelCase params, including null clears',
+      () async {
+        final fake = FakeRemoteTransport();
+        fake.onSend = (frame) {
+          fake.respond(fake.frame(fake.sentFrames.length - 1), ok: null);
+        };
+        final api = HttpNodeApi(connect: () async => fake);
+
+        await api.setContactNickname(contactUserId: 'user-1', nickname: 'Bob');
+        await api.setContactNickname(contactUserId: 'user-1', nickname: null);
+
+        expect(fake.frame(0)['method'], 'setContactNickname');
+        expect(fake.frame(0)['params'], {
+          'contactUserId': 'user-1',
+          'nickname': 'Bob',
+        });
+        expect(fake.frame(1)['method'], 'setContactNickname');
+        expect(fake.frame(1)['params'], {
+          'contactUserId': 'user-1',
+          'nickname': null,
+        });
+      },
+    );
+
     test('non-protocol frames are ignored, not fatal', () async {
       final fake = FakeRemoteTransport();
       fake.onSend = (frame) {

@@ -653,6 +653,23 @@ class FakeNodeApi implements NodeApi {
     peerLocalNicknames.add((peerId, nickname));
   }
 
+  /// `(contactUserId, nickname)` pairs passed to [setContactNickname]; a null
+  /// nickname is a clear request. Recorded without throwing so widget tests can
+  /// assert the exact writes a dialog produced.
+  final List<(String, String?)> contactNicknames = [];
+
+  @override
+  Future<void> setContactNickname({
+    required String contactUserId,
+    String? nickname,
+  }) async {
+    _record('setContactNickname', (
+      contactUserId: contactUserId,
+      nickname: nickname,
+    ));
+    contactNicknames.add((contactUserId, nickname));
+  }
+
   @override
   Future<bool> validateNickname({required String nickname}) =>
       throw UnimplementedError();
@@ -934,12 +951,31 @@ class FakeNodeApi implements NodeApi {
     required Uint8List devicePubkey,
   }) => throw UnimplementedError();
 
-  @override
-  Future<List<PeerWithStats>> getPeersWithStats() => throw UnimplementedError();
+  /// Returned by [getPeersWithStats] when set; otherwise the call throws.
+  Future<List<PeerWithStats>> Function()? getPeersWithStatsOverride;
 
   @override
-  Future<List<MobileContactRow>> getContactsWithStats() =>
-      throw UnimplementedError();
+  Future<List<PeerWithStats>> getPeersWithStats() async {
+    _record('getPeersWithStats');
+    final override = getPeersWithStatsOverride;
+    if (override == null) {
+      throw UnimplementedError('set getPeersWithStatsOverride in this test');
+    }
+    return override();
+  }
+
+  /// Returned by [getContactsWithStats] when set; otherwise the call throws.
+  Future<List<MobileContactRow>> Function()? getContactsWithStatsOverride;
+
+  @override
+  Future<List<MobileContactRow>> getContactsWithStats() async {
+    _record('getContactsWithStats');
+    final override = getContactsWithStatsOverride;
+    if (override == null) {
+      throw UnimplementedError('set getContactsWithStatsOverride in this test');
+    }
+    return override();
+  }
 
   @override
   Future<List<ContactSortInput>> sortContacts({

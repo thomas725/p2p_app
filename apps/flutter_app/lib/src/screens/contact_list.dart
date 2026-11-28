@@ -28,6 +28,8 @@ class ContactList extends StatefulWidget {
     required this.onOpenDm,
     this.onLinkDevice,
     this.onCallDevice,
+    this.onEditContactNickname,
+    this.ownUserId,
     this.blockedPeerIds = const <String>{},
     this.sortOverride,
   });
@@ -45,6 +47,16 @@ class ContactList extends StatefulWidget {
   /// Device-scoped action that places an outgoing call to the device. Optional:
   /// when null, no call button is rendered.
   final void Function(MobileContactDevice device)? onCallDevice;
+
+  /// Owner-side nickname editor for a bound user contact. Optional: when null,
+  /// no nickname button is rendered. Unbound device rows never get one — the
+  /// override belongs to the contact (user), not to a device.
+  final Future<void> Function(MobileContactRow contact, String? nickname)?
+  onEditContactNickname;
+
+  /// This install's user id. A sibling device is a user contact row, but the
+  /// Rust writer refuses self nicknames, so no editor is offered for it.
+  final String? ownUserId;
 
   /// Peer ids that are muted (on the blocklist). A contact row is marked when
   /// **every** one of its devices is muted; otherwise only the blocked device
@@ -174,11 +186,30 @@ class ContactListState extends State<ContactList> {
     );
   }
 
+  /// Open the owner-side nickname dialog and refresh through [onSave] on a
+  /// successful write. Rust owns validation and display-name resolution; this
+  /// widget only collects the text and reports failures.
+  Future<void> _editContactNickname(
+    MobileContactRow contact,
+    Future<void> Function(String? nickname) onSave,
+  ) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => _ContactNicknameDialog(onSave: onSave),
+    );
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Contact nickname updated.')),
+      );
+    }
+  }
+
   Widget _actionButtons(
     String keyPrefix,
     MobileContactRow c,
-    MobileContactDevice device,
-  ) {
+    MobileContactDevice device, {
+    Future<void> Function(String? nickname)? onEditNickname,
+  }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -194,6 +225,13 @@ class ContactListState extends State<ContactList> {
           tooltip: 'Direct message',
           onPressed: () => widget.onOpenDm(c, device),
         ),
+        if (onEditNickname != null)
+          IconButton(
+            key: Key('edit-contact-nickname-${c.contactId}'),
+            icon: const Icon(Icons.edit),
+            tooltip: 'Set contact nickname',
+            onPressed: () => _editContactNickname(c, onEditNickname),
+          ),
         if (widget.onLinkDevice != null)
           IconButton(
             key: Key('link-$keyPrefix'),
@@ -230,7 +268,22 @@ class ContactListState extends State<ContactList> {
         DataCell(Text('${_broadcastCount(c)}')),
         DataCell(Text(c.lastSeen)),
         DataCell(Text(c.firstSeen)),
-        DataCell(_actionButtons('${c.contactId}.best', c, c.deviceRows.first)),
+        DataCell(
+          _actionButtons(
+            '${c.contactId}.best',
+            c,
+            c.deviceRows.first,
+            // Only another bound user has an owner-side override; device rows
+            // and this install's own user never receive the action (the Rust
+            // writer rejects both).
+            onEditNickname:
+                c.isUser &&
+                    c.contactId != widget.ownUserId &&
+                    widget.onEditContactNickname != null
+                ? (nickname) => widget.onEditContactNickname!(c, nickname)
+                : null,
+          ),
+        ),
       ],
     );
   }
@@ -421,6 +474,109 @@ class ContactListState extends State<ContactList> {
                     ],
                   ),
                 ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Modal editor for the owner-side nickname override of a user contact.
+///
+/// Validation and display-name resolution stay in Rust: this dialog only
+/// collects trimmed text (empty means clear), calls [onSave], and surfaces a
+/// rejection in a SnackBar without closing the dialog.
+class _ContactNicknameDialog extends StatefulWidget {
+  const _ContactNicknameDialog({required this.onSave});
+
+  /// Called with the trimmed nickname, or `null` for a clear request (either
+  /// the Clear action or an empty Save). Throws when Rust rejects the write.
+  final Future<void> Function(String? nickname) onSave;
+
+  @override
+  State<_ContactNicknameDialog> createState() => _ContactNicknameDialogState();
+}
+
+class _ContactNicknameDialogState extends State<_ContactNicknameDialog> {
+  final TextEditingController _controller = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit(String? nickname) async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
+    try {
+      await widget.onSave(nickname);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Invalid nickname: $e')));
+    }
+  }
+
+  void _submitFromField() {
+    final text = _controller.text.trim();
+    unawaited(_submit(text.isEmpty ? null : text));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Set contact nickname'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Name shown for this contact on your device. Leave the field empty '
+            'to use the default name.',
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('contact-nickname-field'),
+            controller: _controller,
+            autofocus: true,
+            enabled: !_submitting,
+            decoration: const InputDecoration(
+              labelText: 'Nickname',
+              hintText: 'letters, digits and dashes',
+            ),
+            onSubmitted: (_) {
+              if (!_submitting) _submitFromField();
+            },
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          key: const Key('contact-nickname-cancel'),
+          onPressed: _submitting
+              ? null
+              : () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          key: const Key('contact-nickname-clear'),
+          onPressed: _submitting ? null : () => _submit(null),
+          child: const Text('Clear'),
+        ),
+        FilledButton(
+          key: const Key('contact-nickname-save'),
+          onPressed: _submitting ? null : _submitFromField,
+          child: _submitting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Save'),
         ),
       ],
     );

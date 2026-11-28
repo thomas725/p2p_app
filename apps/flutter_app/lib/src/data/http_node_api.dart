@@ -871,6 +871,15 @@ class HttpNodeApi implements NodeApi {
   }) => _call('setPeerLocalNickname', {'peerId': peerId, 'nickname': nickname});
 
   @override
+  Future<void> setContactNickname({
+    required String contactUserId,
+    String? nickname,
+  }) => _call('setContactNickname', {
+    'contactUserId': contactUserId,
+    'nickname': nickname,
+  });
+
+  @override
   Future<bool> validateNickname({required String nickname}) async =>
       await _call('validateNickname', {'name': nickname}) as bool;
 
