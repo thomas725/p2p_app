@@ -1271,6 +1271,28 @@ impl AppState {
             .find_map(|id| id.as_deref().and_then(path_for_id))
     }
 
+    /// Canonical map URL of a location message in `tab`'s conversation.
+    ///
+    /// `Ctrl+G` opens this (parity with Flutter's tappable "Open map" link).
+    /// With no cursor this scans backwards for the newest location row; with a
+    /// cursor the picked row must itself be a location, so the shortcut never
+    /// opens a map from an unrelated message. The URL comes from Rust's parser,
+    /// never from a URL typed into chat.
+    #[must_use]
+    pub fn target_location_url(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
+        if self.message_selection_index(tab).is_some() {
+            let idx = self.target_index(tab)?;
+            return self
+                .transcript_line(tab, idx)
+                .and_then(p2p_app::location::location_url_from_display_line);
+        }
+        let count = self.transcript_len(tab)?;
+        (0..count).rev().find_map(|idx| {
+            self.transcript_line(tab, idx)
+                .and_then(p2p_app::location::location_url_from_display_line)
+        })
+    }
+
     /// The most recent outgoing message in the conversation shown by `tab`,
     /// as `(db_id, short_preview)`; `None` when there is nothing deletable.
     #[must_use]

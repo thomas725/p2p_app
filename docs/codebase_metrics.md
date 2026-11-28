@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        75 |
-| Total Rust Lines      |    44,868 |
-| Total Rust Chars      | 1,712,921 |
-| Avg Lines/Rust File   |       598 |
-| Avg Chars/Rust File   |    22,838 |
+| Total Rust Lines      |    44,925 |
+| Total Rust Chars      | 1,715,771 |
+| Avg Lines/Rust File   |       599 |
+| Avg Chars/Rust File   |    22,876 |
 | Total Dart Files      |        62 |
 | Total Dart Lines      |    27,260 |
 | Total Dart Chars      |   879,599 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 142 files, 73,188 lines, 2,632,100 characters
+**Grand Total:** 142 files, 73,245 lines, 2,634,950 characters
 
 ## Rust Source Files
 
@@ -44,7 +44,7 @@
 | src                     | groups.rs            |     3 | 24841 |   664 |        - |       - | Group management & persistence                     |
 | src                     | identity.rs          |     4 | 30488 |   797 |        - |       - | Users, account keys & device bindings              |
 | src                     | lib.rs               |     1 |  7604 |   204 |        - |       - | Module declarations & re-exports                   |
-| src                     | location.rs          |     5 | 29490 |   804 |        - |       - | Source file                                        |
+| src                     | location.rs          |     5 | 30257 |   821 |        - |       - | Source file                                        |
 | src                     | logging.rs           |     5 | 13949 |   426 |        - |       - | Logging utilities & setup                          |
 | src                     | messages.rs          |     5 | 25355 |   643 |        - |       - | Message persistence & retrieval                    |
 | src                     | mobile_api.rs        |     4 | 35164 |  1034 |        - |       - | Mobile FRB API surface                             |
@@ -76,14 +76,14 @@
 | src/bin/tui             | click_handlers.rs    |     7 | 26019 |   617 |        - |       - | Click handlers & index mapping                     |
 | src/bin/tui             | command_processor.rs |     6 | 32607 |   881 |        - |       - | Event routing & state updates                      |
 | src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)                    |
-| src/bin/tui             | input_processor.rs   |     7 | 84277 |  2153 |        - |       - | Input event routing & processing                   |
+| src/bin/tui             | input_processor.rs   |     7 | 85322 |  2171 |        - |       - | Input event routing & processing                   |
 | src/bin/tui             | key_probe.rs         |     6 |  6272 |   172 |        - |       - | Keyboard enhancement probe                         |
 | src/bin/tui             | location_export.rs   |     5 | 18948 |   499 |        - |       - | Source file                                        |
 | src/bin/tui             | main_loop.rs         |     6 | 15979 |   400 |        - |       - | Task orchestration & async                         |
 | src/bin/tui             | message_handlers.rs  |     4 | 17819 |   536 |        - |       - | Message sending logic                              |
 | src/bin/tui             | scroll_handlers.rs   |     4 | 22994 |   621 |        - |       - | Scroll & hover-aware navigation                    |
 | src/bin/tui             | share_actions.rs     |     5 | 29288 |   799 |        - |       - | Source file                                        |
-| src/bin/tui             | state.rs             |     8 | 105404 |  2488 |        - |       - | Shared application state                           |
+| src/bin/tui             | state.rs             |     8 | 106442 |  2510 |        - |       - | Shared application state                           |
 | src/bin/tui/render_loop | layout.rs            |     5 |  4711 |   120 |        - |       - | UI layout component rendering                      |
 | src/bin/tui/render_loop | mod.rs               |     6 | 18029 |   449 |        - |       - | Render loop orchestration (60 FPS)                 |
 | src/generated           | columns.rs           |     1 |  4561 |   108 |        - |       - | Auto-generated column definitions                  |
@@ -102,7 +102,7 @@
 | src/web                 | methods.rs           |     5 | 44877 |  1379 |        - |       - | Web JSON method dispatch                           |
 | src/web                 | mod.rs               |     7 | 20622 |   520 |        - |       - | Web server (axum HTTP+WS)                          |
 
-**Total:** 75 files, 44,868 lines, 1,712,921 characters
+**Total:** 75 files, 44,925 lines, 1,715,771 characters
 
 ## Rust Test Files
 
@@ -136,7 +136,7 @@
 | unit   | unit_bin_tui_click_handlers.rs     |   938 | 34577 |     4 | Unit tests for TUI click handlers     |
 | unit   | unit_bin_tui_command_processor.rs  |  1735 | 59173 |     5 | Unit tests for TUI command processor  |
 | unit   | unit_bin_tui_event_source.rs       |    44 |  1352 |     2 | Unit tests for TUI event source       |
-| unit   | unit_bin_tui_input_processor.rs    |  7390 | 263815 |     6 | Unit tests for TUI input processor    |
+| unit   | unit_bin_tui_input_processor.rs    |  7494 | 267029 |     6 | Unit tests for TUI input processor    |
 | unit   | unit_bin_tui_main_loop.rs          |   233 |  7007 |     3 | Unit tests for TUI main loop          |
 | unit   | unit_bin_tui_message_handlers.rs   |   467 | 15073 |     5 | Unit tests for TUI message handlers   |
 | unit   | unit_bin_tui_render_loop_layout.rs |   154 |  5448 |     2 | Test file                             |
@@ -157,7 +157,7 @@
 | unit   | unit_groups.rs                     |   649 | 23459 |     5 | Unit tests for groups module          |
 | unit   | unit_identity.rs                   |   747 | 29217 |     4 | identity module tests                 |
 | unit   | unit_lib.rs                        |   298 |  8790 |     3 | Unit tests for library re-exports/api |
-| unit   | unit_location.rs                   |   287 | 10115 |     3 | Test file                             |
+| unit   | unit_location.rs                   |   317 | 11364 |     3 | Test file                             |
 | unit   | unit_logging.rs                    |   205 |  5217 |     4 | Unit tests for logging module         |
 | unit   | unit_messages.rs                   |   685 | 25897 |     4 | Unit tests for messages module        |
 | unit   | unit_mobile_node.rs                |   912 | 28356 |     4 | Test file                             |
@@ -179,7 +179,7 @@
 | unit   | unit_types.rs                      |   427 | 12996 |     3 | Unit tests for types module           |
 | unit   | unit_web_mod.rs                    |  1304 | 45284 |     9 | Test file                             |
 
-**Total:** 70 test files, 38,988 lines, 1,326,910 characters
+**Total:** 70 test files, 39,122 lines, 1,331,373 characters
 
 ## Dart Source Files
 

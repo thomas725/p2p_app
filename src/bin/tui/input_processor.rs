@@ -451,25 +451,25 @@ fn arm_edit_prompt(s: &mut super::state::AppState, tab: &p2p_app::tui_tabs::TabC
     p2plog_debug(format!("Local edit opened for message {id}"));
 }
 
-/// Open a downloaded attachment with the platform's default handler (parity
-/// with Flutter's tappable attachment chip).
+/// Open a local path or a validated URL with the platform's default handler.
 ///
-/// The path is passed as a single argument — never through a shell — and the
+/// The target is passed as a single argument — never through a shell — and the
 /// opener is spawned detached: the input task must not block until the user
-/// closes their image viewer. Linux uses `xdg-open`, macOS `open`, and Windows
-/// the `start` builtin via `cmd`.
-fn open_attachment(path: &str) -> Result<(), String> {
+/// closes their viewer or browser. Linux uses `xdg-open`, macOS `open`, and
+/// Windows the `start` builtin via `cmd`. Both `Ctrl+O` (attachments) and
+/// `Ctrl+G` (canonical map URLs from location messages) share this seam.
+fn open_external_target(target: &str) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     let spawned = std::process::Command::new("cmd")
-        .args(["/C", "start", "", path])
+        .args(["/C", "start", "", target])
         .spawn();
     #[cfg(all(unix, not(target_os = "macos")))]
-    let spawned = std::process::Command::new("xdg-open").arg(path).spawn();
+    let spawned = std::process::Command::new("xdg-open").arg(target).spawn();
     #[cfg(target_os = "macos")]
-    let spawned = std::process::Command::new("open").arg(path).spawn();
+    let spawned = std::process::Command::new("open").arg(target).spawn();
     spawned
         .map(|_| ())
-        .map_err(|e| format!("Could not open attachment '{path}': {e}"))
+        .map_err(|e| format!("Could not open '{target}': {e}"))
 }
 
 /// Resolve and launch the targeted downloaded attachment in `tab`, surfacing a
@@ -479,7 +479,20 @@ fn open_target_attachment(s: &mut super::state::AppState, tab: &p2p_app::tui_tab
         s.popup = Some("No downloaded attachment in this conversation".to_string());
         return;
     };
-    if let Err(err) = open_attachment(&path) {
+    if let Err(err) = open_external_target(&path) {
+        s.popup = Some(err);
+    }
+}
+
+/// Open the canonical OSM map URL of a location message, matching Flutter's
+/// tappable "Open map" link. Rust builds the URL from the validated body, so
+/// no URL from chat text is ever handed to the platform opener.
+fn open_target_location(s: &mut super::state::AppState, tab: &p2p_app::tui_tabs::TabContent) {
+    let Some(url) = s.target_location_url(tab) else {
+        s.popup = Some("No location message to open in this conversation".to_string());
+        return;
+    };
+    if let Err(err) = open_external_target(&url) {
         s.popup = Some(err);
     }
 }
@@ -1775,6 +1788,11 @@ fn handle_chat_action_shortcut(
         // tappable attachment chip. Bare `o` is a Settings toggle, so the
         // modifier keeps the chat composer untouched.
         crossterm::event::KeyCode::Char('o') if is_ctrl => open_target_attachment(s, tab),
+        // `Ctrl+G` opens the selected row's canonical map URL (the newest
+        // location row when no cursor is armed), matching Flutter's tappable
+        // "Open map" link. `Ctrl+M` is deliberately avoided: ordinary terminals
+        // send it as Enter, so it could never be a reliable chat shortcut.
+        crossterm::event::KeyCode::Char('g') if is_ctrl => open_target_location(s, tab),
         // `Ctrl+L` arms a one-device `from;to` export on a Direct tab. The
         // peer id is captured in the prompt, so switching tabs cannot mix
         // tracks from two devices of the same account.

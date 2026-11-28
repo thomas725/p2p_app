@@ -134,7 +134,10 @@ coordinates and cadence, builds the canonical `[Location]` body and OSM URLs,
 resolves recipients to *other devices bound to the local user*, parses tracks
 and renders GPX. Frontends only sample sensors and render Rust-owned strings;
 track queries key on one exact sender peer id, so two devices of the same user
-never mix. See
+never mix. Opening a received fix is likewise Rust-owned: Flutter asks
+`locationMessageUrl`, the TUI strips its rendered prefix and display markers
+through `location::location_url_from_display_line`, and both open the same
+canonical OSM URL. See
 [`archive/2026-11-27_device_location_sharing.md`](archive/2026-11-27_device_location_sharing.md)
 for the full slice.
 

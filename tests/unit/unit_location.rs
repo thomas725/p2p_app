@@ -67,6 +67,36 @@ fn message_body_is_canonical_and_detectable() {
 }
 
 #[test]
+fn rendered_location_lines_yield_the_canonical_url_despite_display_markers() {
+    let body = build_location_message(input(52.52, 13.405, "once", None)).expect("body");
+    let expected = location_message_url(&body).expect("canonical map url");
+    let rendered = |body: &str| format!("12:34:56  [alice] {body}");
+
+    assert_eq!(
+        location_url_from_display_line(&rendered(&body)).as_deref(),
+        Some(expected.as_str())
+    );
+    // A sealed DM is decrypted before display but keeps the `[e2e] ` marker,
+    // and an edited row keeps ` (edited)`. Both are presentation-only.
+    assert_eq!(
+        location_url_from_display_line(&rendered(&format!("[e2e] {body}"))).as_deref(),
+        Some(expected.as_str())
+    );
+    assert_eq!(
+        location_url_from_display_line(&rendered(&format!("{body} (edited)"))).as_deref(),
+        Some(expected.as_str())
+    );
+    // A hand-written URL that merely looks like a fix must stay inert.
+    let forged =
+        "[Location] 1.0,2.0 (±1 m) @1 https://www.openstreetmap.org/?mlat=1&mlon=2#map=17/1/2";
+    assert_eq!(location_url_from_display_line(&rendered(forged)), None);
+    assert_eq!(
+        location_url_from_display_line(&rendered("hello there")),
+        None
+    );
+}
+
+#[test]
 fn limited_session_requires_a_bounded_duration() {
     assert!(build_location_message(input(0.0, 0.0, "limited", None)).is_err());
     assert!(build_location_message(input(0.0, 0.0, "limited", Some(30))).is_err());

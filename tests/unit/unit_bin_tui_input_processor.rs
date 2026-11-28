@@ -3739,6 +3739,110 @@ async fn test_ctrl_o_is_inert_on_non_chat_tabs() {
     assert!(s.popup.is_none());
 }
 
+// ── Ctrl+G open a location's map (Flutter parity) ────────────────────────
+
+fn location_line() -> (String, String) {
+    let input = p2p_app::location::LocationShareInput {
+        latitude: 52.52,
+        longitude: 13.405,
+        accuracy: 12.5,
+        mode: "once".to_string(),
+        duration_secs: None,
+        sensor_interval_secs: 10,
+        send_interval_secs: 60,
+        motion_gate: true,
+        session_id: "session-1".to_string(),
+        sequence: 1,
+        is_final: false,
+    };
+    let body = p2p_app::location::build_location_message(input).expect("canonical body");
+    let url = p2p_app::location::location_message_url(&body).expect("canonical map url");
+    (format!("12:00:00 [alice] {body}"), url)
+}
+
+#[test]
+fn test_target_location_url_scans_backwards_without_a_cursor() {
+    let (line, url) = location_line();
+    let mut s = app_state_with_chat_messages(2);
+    if let Some(newest) = s.messages.back_mut() {
+        newest.text = "12:01:00 [alice] just chat".to_string();
+    }
+    if let Some(older) = s.messages.front_mut() {
+        older.text = line;
+    }
+    assert_eq!(
+        s.target_location_url(&TabContent::Chat).as_deref(),
+        Some(url.as_str())
+    );
+}
+
+#[test]
+fn test_target_location_url_respects_an_explicit_cursor() {
+    let (line, url) = location_line();
+    let mut s = app_state_with_chat_messages(2);
+    if let Some(newest) = s.messages.back_mut() {
+        newest.text = line;
+    }
+    assert!(s.select_message(&TabContent::Chat, 0));
+    assert_eq!(
+        s.target_location_url(&TabContent::Chat),
+        None,
+        "the cursor picked a plain row: Ctrl+G must never open an unrelated map"
+    );
+    assert!(s.select_message(&TabContent::Chat, 1));
+    assert_eq!(
+        s.target_location_url(&TabContent::Chat).as_deref(),
+        Some(url.as_str())
+    );
+}
+
+#[tokio::test]
+async fn test_ctrl_g_without_location_shows_popup_and_does_not_type() {
+    let mut s = app_state_with_chat_messages(1);
+    if let Some(newest) = s.messages.back_mut() {
+        newest.text = "12:00:00 [alice] hello there".to_string();
+    }
+    let state = Arc::new(Mutex::new(s));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Char('g'), KeyModifiers::CONTROL),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    let s = state.lock().await;
+    assert_eq!(
+        s.popup.as_deref(),
+        Some("No location message to open in this conversation")
+    );
+    // The modifier must keep `g` out of the composer.
+    assert_eq!(s.chat_input.lines().join(""), "");
+}
+
+#[tokio::test]
+async fn test_ctrl_g_is_inert_on_non_chat_tabs() {
+    let mut s = test_app_state();
+    s.active_tab = 1; // Contacts; no transcript owned by this tab.
+    let state = Arc::new(Mutex::new(s));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Char('g'), KeyModifiers::CONTROL),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(state.lock().await.popup.is_none());
+}
+
 // ── Ctrl+C copy newest message to clipboard (Flutter parity) ─────────────
 
 #[tokio::test]

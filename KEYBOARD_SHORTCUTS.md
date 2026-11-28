@@ -108,12 +108,13 @@ Flutter's "N new" jump button in DM and group chats.
 | `Ctrl+C` in **Chat** / **DM** / **Group chat** | Copy the selected row's rendered line (newest if none selected) to the clipboard |
 | `Ctrl+C` in **Log** | Copy all log lines to the terminal clipboard (same as Flutter's "Copy All") |
 | `Ctrl+O` in **Chat** / **DM** / **Group chat** | Open the selected row's attachment; with no cursor, the newest row with an attachment |
+| `Ctrl+G` in **Chat** / **DM** / **Group chat** | Open the selected row's canonical map URL; with no cursor, the newest location row |
 | `Esc` in **Chat** / **DM** / **Group chat** | Clear the active conversation's reply draft, then that conversation's message selection, one press per layer |
 | `Delete` in **Chat** / **DM** / **Group chat** | Hide your selected sent row (newest sent if none selected), local only |
 | `Ctrl+E` in **Chat** / **DM** / **Group chat** | Edit your selected sent row (newest sent if none selected), local only |
 
-`Ctrl+R`, `Ctrl+Y`, `Ctrl+C`, `Ctrl+O`, `Delete` and `Ctrl+E` all act on the
-selected row (newest if none selected). On a DM tab that row is always from the
+`Ctrl+R`, `Ctrl+Y`, `Ctrl+C`, `Ctrl+O`, `Ctrl+G`, `Delete` and `Ctrl+E` all act on
+the selected row (newest if none selected). On a DM tab that row is always from the
 bottom DM transcript; the top broadcast pane keeps its hover-based bare scroll.
 `Ctrl+P` is deliberately outside this slice — it stays newest/sender-targeted
 (newest known sender on Chat/Group, the DM partner on a DM tab), so it never
@@ -284,6 +285,7 @@ of the history.
 | `Ctrl+C` | Copy the selected DM's rendered line (newest if none selected) |
 | `Delete` | Hide your selected sent DM (newest sent if none selected), local only |
 | `Ctrl+E` | Edit your selected sent DM (newest sent if none selected), local only |
+| `Ctrl+G` | Open the selected DM's canonical map URL (newest location DM if none selected) |
 | `Ctrl+L` | Export this exact device's location track to GPX after a Rust-parsed `from;to` filter |
 
 `Ctrl+L` captures the DM partner's peer id when the prompt opens, so switching
@@ -465,6 +467,19 @@ qualifies: an unrelated file is never opened. It resolves the descriptor from
 the persisted message row, so a file must have finished downloading and the row
 must still exist; otherwise a short "No downloaded attachment" popup appears. A
 failed launch reports the error in the same popup.
+
+### Opening a location's map
+
+`Ctrl+G` in **Chat** / **DM** / **Group chat** opens the selected row's map URL
+with the same platform opener (the newest location row if no cursor is armed).
+Rust's canonical `location::location_url_from_display_line` strips the TUI's
+timestamp/sender prefix plus the presentation-only `[e2e] ` and ` (edited)`
+markers, then requires a valid `[Location]` body before returning an OSM URL.
+A hand-written URL in ordinary chat is never opened, and a cursor on a non-location
+row yields a short popup instead of a nearby map. This is the TUI counterpart to
+Flutter's tappable "Open map" link, which asks the same Rust parser through
+`locationMessageUrl`. `Ctrl+M` is deliberately not used: ordinary terminals send
+it as Enter.
 
 ## UI control
 

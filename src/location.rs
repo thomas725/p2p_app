@@ -408,6 +408,23 @@ pub fn location_message_url(content: &str) -> Option<String> {
         .map(str::to_owned)
 }
 
+/// Extract the canonical map URL from a rendered TUI transcript line.
+///
+/// The TUI stores `{time} [sender] body` lines, and a sealed DM body is shown
+/// with the `[e2e] ` marker while a locally edited one ends in ` (edited)`.
+/// Those are presentation-only decorations: stripping them here means every
+/// frontend can ask Rust for the same URL without reimplementing the grammar
+/// or learning how the TUI renders a row.
+#[must_use]
+pub fn location_url_from_display_line(line: &str) -> Option<String> {
+    let body = crate::reply::split_display_line(line).1;
+    let body = crate::fmt::without_edited_marker(body);
+    let body = body
+        .strip_prefix(crate::e2e::TUI_ENCRYPTED_MARKER)
+        .unwrap_or(body);
+    location_message_url(body.trim())
+}
+
 /// Validate and render one canonical location message body.
 ///
 /// # Errors
