@@ -159,6 +159,10 @@ async fn main() -> color_eyre::Result<()> {
 /// # Errors
 /// Returns an error if terminal/database/swarm setup fails.
 pub async fn run_tui() -> color_eyre::Result<()> {
+    // The TUI owns the whole terminal. stderr shares that terminal with the
+    // rendered stdout buffer, so mirror nothing there — logs still reach the
+    // buffer, file, and Log tab through the registered callback below.
+    p2p_app::logging::disable_console_logging();
     color_eyre::install()?;
     init_logging();
     p2p_app::logging::register_log_callback(Arc::new(|_| p2p_app::logging::request_tui_redraw()));

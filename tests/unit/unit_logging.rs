@@ -40,6 +40,25 @@ fn test_push_log_stores_entries() {
 
 #[test]
 #[serial(logging)]
+fn test_disable_console_logging_keeps_buffer() {
+    init_logging();
+    clear_tui_logs();
+    CONSOLE_LOG_MIRROR.store(true, Ordering::Relaxed);
+
+    disable_console_logging();
+    assert!(!CONSOLE_LOG_MIRROR.load(Ordering::Relaxed));
+    push_log("console-off");
+    assert!(
+        get_tui_logs()
+            .iter()
+            .any(|line| line.contains("console-off"))
+    );
+
+    CONSOLE_LOG_MIRROR.store(true, Ordering::Relaxed);
+}
+
+#[test]
+#[serial(logging)]
 fn test_push_log_keeps_max_capacity() {
     init_logging();
     clear_tui_logs();

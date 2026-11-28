@@ -50,6 +50,12 @@ while `p2p_chat_server` starts the node on its plain `main` thread before
 building the runtime that serves HTTP. Calling it directly from an async
 function panics with "Cannot start a runtime from within a runtime".
 
+The TUI also calls `logging::disable_console_logging()` before initializing
+logs: ratatui owns stdout and stderr lands in the same terminal, so any
+console log mirror would tear the rendered frame. Lines still reach the
+in-memory buffer, persistent log file, and Log tab through the registered
+callback; headless binaries keep console mirroring on.
+
 ## Module layout
 
 ```

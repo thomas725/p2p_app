@@ -146,8 +146,9 @@ pub use fmt::{
 #[cfg(any(test, feature = "test-utils"))]
 pub use logging::tracing_filter;
 pub use logging::{
-    clear_tui_logs, get_tui_logs, init_logging, p2plog_debug, p2plog_error, p2plog_info, push_log,
-    register_log_callback, request_tui_redraw, set_tui_redraw_hook, strip_ansi_codes,
+    clear_tui_logs, disable_console_logging, get_tui_logs, init_logging, p2plog_debug,
+    p2plog_error, p2plog_info, push_log, register_log_callback, request_tui_redraw,
+    set_tui_redraw_hook, strip_ansi_codes,
 };
 pub use messages::{
     MessageMeta, get_all_peer_stats, load_direct_messages, load_messages, load_receipts,

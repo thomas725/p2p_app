@@ -3,11 +3,13 @@
 //! This module provides a unified logging solution that:
 //! - Uses `tracing` (Rust's most popular structured logging library)
 //! - Supports a single callback registry for all frontends (TUI, Flutter)
-//! - Writes to both terminal (if no callback) and a persistent log file
+//! - Writes to a persistent log file, and to the terminal only while console
+//!   mirroring is enabled (full-screen frontends turn it off)
 //! - Integrates with libp2p's existing tracing usage
 
 use std::collections::VecDeque;
 use std::io::Write;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 #[cfg(feature = "tracing")]
 use tracing::field::Visit;
@@ -75,6 +77,22 @@ static LOG_CALLBACKS: Mutex<Vec<LogCallback>> = Mutex::new(vec![]);
 
 /// Optional hook that requests a TUI redraw when new logs arrive.
 static TUI_REDRAW_HOOK: OnceLock<Mutex<Option<RedrawHook>>> = OnceLock::new();
+
+/// Whether log lines may still be mirrored to the process console.
+///
+/// A full-screen TUI owns stdout; stderr lands in the same terminal and tears
+/// the frame just as surely, so the TUI disables this at startup. The in-memory
+/// buffer, persistent log file, and registered callbacks (the Log tab) are
+/// unaffected.
+static CONSOLE_LOG_MIRROR: AtomicBool = AtomicBool::new(true);
+
+/// Disable mirroring log lines to stdout/stderr.
+///
+/// Call before any logging starts in full-screen frontends. Headless/CLI
+/// binaries keep the default `true` so their console still shows log lines.
+pub fn disable_console_logging() {
+    CONSOLE_LOG_MIRROR.store(false, Ordering::Relaxed);
+}
 
 /// Custom tracing layer that sends log events through `push_log`.
 ///
@@ -251,7 +269,8 @@ fn write_to_file(formatted: &str) {
 
 /// Push a log message to the buffer, file, and all registered callbacks.
 ///
-/// If no callbacks are registered, the message is printed to stderr.
+/// If no callbacks are registered, the message is printed to stderr unless
+/// console mirroring was disabled by a full-screen frontend.
 pub fn push_log(message: impl Into<String>) {
     let msg = message.into();
     let ts = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
@@ -281,9 +300,12 @@ pub fn push_log(message: impl Into<String>) {
     if callbacks.is_empty() {
         // On the mobile frontend the stderr mirror below already emits every
         // line, so avoid printing it twice during early startup (before the
-        // Flutter callback is registered).
+        // Flutter callback is registered). Full-screen frontends disable that
+        // mirror entirely so no log line lands in their rendered terminal.
         #[cfg(not(feature = "mobile"))]
-        eprintln!("[{ts}] {msg}");
+        if CONSOLE_LOG_MIRROR.load(Ordering::Relaxed) {
+            eprintln!("[{ts}] {msg}");
+        }
     } else {
         for cb in callbacks.iter() {
             cb(format!("[{ts}] {msg}"));
@@ -297,11 +319,11 @@ pub fn push_log(message: impl Into<String>) {
     //  - elsewhere (desktop), print to stderr so run_flutter_desktop.sh shows them.
     // Excluded under `cfg(test)` so the test harness stays quiet.
     #[cfg(all(feature = "mobile", target_os = "android", not(test)))]
-    {
+    if CONSOLE_LOG_MIRROR.load(Ordering::Relaxed) {
         android_log::write(&formatted);
     }
     #[cfg(all(feature = "mobile", not(target_os = "android"), not(test)))]
-    {
+    if CONSOLE_LOG_MIRROR.load(Ordering::Relaxed) {
         eprintln!("[{ts}] {msg}");
     }
 }
