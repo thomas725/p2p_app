@@ -8,7 +8,6 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
 
 import 'call_audio.dart';
@@ -64,9 +63,6 @@ class AndroidCallAudio implements CallAudioAdapter {
   }
 
   /// Native -> Dart: one captured 320-sample frame as a byte array.
-  @visibleForTesting
-  Future<dynamic> onNativeCall(MethodCall call) => _onNativeCall(call);
-
   Future<dynamic> _onNativeCall(MethodCall call) async {
     if (call.method != 'pcm' || !_started) return null;
     final raw = call.arguments;

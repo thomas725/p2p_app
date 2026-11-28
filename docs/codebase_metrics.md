@@ -5,22 +5,22 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        75 |
-| Total Rust Lines      |    44,925 |
-| Total Rust Chars      | 1,715,771 |
-| Avg Lines/Rust File   |       599 |
-| Avg Chars/Rust File   |    22,876 |
+| Total Rust Lines      |    44,908 |
+| Total Rust Chars      | 1,715,237 |
+| Avg Lines/Rust File   |       598 |
+| Avg Chars/Rust File   |    22,869 |
 | Total Dart Files      |        62 |
-| Total Dart Lines      |    27,260 |
-| Total Dart Chars      |   879,599 |
+| Total Dart Lines      |    27,256 |
+| Total Dart Chars      |   879,440 |
 | Avg Lines/Dart File   |       439 |
-| Avg Chars/Dart File   |    14,187 |
+| Avg Chars/Dart File   |    14,184 |
 | Total Kotlin Files    |         5 |
 | Total Kotlin Lines    |     1,060 |
 | Total Kotlin Chars    |    39,580 |
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 142 files, 73,245 lines, 2,634,950 characters
+**Grand Total:** 142 files, 73,224 lines, 2,634,257 characters
 
 ## Rust Source Files
 
@@ -29,7 +29,7 @@
 | /                       | build.rs             |     5 |  4068 |   117 |        - |       - | Build script                                       |
 | src                     | behavior.rs          |     6 | 30694 |   757 |        - |       - | Network behavior definitions                       |
 | src                     | blocklist.rs         |     2 |  4185 |   110 |        - |       - | Source file                                        |
-| src                     | call_media.rs        |     3 |  8270 |   233 |        - |       - | Source file                                        |
+| src                     | call_media.rs        |     3 |  8134 |   227 |        - |       - | Source file                                        |
 | src                     | calls.rs             |     3 |  3221 |    90 |        - |       - | Call session state machine (signaling)             |
 | src                     | clipboard.rs         |     3 |  3617 |    98 |        - |       - | Source file                                        |
 | src                     | connected.rs         |     3 |  2983 |    89 |        - |       - | Connected peers tracking & monitoring              |
@@ -43,8 +43,8 @@
 | src                     | frb_generated.rs     |     6 | 284865 |  6851 |        - |       - | flutter_rust_bridge codegen                        |
 | src                     | groups.rs            |     3 | 24841 |   664 |        - |       - | Group management & persistence                     |
 | src                     | identity.rs          |     4 | 30488 |   797 |        - |       - | Users, account keys & device bindings              |
-| src                     | lib.rs               |     1 |  7604 |   204 |        - |       - | Module declarations & re-exports                   |
-| src                     | location.rs          |     5 | 30257 |   821 |        - |       - | Source file                                        |
+| src                     | lib.rs               |     1 |  7584 |   204 |        - |       - | Module declarations & re-exports                   |
+| src                     | location.rs          |     5 | 29879 |   810 |        - |       - | Source file                                        |
 | src                     | logging.rs           |     5 | 13949 |   426 |        - |       - | Logging utilities & setup                          |
 | src                     | messages.rs          |     5 | 25355 |   643 |        - |       - | Message persistence & retrieval                    |
 | src                     | mobile_api.rs        |     4 | 35164 |  1034 |        - |       - | Mobile FRB API surface                             |
@@ -102,7 +102,7 @@
 | src/web                 | methods.rs           |     5 | 44877 |  1379 |        - |       - | Web JSON method dispatch                           |
 | src/web                 | mod.rs               |     7 | 20622 |   520 |        - |       - | Web server (axum HTTP+WS)                          |
 
-**Total:** 75 files, 44,925 lines, 1,715,771 characters
+**Total:** 75 files, 44,908 lines, 1,715,237 characters
 
 ## Rust Test Files
 
@@ -145,7 +145,7 @@
 | unit   | unit_bin_tui_state.rs              |  1752 | 59007 |     3 | Unit tests for TUI state              |
 | unit   | unit_bin_tui_test_helpers.rs       |   237 |  8407 |     5 | Unit tests for TUI test helpers       |
 | unit   | unit_blocklist.rs                  |   112 |  3932 |     3 | Test file                             |
-| unit   | unit_call_media.rs                 |   148 |  4734 |     3 | Test file                             |
+| unit   | unit_call_media.rs                 |   147 |  4701 |     3 | Test file                             |
 | unit   | unit_calls.rs                      |    90 |  2797 |     1 | calls module tests                    |
 | unit   | unit_connected.rs                  |    84 |  2572 |     3 | Unit tests for connected module       |
 | unit   | unit_contacts.rs                   |   435 | 14754 |     4 | contacts module tests                 |
@@ -179,7 +179,7 @@
 | unit   | unit_types.rs                      |   427 | 12996 |     3 | Unit tests for types module           |
 | unit   | unit_web_mod.rs                    |  1304 | 45284 |     9 | Test file                             |
 
-**Total:** 70 test files, 39,122 lines, 1,331,373 characters
+**Total:** 70 test files, 39,121 lines, 1,331,340 characters
 
 ## Dart Source Files
 
@@ -231,7 +231,7 @@
 | lib          | call_audio.dart                  |     4 |  4139 |   104 |        - |       - | Dart source file                 |
 | lib          | call_audio_device.dart           |     2 |   436 |    11 |        - |       - | Dart source file                 |
 | lib          | call_audio_platform.dart         |     2 |   850 |    26 |        - |       - | Dart source file                 |
-| lib          | call_audio_platform_android.dart |     4 |  4054 |   106 |        - |       - | Dart source file                 |
+| lib          | call_audio_platform_android.dart |     4 |  3895 |   102 |        - |       - | Dart source file                 |
 | lib          | call_audio_platform_web.dart     |     5 |  7995 |   216 |        - |       - | Dart source file                 |
 | lib          | event_bus.dart                   |     2 |  1813 |    45 |        - |       - | Node event fan-out               |
 | lib          | location.dart                    |     3 |  4274 |   117 |        - |       - | Dart source file                 |
@@ -248,7 +248,7 @@
 | lib          | theme.dart                       |     2 |  1821 |    49 |        - |       - | Dart source file                 |
 | lib          | ui_utils.dart                    |     2 |  1233 |    29 |        - |       - | Shared formatting & env helpers  |
 
-**Total:** 62 files, 27,260 lines, 879,599 characters
+**Total:** 62 files, 27,256 lines, 879,440 characters
 
 ## Dart Test Files
 

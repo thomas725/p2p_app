@@ -183,12 +183,6 @@ impl MediaSession {
         self.call_id == call_id && self.peer_id == peer_id
     }
 
-    /// Whether outgoing audio is currently muted.
-    #[must_use]
-    pub const fn is_muted(&self) -> bool {
-        self.muted
-    }
-
     /// Mute or unmute outgoing audio (inbound audio is unaffected).
     pub const fn set_muted(&mut self, muted: bool) {
         self.muted = muted;

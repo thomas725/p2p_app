@@ -176,17 +176,6 @@ impl LocationMode {
     }
 }
 
-/// One location sample as supplied by a device adapter.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct LocationSample {
-    /// Latitude in decimal degrees.
-    pub latitude: f64,
-    /// Longitude in decimal degrees.
-    pub longitude: f64,
-    /// Estimated horizontal accuracy in metres (negative values are rejected).
-    pub accuracy: f64,
-}
-
 /// Settings for a (possibly continued) sharing session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LocationSessionSettings {

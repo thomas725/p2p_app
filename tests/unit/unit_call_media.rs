@@ -140,7 +140,6 @@ fn session_identity_requires_both_call_id_and_peer() {
 fn muted_session_sends_nothing_but_still_receives() {
     let mut session = MediaSession::new("c1".into(), "peer-1".into());
     session.set_muted(true);
-    assert!(session.is_muted());
     assert!(session.next_frame(&[1; SAMPLES_PER_FRAME]).is_none());
     session.set_muted(false);
     assert!(session.next_frame(&[]).is_none());

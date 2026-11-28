@@ -178,7 +178,7 @@ pub use tui_helpers::{
     sort_peers_by_last_seen, upsert_peer_last_seen,
 };
 #[cfg(feature = "tui")]
-pub use tui_render::{render_chat_content, render_frame, render_tab_content, render_tabs};
+pub use tui_render::{render_chat_content, render_frame, render_tabs};
 #[cfg(feature = "tui")]
 pub use tui_render_state::{
     TuiRenderState, broadcast_receipt_prefix, calc_visible_list_items, calc_visible_strings,
