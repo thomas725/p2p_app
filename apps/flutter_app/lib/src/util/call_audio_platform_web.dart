@@ -15,45 +15,16 @@ import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
 import 'call_audio.dart';
-
-@JS('AudioContext')
-extension type _AudioContext._(JSObject _) implements JSObject {
-  external factory _AudioContext();
-  external JSPromise<JSAny?> resume();
-  external JSPromise<JSAny?> close();
-  external num get currentTime;
-  external num get sampleRate;
-  external JSObject get destination;
-  external _AudioBuffer createBuffer(int channels, int length, int sampleRate);
-  external JSObject createBufferSource();
-  external JSObject createGain();
-  external JSObject createMediaStreamSource(JSObject stream);
-  external JSObject createScriptProcessor(
-    int bufferSize,
-    int inputChannels,
-    int outputChannels,
-  );
-}
+import 'web_audio.dart';
 
 @JS('navigator.mediaDevices.getUserMedia')
 external JSPromise<JSAny?> _getUserMedia(JSObject constraints);
 
-extension type _AudioBuffer._(JSObject _) implements JSObject {
-  external void copyToChannel(JSFloat32Array source, int channel);
-}
-
-extension _AudioContextState on _AudioContext {
-  bool get isSuspended {
-    final raw = getProperty('state'.toJS);
-    return raw != null && raw.isA<JSString>() && (raw as JSString).toDart == 'suspended';
-  }
-}
-
 CallAudioAdapter createPlatformCallAudioAdapter() => _BrowserCallAudio();
 
 class _BrowserCallAudio implements CallAudioAdapter {
-  _AudioContext? _playback;
-  _AudioContext? _captureContext;
+  WebAudioContext? _playback;
+  WebAudioContext? _captureContext;
   JSObject? _stream;
   JSObject? _source;
   JSObject? _processor;
@@ -80,7 +51,7 @@ class _BrowserCallAudio implements CallAudioAdapter {
 
     // Playback works on plain HTTP (only getUserMedia needs a secure context),
     // so open it first and keep it even when capture is unavailable.
-    final playback = _AudioContext();
+    final playback = WebAudioContext();
     if (playback.isSuspended) await playback.resume().toDart;
     if (generation != _generation) {
       // Hang-up while the context was resuming: don't leave it open.
@@ -105,7 +76,7 @@ class _BrowserCallAudio implements CallAudioAdapter {
         return;
       }
 
-      final context = _AudioContext();
+      final context = WebAudioContext();
       if (context.isSuspended) await context.resume().toDart;
       if (generation != _generation) {
         _stopTracks(stream);
@@ -124,12 +95,17 @@ class _BrowserCallAudio implements CallAudioAdapter {
       silent.callMethod('connect'.toJS, context.destination);
 
       final captureRate = context.sampleRate.toInt();
-      if (captureRate <= 0) throw StateError('invalid AudioContext sample rate');
+      if (captureRate <= 0) {
+        throw StateError('invalid AudioContext sample rate');
+      }
       final converter = PcmCaptureConverter(captureRate);
       void handleCapture(JSObject event) {
         final input = event.getProperty('inputBuffer'.toJS);
         if (input == null || !input.isA<JSObject>()) return;
-        final channel = (input as JSObject).callMethod('getChannelData'.toJS, 0.toJS);
+        final channel = (input as JSObject).callMethod(
+          'getChannelData'.toJS,
+          0.toJS,
+        );
         if (channel == null || !channel.isA<JSFloat32Array>()) return;
         final floats = (channel as JSFloat32Array).toDart;
         for (final frame in converter.feed(floats)) {

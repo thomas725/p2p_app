@@ -8,28 +8,13 @@
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
+import 'web_audio.dart';
+
 @JS('Notification')
 extension type _JsNotification._(JSObject _) implements JSObject {
   external static JSString get permission;
   external static JSPromise<JSString> requestPermission();
   external factory _JsNotification(JSString title, JSObject options);
-}
-
-@JS('AudioContext')
-extension type _AudioContext._(JSObject _) implements JSObject {
-  external factory _AudioContext();
-  external JSObject createOscillator();
-  external JSObject createGain();
-  external JSPromise<JSAny?> resume();
-  external num get currentTime;
-  external JSObject get destination;
-}
-
-extension _AudioContextState on _AudioContext {
-  bool get isSuspended {
-    final raw = getProperty('state'.toJS);
-    return raw != null && raw.isA<JSString>() && (raw as JSString).toDart == 'suspended';
-  }
 }
 
 extension _AudioNodeOps on JSObject {
@@ -40,11 +25,8 @@ extension _AudioNodeOps on JSObject {
   void stop(num when) => callMethod('stop'.toJS, when.toJS);
   void setValueAtTime(num value, num time) =>
       callMethod('setValueAtTime'.toJS, value.toJS, time.toJS);
-  void exponentialRampToValueAtTime(num value, num time) => callMethod(
-    'exponentialRampToValueAtTime'.toJS,
-    value.toJS,
-    time.toJS,
-  );
+  void exponentialRampToValueAtTime(num value, num time) =>
+      callMethod('exponentialRampToValueAtTime'.toJS, value.toJS, time.toJS);
 }
 
 /// Ask the browser for permission to show system notifications. Idempotent.
@@ -68,7 +50,7 @@ Future<void> platformShowNotification(String title, String body) async {
 /// A short, low-volume two-tone beep. Browsers block audio until the user has
 /// interacted with the page; the caller swallows any failure.
 Future<void> platformBeep() async {
-  final ctx = _AudioContext();
+  final ctx = WebAudioContext();
   if (ctx.isSuspended) await ctx.resume().toDart;
   final osc = ctx.createOscillator();
   final gain = ctx.createGain();

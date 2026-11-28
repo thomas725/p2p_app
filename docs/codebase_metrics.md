@@ -9,18 +9,18 @@
 | Total Rust Chars      | 1,717,626 |
 | Avg Lines/Rust File   |       599 |
 | Avg Chars/Rust File   |    22,901 |
-| Total Dart Files      |        62 |
-| Total Dart Lines      |    27,296 |
-| Total Dart Chars      |   881,294 |
-| Avg Lines/Dart File   |       440 |
-| Avg Chars/Dart File   |    14,214 |
+| Total Dart Files      |        63 |
+| Total Dart Lines      |    27,307 |
+| Total Dart Chars      |   881,687 |
+| Avg Lines/Dart File   |       433 |
+| Avg Chars/Dart File   |    13,995 |
 | Total Kotlin Files    |         5 |
 | Total Kotlin Lines    |     1,060 |
 | Total Kotlin Chars    |    39,580 |
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 142 files, 73,304 lines, 2,638,500 characters
+**Grand Total:** 143 files, 73,315 lines, 2,638,893 characters
 
 ## Rust Source Files
 
@@ -232,7 +232,7 @@
 | lib          | call_audio_device.dart           |     2 |   436 |    11 |        - |       - | Dart source file                 |
 | lib          | call_audio_platform.dart         |     2 |   850 |    26 |        - |       - | Dart source file                 |
 | lib          | call_audio_platform_android.dart |     4 |  3895 |   102 |        - |       - | Dart source file                 |
-| lib          | call_audio_platform_web.dart     |     5 |  7995 |   216 |        - |       - | Dart source file                 |
+| lib          | call_audio_platform_web.dart     |     5 |  7096 |   192 |        - |       - | Dart source file                 |
 | lib          | event_bus.dart                   |     2 |  1813 |    45 |        - |       - | Node event fan-out               |
 | lib          | location.dart                    |     3 |  4274 |   117 |        - |       - | Dart source file                 |
 | lib          | location_device.dart             |     2 |   795 |    17 |        - |       - | Dart source file                 |
@@ -242,13 +242,14 @@
 | lib          | location_session.dart            |     7 | 10517 |   328 |        - |       - | Dart source file                 |
 | lib          | notifications.dart               |     3 |  5804 |   162 |        - |       - | Dart source file                 |
 | lib          | notifications_platform.dart      |     0 |   931 |    18 |        - |       - | Dart source file                 |
-| lib          | notifications_platform_web.dart  |     3 |  3244 |    83 |        - |       - | Dart source file                 |
+| lib          | notifications_platform_web.dart  |     3 |  2742 |    65 |        - |       - | Dart source file                 |
 | lib          | reply.dart                       |     3 |  2238 |    44 |        - |       - | Dart source file                 |
 | lib          | share_folders.dart               |     0 |   678 |    16 |        - |       - | Dart source file                 |
 | lib          | theme.dart                       |     2 |  1821 |    49 |        - |       - | Dart source file                 |
 | lib          | ui_utils.dart                    |     2 |  1233 |    29 |        - |       - | Shared formatting & env helpers  |
+| lib          | web_audio.dart                   |     4 |  1794 |    53 |        - |       - | Dart source file                 |
 
-**Total:** 62 files, 27,296 lines, 881,294 characters
+**Total:** 63 files, 27,307 lines, 881,687 characters
 
 ## Dart Test Files
 
