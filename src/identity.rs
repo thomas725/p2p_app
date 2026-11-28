@@ -11,7 +11,7 @@
 use crate::generated::models_insertable::{NewContact, NewDeviceBinding, NewUser};
 use crate::generated::models_queryable::{Contact, DeviceBinding, User};
 use crate::generated::schema::{contacts, device_bindings, identities, users};
-use color_eyre::eyre::WrapErr;
+use color_eyre::eyre::{WrapErr, bail, ensure};
 use diesel::prelude::*;
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 
@@ -479,27 +479,65 @@ pub fn set_my_user_nickname(nickname: &str) -> color_eyre::Result<()> {
     Ok(())
 }
 
-/// Add a contact (owner → contact adjacency). Idempotent.
+/// Set this install's owner-side display name for a user contact.
+///
+/// The owner is always derived from the local device binding, so a frontend
+/// cannot claim to write an override for another user. `None` clears an
+/// existing override (and is a no-op when there is no row yet). The nickname
+/// rules are validated here, not in a frontend, and a missing/unknown contact
+/// or an unprovisioned local user is refused rather than creating a row that no
+/// roster can ever display.
 ///
 /// # Errors
-/// Returns an error if the insert fails.
-pub fn add_contact(
-    owner_user_id: &str,
+/// Returns an error if the local user is unavailable, the target is not a known
+/// user, the nickname is invalid, or the upsert fails.
+pub fn set_contact_nickname(
     contact_user_id: &str,
-    nickname_override: Option<&str>,
+    nickname: Option<&str>,
 ) -> color_eyre::Result<()> {
-    let conn = &mut crate::sqlite_connect()?;
-    let new_contact = NewContact {
-        owner_user_id: owner_user_id.to_string(),
-        contact_user_id: contact_user_id.to_string(),
-        nickname_override: nickname_override.map(str::to_string),
+    let Some(owner_user_id) = my_user_id()? else {
+        bail!("cannot set a contact nickname before this install is bound to a user");
     };
-    diesel::insert_into(contacts::table)
-        .values(&new_contact)
-        .on_conflict((contacts::owner_user_id, contacts::contact_user_id))
-        .do_nothing()
-        .execute(conn)
-        .wrap_err("failed to add contact")?;
+    ensure!(
+        contact_user_id != owner_user_id,
+        "an install cannot nickname itself as a contact"
+    );
+    if find_user(contact_user_id)?.is_none() {
+        bail!("contact user {contact_user_id} is unknown");
+    }
+    if let Some(name) = nickname {
+        ensure!(
+            crate::nickname::validate_nickname(name),
+            "invalid contact nickname: letters, numbers or dashes (max 20 characters)"
+        );
+    }
+
+    let conn = &mut crate::sqlite_connect()?;
+    let target = contacts::table
+        .filter(contacts::owner_user_id.eq(&owner_user_id))
+        .filter(contacts::contact_user_id.eq(contact_user_id));
+    match nickname {
+        Some(name) => {
+            let new_contact = NewContact {
+                owner_user_id,
+                contact_user_id: contact_user_id.to_string(),
+                nickname_override: Some(name.to_string()),
+            };
+            diesel::insert_into(contacts::table)
+                .values(&new_contact)
+                .on_conflict((contacts::owner_user_id, contacts::contact_user_id))
+                .do_update()
+                .set(contacts::nickname_override.eq(name))
+                .execute(conn)
+                .wrap_err("failed to set contact nickname")?;
+        }
+        None => {
+            diesel::update(target)
+                .set(contacts::nickname_override.eq(None::<String>))
+                .execute(conn)
+                .wrap_err("failed to clear contact nickname")?;
+        }
+    }
     Ok(())
 }
 
@@ -515,24 +553,6 @@ pub fn list_contacts(owner_user_id: &str) -> color_eyre::Result<Vec<Contact>> {
         .select(Contact::as_select())
         .load(conn)
         .wrap_err("failed to list contacts")
-}
-
-/// Remove a contact (owner → contact adjacency). No-op if absent.
-///
-/// # Errors
-/// Returns an error if the delete fails.
-pub fn remove_contact(owner_user_id: &str, contact_user_id: &str) -> color_eyre::Result<()> {
-    let conn = &mut crate::sqlite_connect()?;
-    diesel::delete(
-        contacts::table.filter(
-            contacts::owner_user_id
-                .eq(owner_user_id)
-                .and(contacts::contact_user_id.eq(contact_user_id)),
-        ),
-    )
-    .execute(conn)
-    .wrap_err("failed to remove contact")?;
-    Ok(())
 }
 
 /// Derive the canonical account `user_id` from the account public key.

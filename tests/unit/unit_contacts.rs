@@ -237,7 +237,7 @@ fn owner_nickname_override_wins_over_self_nickname() {
             "claim-1",
         );
 
-        crate::identity::add_contact("me", "dave", Some("Davey")).expect("add contact");
+        crate::identity::set_contact_nickname("dave", Some("Davey")).expect("set contact nickname");
 
         let rows = crate::contacts::load_contacts().expect("load contacts");
         let dave = rows
@@ -250,8 +250,8 @@ fn owner_nickname_override_wins_over_self_nickname() {
             dave.display_name
         );
 
-        // Remove the override; the self nickname wins again.
-        crate::identity::remove_contact("me", "dave").expect("remove contact");
+        // Clear the override; the self nickname wins again.
+        crate::identity::set_contact_nickname("dave", None).expect("clear contact nickname");
         let rows = crate::contacts::load_contacts().expect("reload contacts");
         let dave = rows
             .iter()
@@ -261,6 +261,74 @@ fn owner_nickname_override_wins_over_self_nickname() {
             dave.display_name.starts_with("dave ("),
             "self nickname wins once the override is removed, got {}",
             dave.display_name
+        );
+    });
+}
+
+#[test]
+#[serial]
+fn contact_nickname_writer_validates_and_updates_in_place() {
+    with_test_db(|| {
+        let owner_key = make_account("me");
+        let local_peer = crate::get_local_peer_id().expect("local peer id");
+        bind_device(
+            &owner_key,
+            "me",
+            &local_peer.to_string(),
+            &[0x42; 32],
+            "claim-me",
+        );
+        let contact_key = make_account("dave");
+        bind_device(
+            &contact_key,
+            "dave",
+            "12D3Kooodevice-1",
+            &[0xAB; 32],
+            "claim-1",
+        );
+
+        crate::identity::set_contact_nickname("dave", Some("Davey")).expect("first nickname");
+        crate::identity::set_contact_nickname("dave", Some("Dave2")).expect("replacement");
+
+        let contacts = crate::identity::list_contacts("me").expect("list contacts");
+        assert_eq!(contacts.len(), 1, "repeating a set must not add a row");
+        assert_eq!(contacts[0].nickname_override.as_deref(), Some("Dave2"));
+
+        let error = crate::identity::set_contact_nickname("dave", Some("bad name!"))
+            .expect_err("invalid nickname rejected");
+        assert!(
+            error.to_string().contains("invalid contact nickname"),
+            "unexpected error: {error}"
+        );
+        assert_eq!(
+            crate::identity::list_contacts("me").expect("list contacts")[0]
+                .nickname_override
+                .as_deref(),
+            Some("Dave2"),
+            "an invalid update must leave the stored override untouched"
+        );
+
+        assert!(
+            crate::identity::set_contact_nickname("nobody", Some("Ghost")).is_err(),
+            "unknown contact must be refused"
+        );
+        assert!(
+            crate::identity::set_contact_nickname("me", Some("Myself")).is_err(),
+            "self must not become a contact"
+        );
+    });
+}
+
+#[test]
+#[serial]
+fn contact_nickname_writer_requires_a_local_user() {
+    with_test_db(|| {
+        make_account("dave");
+        let error = crate::identity::set_contact_nickname("dave", Some("Davey"))
+            .expect_err("unprovisioned install cannot own an override");
+        assert!(
+            error.to_string().contains("bound to a user"),
+            "unexpected error: {error}"
         );
     });
 }
