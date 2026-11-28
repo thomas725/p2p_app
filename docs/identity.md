@@ -163,6 +163,14 @@ TUI/Flutter sort parity).
   contact row's display name resolves: user `nickname_override` → user `self_nickname` → best
   device display name, keeping the existing `get_peer_display_name` precedence (local → received
   → petname) for the device level.
+- **Owner-side contact nicknames are Rust-owned (2026-11-28).**
+  `identity::set_contact_nickname(contact_user_id, nickname)` is the only writer for
+  `contacts.nickname_override`: it derives the owner from the local device binding, refuses self
+  or unknown users, validates with `nickname::validate_nickname`, and treats `None` as a clear.
+  The shared FRB/web method is `setContactNickname`; the TUI binds it to `Ctrl+N` on the Contacts
+  tab and Flutter exposes it only on `isUser` rows. Unbound/device rows keep the separate
+  device-level nickname editor on Peer Info. Roster reloads re-read the override from SQLite, so
+  the memoized device display-name cache needs no invalidation.
 
 ### Canonical backend shape (both frontends render against this)
 
