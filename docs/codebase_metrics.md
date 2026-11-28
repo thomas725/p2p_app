@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        75 |
-| Total Rust Lines      |    47,323 |
-| Total Rust Chars      | 1,801,205 |
-| Avg Lines/Rust File   |       630 |
-| Avg Chars/Rust File   |    24,016 |
+| Total Rust Lines      |    45,111 |
+| Total Rust Chars      | 1,720,099 |
+| Avg Lines/Rust File   |       601 |
+| Avg Chars/Rust File   |    22,934 |
 | Total Dart Files      |        62 |
 | Total Dart Lines      |    27,483 |
 | Total Dart Chars      |   885,163 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       212 |
 | Avg Chars/Kotlin File |     7,916 |
 
-**Grand Total:** 142 files, 75,866 lines, 2,725,948 characters
+**Grand Total:** 142 files, 73,654 lines, 2,644,842 characters
 
 ## Rust Source Files
 
@@ -48,7 +48,7 @@
 | src                     | logging.rs           |     5 | 13949 |   426 |        - |       - | Logging utilities & setup                          |
 | src                     | messages.rs          |     5 | 25355 |   643 |        - |       - | Message persistence & retrieval                    |
 | src                     | mobile_api.rs        |     4 | 39649 |  1164 |        - |       - | Mobile FRB API surface                             |
-| src                     | mobile_node.rs       |     5 | 100751 |  2678 |        - |       - | Mobile node lifecycle & swarm                      |
+| src                     | mobile_node.rs       |     5 | 69263 |  1770 |        - |       - | Mobile node lifecycle & swarm                      |
 | src                     | mod.rs               |     5 | 53493 |  1509 |        - |       - | FRB API surface                                    |
 | src                     | net_diag.rs          |     4 | 21449 |   596 |        - |       - | Source file                                        |
 | src                     | network.rs           |     3 |  2655 |    84 |        - |       - | Network size classification                        |
@@ -100,9 +100,9 @@
 | src/tui_render          | settings.rs          |     5 | 16413 |   469 |        - |       - | TUI settings renderer                              |
 | src/tui_render          | shares.rs            |     4 |  8575 |   230 |        - |       - | TUI shares renderer                                |
 | src/web                 | methods.rs           |     5 | 46468 |  1441 |        - |       - | Web JSON method dispatch                           |
-| src/web                 | mod.rs               |     9 | 70240 |  1824 |        - |       - | Web server (axum HTTP+WS)                          |
+| src/web                 | mod.rs               |     7 | 20622 |   520 |        - |       - | Web server (axum HTTP+WS)                          |
 
-**Total:** 75 files, 47,323 lines, 1,801,205 characters
+**Total:** 75 files, 45,111 lines, 1,720,099 characters
 
 ## Rust Test Files
 
@@ -160,6 +160,7 @@
 | unit   | unit_location.rs                   |   287 | 10115 |     3 | Test file                             |
 | unit   | unit_logging.rs                    |   205 |  5217 |     4 | Unit tests for logging module         |
 | unit   | unit_messages.rs                   |   685 | 25897 |     4 | Unit tests for messages module        |
+| unit   | unit_mobile_node.rs                |   912 | 28356 |     4 | Test file                             |
 | unit   | unit_net_diag.rs                   |   483 | 15776 |     3 | Test file                             |
 | unit   | unit_network.rs                    |    51 |  1650 |     2 | Unit tests for network module         |
 | unit   | unit_network_config.rs             |   167 |  5564 |     4 | Test file                             |
@@ -176,8 +177,9 @@
 | unit   | unit_tui_tabs.rs                   |   340 | 10961 |     3 | Unit tests for TUI tabs               |
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   425 | 12920 |     3 | Unit tests for types module           |
+| unit   | unit_web_mod.rs                    |  1309 | 45408 |     9 | Test file                             |
 
-**Total:** 68 test files, 36,192 lines, 1,231,453 characters
+**Total:** 70 test files, 38,413 lines, 1,305,217 characters
 
 ## Dart Source Files
 
